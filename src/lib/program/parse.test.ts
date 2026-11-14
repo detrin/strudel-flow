@@ -131,6 +131,17 @@ describe('parseProgram', () => {
     expect(types("const kick = s('bd')\n$: kick")).toEqual([['custom-node']]);
   });
 
+  it('reads layout comments into positions, not into the prelude', () => {
+    const program = parsed(
+      '// my song\n// @layout 1,2 3,4\nkick: s("bd").gain(1)\n',
+    );
+    expect(program.prelude).toBe('// my song');
+    expect(flatten(program.lines[0].sink).map((n) => n.position)).toEqual([
+      { x: 3, y: 4 },
+      { x: 1, y: 2 },
+    ]);
+  });
+
   it('plays a trailing bare expression like Strudel does', () => {
     expect(types('samples("x")\nnote("c e").lpf(500)')).toEqual([
       ['custom-node', 'lpf-node'],

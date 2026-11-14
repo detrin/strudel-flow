@@ -33,6 +33,7 @@ export function compileGraph(
       id: node.id,
       type: node.type,
       data: node.data,
+      position: node.position,
       // A wire that closes a cycle is ignored.
       inputs: inputsOf(node.id)
         .filter((input) => !next.has(input.id))

@@ -40,10 +40,39 @@ describe('reconcile', () => {
     ).toContainEqual([kick.id, filter.id]);
   });
 
-  it('round-trips: the graph writes the code it was built from', () => {
-    const code =
-      'setcpm(120/4)\n\nkick: s("bd*4")\n  .lpf(800)\n\n_hat: stack(s("hh*8"), s("oh"))\n  .room(0.2)\n';
-    expect(codeOf(typeCode(code))).toBe(code);
+  it('round-trips: the code it writes rebuilds the same canvas', () => {
+    const typed =
+      'kick: s("bd*4").lpf(800)\n_hat: stack(s("hh*8"), s("oh")).room(0.2)';
+    const graph = typeCode(typed);
+    const code = codeOf(graph);
+    expect(code).toMatch(/\/\/ @layout \d+,\d+ \d+,\d+\nkick: s\("bd\*4"\)/);
+    // A fresh canvas from that code alone: same code, same places.
+    const reopened = typeCode(code);
+    expect(codeOf(reopened)).toBe(code);
+    expect(reopened.nodes.map((n) => n.position)).toEqual(
+      graph.nodes.map((n) => n.position),
+    );
+  });
+
+  it('puts nodes where the layout comment says', () => {
+    const graph = typeCode('// @layout 10,20 500,20\nkick: s("bd").gain(1)');
+    expect(graph.nodes.map((n) => n.position)).toEqual([
+      { x: 10, y: 20 },
+      { x: 500, y: 20 },
+    ]);
+    expect(graph.autoPlaced.size).toBe(0);
+  });
+
+  it('ignores a layout that no longer fits the line', () => {
+    const before = typeCode('// @layout 10,20 500,20\nkick: s("bd").gain(1)');
+    const after = typeCode(
+      '// @layout 10,20 500,20\nkick: s("bd").lpf(300).gain(1)',
+      before,
+    );
+    // Survivors keep their place; the new Filter is placed after its input.
+    const [filter] = find(after, 'lpf-node');
+    expect(find(after, 'custom-node')[0].position).toEqual({ x: 10, y: 20 });
+    expect(filter.position.x).toBeGreaterThan(10);
   });
 
   it('keeps id and position when a source is edited', () => {

@@ -10,6 +10,7 @@ import {
   type Call,
 } from './syntax';
 import { flatten } from './compile';
+import { LAYOUT } from './emit';
 import { ANONYMOUS, type Line, type Program, type ProgramNode } from './types';
 
 /** An existing source node and the code it writes, for identity matching. */
@@ -229,11 +230,20 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
     ) {
       const name = statement.label.name;
       const muted = name.startsWith('_');
+      // The `// @layout` comment right above the line is part of it.
+      const layout = comments.findLast(
+        (comment) =>
+          comment.end <= statement.start &&
+          !source.slice(comment.end, statement.start).trim() &&
+          comment.text.includes(LAYOUT),
+      );
+      if (layout) lineRanges.push(layout);
       program.lines.push(
         line(
           name.replace(/^_/, '') || ANONYMOUS,
           muted,
           tree(statement.body.expression),
+          layout && positionsOf(layout.text),
         ),
       );
       // A comment on the same line as the statement belongs to it.
@@ -275,7 +285,28 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
   return { ok: true, program };
 }
 
-function line(label: string, muted: boolean, sink: ProgramNode): Line {
+/** `// @layout 0,0 320,0` → positions, or undefined if malformed. */
+function positionsOf(comment: string) {
+  const pairs = comment.split(LAYOUT)[1]?.trim().split(/\s+/) ?? [];
+  const positions = pairs.map((pair) => {
+    const [x, y] = pair.split(',').map(Number);
+    return { x, y };
+  });
+  return positions.every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))
+    ? positions
+    : undefined;
+}
+
+function line(
+  label: string,
+  muted: boolean,
+  sink: ProgramNode,
+  positions?: { x: number; y: number }[],
+): Line {
+  const nodes = flatten(sink).reverse();
+  // A layout for a different number of nodes is stale; lay out anew.
+  if (positions?.length === nodes.length)
+    nodes.forEach((node, index) => (node.position = positions[index]));
   for (const node of flatten(sink)) {
     node.data = { ...node.data, state: muted ? 'paused' : 'running' };
     delete node.data.label;

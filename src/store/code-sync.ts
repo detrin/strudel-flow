@@ -2,6 +2,7 @@ import { programOf } from '@/lib/program';
 import { emitProgram } from '@/lib/program/emit';
 import { knownSources, parseProgram } from '@/lib/program/parse';
 import { layout, reconcile } from '@/lib/program/reconcile';
+import { updateLayout, withoutLayout } from '@/lib/program/layout-comments';
 import { useAppStore } from './app-store';
 
 type State = ReturnType<typeof useAppStore.getState>;
@@ -26,7 +27,7 @@ export function setCode(code: string) {
     return;
   }
   const { program } = result;
-  const graph = reconcile(program, state);
+  const { autoPlaced, ...graph } = reconcile(program, state);
   const next = {
     ...graph,
     cpm: program.cpm ?? state.cpm,
@@ -35,7 +36,7 @@ export function setCode(code: string) {
   };
   const before = new Set(state.nodes.map((node) => node.id));
   const created = graph.nodes.filter((node) => !before.has(node.id));
-  for (const node of created) unmeasured.add(node.id);
+  for (const id of autoPlaced) unmeasured.add(id);
   lastGraphCode = graphCode(next);
   useAppStore.setState({
     ...next,
@@ -44,6 +45,9 @@ export function setCode(code: string) {
     fitRequest: created.length ? state.fitRequest + 1 : state.fitRequest,
   });
 }
+
+/** The patch as a complete Strudel file: code, tempo and node positions. */
+export const patchCode = () => graphCode(useAppStore.getState());
 
 /** Replaces the whole patch with code, e.g. a code patch from the gallery. */
 export function loadCode(
@@ -88,8 +92,13 @@ export function startCodeSync() {
   const sync = (state: State) => {
     const code = graphCode(state);
     if (code === lastGraphCode) return;
+    // Only positions moved: touch the layout comments, keep the user's text.
+    const moved =
+      withoutLayout(code) === withoutLayout(lastGraphCode) &&
+      !state.codeError &&
+      updateLayout(state.code, programOf(state));
     lastGraphCode = code;
-    useAppStore.setState({ code, codeError: null });
+    useAppStore.setState({ code: moved || code, codeError: null });
   };
   sync(useAppStore.getState());
   return useAppStore.subscribe((state, previous) => {

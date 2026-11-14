@@ -17,6 +17,11 @@ wire a node or mute a line and the code is rewritten. Forked from
   for song structure (which bars a line plays).
 - **strudel.cc's themes** (all 41, Strudel and Blue Screen included) for the
   editor and the whole UI, and strudel.cc's sample library.
+- **The code is a complete save**: a `// @layout x,y …` comment above each
+  line keeps where its nodes sit (upstream first). Dragging a node updates
+  just that comment; **Patches → Save .strudel** saves the file, **Open**
+  restores code and canvas exactly. A layout that no longer fits its line
+  is ignored and rewritten.
 - Knobs show exactly what plays: values the code leaves out are Strudel's own
   defaults (pinned by tests against Strudel's source).
 

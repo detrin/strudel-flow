@@ -9,6 +9,8 @@ export type ProgramNode = {
   data: Record<string, unknown>;
   /** Upstream nodes, in stack order. More than one means `stack(...)`. */
   inputs: ProgramNode[];
+  /** Canvas position, saved in the code as a `// @layout` comment. */
+  position?: { x: number; y: number };
 };
 
 /** One `label: expression` statement; `sink` is its last node. */

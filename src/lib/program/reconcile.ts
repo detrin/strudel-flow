@@ -93,7 +93,7 @@ export function reconcile(
   program: ParsedProgram,
   old: Graph,
   createId: () => string = nanoid,
-): Graph {
+): Graph & { autoPlaced: Set<string> } {
   const oldById = new Map(old.nodes.map((node) => [node.id, node]));
   const oldLines = compileGraph(old.nodes, old.edges, {
     cpm: '',
@@ -107,16 +107,19 @@ export function reconcile(
 
   const nodes: AppNode[] = [];
   const edges: Edge[] = [];
-  const created = new Set<string>();
+  /** New nodes the code gives no position for. */
+  const autoPlaced = new Set<string>();
   for (const line of program.lines) {
     for (const node of ordered(line)) {
       if (!node.id) {
         node.id = createId();
-        created.add(node.id);
+        if (!node.position) autoPlaced.add(node.id);
       }
       const previous = oldById.get(node.id);
       nodes.push({
-        ...(previous ?? { position: { x: 0, y: 0 } }),
+        ...previous,
+        // A position written in the code wins over where the node was.
+        position: node.position ?? previous?.position ?? { x: 0, y: 0 },
         id: node.id,
         type: node.type,
         data: nodeData(node, previous),
@@ -142,8 +145,8 @@ export function reconcile(
       ),
     ],
   };
-  layout(graph, program.lines, created, old.nodes);
-  return graph;
+  layout(graph, program.lines, autoPlaced, old.nodes);
+  return { ...graph, autoPlaced };
 }
 
 /** Places the `created` nodes next to their neighbours. Mutates positions. */

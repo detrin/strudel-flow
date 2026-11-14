@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { Copy, Download, Folder, Upload } from 'lucide-react';
+import { Copy, Download, FileCode, Folder, Upload } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -8,13 +8,26 @@ import {
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { capturePatch, applyPatch } from '@/lib/patch-state';
-import { downloadState, getShareUrl, stateFromJson } from '@/lib/project-state';
+import {
+  downloadState,
+  downloadText,
+  getShareUrl,
+  stateFromJson,
+} from '@/lib/project-state';
 import type { ProjectState } from '@/lib/project-state';
 import { PatchGallery } from './patch-gallery';
 import { ControlButton } from './control-button';
 import { useAppStore } from '@/store/app-store';
-import { loadCode } from '@/store/code-sync';
+import { loadCode, patchCode } from '@/store/code-sync';
+import { codeMeta } from '@/lib/community-patches';
 import type { CommunityPatch } from '@/lib/community-patches';
+
+const fileName = (name: string) =>
+  name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'patch';
 
 export function PresetPopover() {
   const name = useAppStore((state) => state.name);
@@ -88,16 +101,7 @@ export function PresetPopover() {
             variant="ghost"
             size="sm"
             onClick={() =>
-              downloadState(
-                capturePatch(),
-                `${
-                  name
-                    .trim()
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, '-')
-                    .replace(/^-|-$/g, '') || 'patch'
-                }.json`,
-              )
+              downloadState(capturePatch(), `${fileName(name)}.json`)
             }
           >
             <Download className="size-3.5" />
@@ -106,22 +110,50 @@ export function PresetPopover() {
           <Button
             variant="ghost"
             size="sm"
+            title="The code with every node's position: a complete save"
+            onClick={() =>
+              downloadText(
+                patchCode(),
+                `${fileName(name)}.strudel`,
+                'text/javascript',
+              )
+            }
+          >
+            <FileCode className="size-3.5" />
+            Save .strudel
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => input.current?.click()}
           >
             <Upload className="size-3.5" />
-            Import
+            Open
           </Button>
           <input
             ref={input}
             type="file"
-            accept=".json"
+            accept=".json,.strudel,.js"
             className="hidden"
             onChange={async (event) => {
               const file = event.target.files?.[0];
               event.target.value = '';
               if (!file) return;
               try {
-                const state = stateFromJson(await file.text());
+                const text = await file.text();
+                if (!/\.json$/i.test(file.name)) {
+                  // A code file: positions come from its // @layout comments.
+                  loadCode(text, {
+                    name: file.name.replace(/\.(strudel|js)$/i, ''),
+                    author: '',
+                    description: '',
+                    ...codeMeta(text),
+                  });
+                  setLink(getShareUrl(capturePatch()));
+                  setStatus('Patch loaded');
+                  return;
+                }
+                const state = stateFromJson(text);
                 loadPatch(
                   state && {
                     ...state,

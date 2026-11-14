@@ -59,6 +59,22 @@ describe('code ↔ canvas sync', () => {
     expect(state().code).toBe(code);
   });
 
+  it('moving a node only updates its layout comment', () => {
+    const typed = '// my kick\nkick:  s("bd")   .gain(1)  // loud';
+    setCode(typed);
+    const [, level] = state().nodes;
+    useAppStore.setState({
+      nodes: state().nodes.map((node) =>
+        node.id === level.id ? { ...node, position: { x: 900, y: 0 } } : node,
+      ),
+    });
+    expect(state().code.split('\n')).toEqual([
+      '// my kick',
+      expect.stringMatching(/^\/\/ @layout \d+,\d+ 900,0$/),
+      'kick:  s("bd")   .gain(1)  // loud',
+    ]);
+  });
+
   it('dragging a line above another reorders the code', () => {
     setCode('$: s("bd")\n$: s("hh")');
     const [kick, hat] = state().nodes;

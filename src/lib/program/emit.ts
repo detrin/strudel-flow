@@ -1,5 +1,6 @@
 import { isSource } from '@/components/nodes/define-node';
 import { nodeDefinitions } from '@/components/nodes/registry';
+import { flatten } from './compile';
 import type { Line, Program, ProgramNode } from './types';
 
 /** An expression split into its base and the calls chained onto it. */
@@ -26,11 +27,28 @@ function chain(node: ProgramNode): Chain {
   return { base: input.base, calls: [...input.calls, own] };
 }
 
+/**
+ * `// @layout 0,0 320,0`: where the line's nodes sit on the canvas, upstream
+ * first, so the code alone restores the canvas.
+ */
+export const LAYOUT = '@layout';
+export function layoutComment(sink: ProgramNode) {
+  const positions = flatten(sink)
+    .reverse()
+    .map((node) => node.position);
+  return positions.every(Boolean)
+    ? `// ${LAYOUT} ${positions
+        .map((p) => `${Math.round(p!.x)},${Math.round(p!.y)}`)
+        .join(' ')}\n`
+    : '';
+}
+
 export function emitLine({ label, muted, sink }: Line): string {
   const { base, calls } = chain(sink);
   if (!base) return '';
   const name = muted ? `_${label}` : label;
-  return `${name}: ${base}${calls.map((call) => `\n  .${call}`).join('')}`;
+  const body = `${name}: ${base}${calls.map((call) => `\n  .${call}`).join('')}`;
+  return layoutComment(sink) + body;
 }
 
 /** Program → Strudel code. */

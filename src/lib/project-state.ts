@@ -126,7 +126,11 @@ export function downloadState(
   state: ProjectState,
   filename = 'strudel-flow-project.json',
 ): void {
-  const blob = new Blob([stateToJson(state)], { type: 'application/json' });
+  downloadText(stateToJson(state), filename, 'application/json');
+}
+
+export function downloadText(text: string, filename: string, type: string) {
+  const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

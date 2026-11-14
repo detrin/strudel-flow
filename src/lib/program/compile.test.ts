@@ -11,7 +11,9 @@ const kick = (id = 'k', y = 0) =>
 
 describe('compileGraph + emitProgram', () => {
   it('writes tempo and one line per sink', () => {
-    expect(code([kick()], [], tempo)).toBe('setcpm(120/4)\n\n$: s("bd*4")\n');
+    expect(code([kick()], [], tempo)).toBe(
+      'setcpm(120/4)\n\n// @layout 0,0\n$: s("bd*4")\n',
+    );
   });
 
   it('applies effects in wire order, not node order', () => {
@@ -88,6 +90,8 @@ describe('compileGraph + emitProgram', () => {
   it('keeps the prelude verbatim after the tempo', () => {
     expect(
       code([kick()], [], { ...tempo, prelude: "samples('github:x/y')" }),
-    ).toMatch(/^setcpm\(120\/4\)\nsamples\('github:x\/y'\)\n\n\$:/);
+    ).toMatch(
+      /^setcpm\(120\/4\)\nsamples\('github:x\/y'\)\n\n\/\/ @layout 0,0\n\$:/,
+    );
   });
 });
