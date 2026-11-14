@@ -135,17 +135,45 @@ function createParser(source: string, known: Known[]) {
     ...node,
     text: normalize(node.text),
   }));
-  const takeKnown = (text: string) => {
-    const index = unmatched.findIndex((node) => node.text === text);
+  const takeKnown = (text: string, skipCode = false) => {
+    const index = unmatched.findIndex(
+      (node) => node.text === text && !(skipCode && node.type === CODE),
+    );
     return index === -1 ? undefined : unmatched.splice(index, 1)[0];
+  };
+
+  /** A node for a base call an instrument models (`note("c e g")`). */
+  const modelled = (base: Expression): ProgramNode | null => {
+    if (base.type !== 'CallExpression' || base.callee.type !== 'Identifier')
+      return null;
+    const text = slice(source, base);
+    const call = {
+      name: base.callee.name,
+      args: base.arguments.map((arg) => valueOf(source, arg)),
+      text,
+    };
+    for (const definition of Object.values(nodeDefinitions)) {
+      const data = definition.parseSource?.(call);
+      if (
+        data &&
+        normalize(definition.generate(data, { id: '' })) === normalize(text)
+      )
+        return { type: definition.id, data, inputs: [] };
+    }
+    return null;
   };
 
   const tree = (expression: Expression): ProgramNode => {
     const { base, calls } = decompose(source, expression);
-    // 1. An existing source node that writes exactly this code keeps its id.
+    const model = modelled(base);
+    // 1. An existing source node that writes exactly this code keeps its id
+    //    (a Code node only while no instrument models its code).
     for (let used = calls.length; used >= 0; used--) {
       const end = used ? calls[used - 1].end : base.end;
-      const match = takeKnown(normalize(source.slice(base.start, end)));
+      const match = takeKnown(
+        normalize(source.slice(base.start, end)),
+        used === 0 && model !== null,
+      );
       if (match) {
         const { id, type, data } = match;
         const node = { id, type, data: { ...data }, inputs: [] };
@@ -166,24 +194,7 @@ function createParser(source: string, known: Known[]) {
       return chainEffects(inputs, calls);
     }
     // 3. A call an instrument models (`note("c e g")` is a Notes node).
-    if (base.type === 'CallExpression' && base.callee.type === 'Identifier') {
-      const text = slice(source, base);
-      const call = {
-        name: base.callee.name,
-        args: base.arguments.map((arg) => valueOf(source, arg)),
-        text,
-      };
-      for (const definition of Object.values(nodeDefinitions)) {
-        const data = definition.parseSource?.(call);
-        if (
-          data &&
-          normalize(definition.generate(data, { id: '' })) === normalize(text)
-        ) {
-          const node = { type: definition.id, data, inputs: [] };
-          return calls.length ? chainEffects([node], calls) : node;
-        }
-      }
-    }
+    if (model) return calls.length ? chainEffects([model], calls) : model;
     // 4. Anything else is a Code node holding the base expression.
     const inner =
       base.type === 'ParenthesizedExpression' ? base.expression : base;

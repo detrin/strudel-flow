@@ -63,11 +63,12 @@ describe('community patches', () => {
           'beat-machine-node',
           'mix-node',
           'custom-node',
+          'method-node',
         ].includes(type),
     );
     expect(unused).toEqual([]);
     const arrangements = nodes.filter((node) => node.type === 'arrange-node');
-    expect(arrangements).toHaveLength(8);
+    expect(arrangements).toHaveLength(9);
     for (const node of arrangements)
       expect(String(node.data.bars)).toHaveLength(64);
   });

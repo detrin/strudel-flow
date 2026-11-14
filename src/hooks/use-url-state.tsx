@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { getShareUrl, loadFromUrl } from '@/lib/project-state';
 import { applyPatch, capturePatch } from '@/lib/patch-state';
+import { upgradePatch } from '@/store/code-sync';
 import { useAppStore } from '@/store/app-store';
 
 export function useUrlState() {
@@ -24,7 +25,8 @@ export function useUrlState() {
       const url = new URL(window.location.href);
       if (url.searchParams.has('state') || url.hash.startsWith('#patch=')) {
         const state = loadFromUrl();
-        if (!state || !applyPatch(state)) {
+        if (state && applyPatch(state)) upgradePatch();
+        else {
           useAppStore
             .getState()
             .setError(

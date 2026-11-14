@@ -31,12 +31,12 @@ describe('parseProgram', () => {
   });
 
   it('keeps unknown methods as Method nodes, merging neighbours', () => {
-    const program = parsed('$: n("0 2").scale("C:minor").ply(2).fast(2)');
+    const program = parsed('$: n("0 2").jux(rev).swing(4).fast(2)');
     const [method] = flatten(program.lines[0].sink).filter(
       (node) => node.type === 'method-node',
     );
-    expect(method.data.calls).toBe('scale("C:minor").ply(2)');
-    expect(types('$: n("0 2").scale("C:minor").ply(2).fast(2)')).toEqual([
+    expect(method.data.calls).toBe('jux(rev).swing(4)');
+    expect(types('$: n("0 2").jux(rev).swing(4).fast(2)')).toEqual([
       ['notes-node', 'method-node', 'time-node'],
     ]);
   });
@@ -99,7 +99,7 @@ describe('parseProgram', () => {
       ['notes-node', 'synth-select-node', 'lpf-node'],
     ]);
     expect(types('$: s("bd").struct("1 ~").s("hh")')).toEqual([
-      ['sound-node', 'method-node', 'drum-sounds-node'],
+      ['sound-node', 'rhythm-node', 'drum-sounds-node'],
     ]);
   });
 

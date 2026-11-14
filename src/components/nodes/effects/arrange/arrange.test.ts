@@ -15,9 +15,21 @@ describe('Arrange', () => {
       expect(parseArrange(call(maskPattern(bars)))).toEqual({ bars });
   });
 
-  it('leaves masks that are not one value per bar to raw code', () => {
-    expect(parseArrange(call('1 0 1 1'))).toBeNull();
-    expect(parseArrange(call('<1 [1 0]>'))).toBeNull();
+  it('keeps masks that are not one value per bar as their pattern', () => {
+    expect(parseArrange(call('1 0 1 1'))).toEqual({ pattern: '"1 0 1 1"' });
+    expect(parseArrange(call('<1 [1 0]>'))).toEqual({
+      pattern: '"<1 [1 0]>"',
+    });
+    expect(
+      parseArrange([{ name: 'mask', args: [{ code: 'DROP' }], text: '' }]),
+    ).toEqual({ pattern: 'DROP' });
+    expect(generateArrange({ pattern: 'DROP' })).toBe('mask(DROP)');
+  });
+
+  it('reads @ like ! and long songs', () => {
+    expect(parseArrange(call('<0 1@3>'))).toEqual({ bars: '0111' });
+    const long = '1'.repeat(100) + '0'.repeat(28);
+    expect(parseArrange(call(maskPattern(long)))).toEqual({ bars: long });
   });
 
   it('plays exactly the bars that are on', () => {

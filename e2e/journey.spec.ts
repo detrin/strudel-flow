@@ -6,7 +6,7 @@ async function openUndertow(page: Page) {
   await page.getByText('Community patches').click();
   await page.getByRole('button', { name: /Load Undertow/ }).click();
   await page.keyboard.press('Escape');
-  await expect(nodes(page)).toHaveCount(49);
+  await expect(nodes(page)).toHaveCount(56);
 }
 /** The Sound node playing the mini-notation `pattern`. */
 const soundNode = (page: Page, pattern: string) =>
@@ -79,7 +79,7 @@ test('a whole song: open, play, mix, rewire, undo, share', async ({
   const code = (await editor(page).textContent()) ?? '';
   const elsewhere = await context.newPage();
   await elsewhere.goto(link);
-  await expect(nodes(elsewhere)).toHaveCount(50);
+  await expect(nodes(elsewhere)).toHaveCount(57);
   await expect(editor(elsewhere)).toHaveText(code);
   errors.expectNone();
 });

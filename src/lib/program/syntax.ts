@@ -38,6 +38,8 @@ const ALIASES: Record<string, string> = {
   rel: 'release',
   o: 'orbit',
   det: 'detune',
+  legato: 'clip',
+  trans: 'transpose',
 };
 export const canonical = (name: string) => ALIASES[name] ?? name;
 

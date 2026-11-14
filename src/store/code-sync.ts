@@ -1,4 +1,5 @@
 import { programOf } from '@/lib/program';
+import { flatten } from '@/lib/program/compile';
 import { emitProgram } from '@/lib/program/emit';
 import { knownSources, parseProgram } from '@/lib/program/parse';
 import { layout, reconcile } from '@/lib/program/reconcile';
@@ -88,6 +89,25 @@ function relayout(state: State) {
   useAppStore.setState({ nodes, fitRequest: state.fitRequest + 1 });
 }
 
+/**
+ * Re-reads a patch's own code when newer nodes would model it differently
+ * (a saved `s("bd")` Code node becomes a Sound node), so patches saved
+ * before a node existed pick it up. Positions and sounds stay the same.
+ */
+export function upgradePatch() {
+  const state = useAppStore.getState();
+  if (!state.nodes.length) return;
+  const code = graphCode(state);
+  const result = parseProgram(code, knownSources(state.nodes));
+  if (!result.ok) return;
+  const types = (lines: { sink: Parameters<typeof flatten>[0] }[]) =>
+    lines.flatMap((line) => flatten(line.sink).map((node) => node.type));
+  if (
+    types(result.program.lines).join() !== types(programOf(state).lines).join()
+  )
+    setCode(code);
+}
+
 /** Rewrites the console whenever the canvas changes what the code says. */
 export function startCodeSync() {
   const sync = (state: State) => {
@@ -102,6 +122,7 @@ export function startCodeSync() {
     useAppStore.setState({ code: moved || code, codeError: null });
   };
   sync(useAppStore.getState());
+  upgradePatch();
   return useAppStore.subscribe((state, previous) => {
     if (
       state.nodes !== previous.nodes ||

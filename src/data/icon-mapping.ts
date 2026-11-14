@@ -20,6 +20,10 @@ import {
   Dices,
   Route,
   ChartNoAxesGantt,
+  Footprints,
+  Disc3,
+  Scissors,
+  ArrowUpDown,
 } from 'lucide-react';
 
 export const iconMapping = {
@@ -44,4 +48,8 @@ export const iconMapping = {
   Dices,
   Route,
   ChartNoAxesGantt,
+  Footprints,
+  Disc3,
+  Scissors,
+  ArrowUpDown,
 };

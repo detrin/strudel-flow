@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createNodeByType } from '@/components/nodes/registry';
 import { useAppStore } from './app-store';
-import { setCode, startCodeSync } from './code-sync';
+import { setCode, startCodeSync, upgradePatch } from './code-sync';
 
 const state = () => useAppStore.getState();
 const types = () => state().nodes.map((node) => node.type);
@@ -119,5 +119,24 @@ describe('code ↔ canvas sync', () => {
     // And typing a new constant moves the toolbar.
     setCode(state().code.replace('const BPM = 90', 'const BPM = 140'));
     expect(state().cpm).toBe('140');
+  });
+
+  it('upgrades a saved patch to nodes that model it better', () => {
+    // As saved before Sound nodes existed: s("bd") in a Code node.
+    useAppStore.setState({
+      nodes: [
+        createNodeByType({
+          id: 'old',
+          type: 'custom-node',
+          position: { x: 40, y: 80 },
+          data: { customPattern: 's("bd*4")', state: 'running' },
+        }),
+      ],
+      edges: [],
+    });
+    upgradePatch();
+    expect(types()).toEqual(['sound-node']);
+    expect(state().nodes[0].position).toEqual({ x: 40, y: 80 });
+    expect(state().code).toContain('$: s("bd*4")');
   });
 });
