@@ -45,3 +45,16 @@ test('arranging bars on the canvas writes the mask', async ({ page }) => {
   await arrange.getByRole('button', { name: 'More bars' }).click();
   await expect(editor(page)).toContainText('.mask("<1!5 0!4>")');
 });
+
+test('an LFO becomes a Modulate node you can reshape', async ({ page }) => {
+  await typeCode(
+    page,
+    'acid: note("c2*8").s("sawtooth").lpf(sine.range(300, 3000).slow(8))',
+  );
+  const modulate = nodeOfType(page, 'modulate-node');
+  await modulate.getByRole('combobox', { name: 'wave' }).selectOption('perlin');
+  await modulate.getByRole('textbox', { name: 'to', exact: true }).fill('5000');
+  await expect(editor(page)).toContainText(
+    '.lpf(perlin.range(300, 5000).slow(8))',
+  );
+});

@@ -15,6 +15,7 @@ import {
   Braces,
   Repeat,
   LayoutList,
+  AudioWaveform,
 } from 'lucide-react';
 
 export const iconMapping = {
@@ -34,4 +35,5 @@ export const iconMapping = {
   Braces,
   Repeat,
   LayoutList,
+  AudioWaveform,
 };

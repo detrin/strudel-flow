@@ -53,6 +53,8 @@ export function defineFilter(options: {
     icon: 'Filter',
     parameters,
     parse: (calls) => {
+      // Without a cutoff Strudel has no filter, so nothing to default to.
+      if (!calls.some((call) => call.name === `${prefix}f`)) return null;
       const values = parseEnvelope(parameters, calls, UNSET);
       if (!values) return null;
       const envelope = calls.some((call) =>

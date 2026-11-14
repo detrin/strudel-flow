@@ -2,8 +2,13 @@ import WorkflowNode from './workflow-node';
 import { ParameterKnob } from './parameter-knob';
 import { useAppStore } from '@/store/app-store';
 import type { WorkflowNodeProps } from '../types';
-import { type NodeDefinition } from '../define-node';
+import type { NodeDefinition } from '../define-node';
+import { ParameterField } from './parameter-field';
 
+const formatNumber = (value: number, unit = '') =>
+  `${Number(value.toFixed(Math.abs(value) < 0.1 ? 3 : 2))}${unit}`;
+
+/** The generic node body: fields on top, knobs below. */
 export function createDefinitionComponent(definition: NodeDefinition) {
   return function DefinitionNode({ id, data }: WorkflowNodeProps) {
     const update = useAppStore((state) => state.updateNodeData);
@@ -13,6 +18,12 @@ export function createDefinitionComponent(definition: NodeDefinition) {
       update(id, updates);
     const updateParameter = (key: string, value: string | number) =>
       updateValues(definition.encode({ [key]: value }));
+    const visible = Object.entries(definition.parameters).filter(
+      ([, parameter]) => parameter.when?.(values) ?? true,
+    );
+    const knobs = visible.filter(([, p]) => p.control === 'knob');
+    const fields = visible.filter(([, p]) => p.control !== 'knob');
+
     return (
       <WorkflowNode id={id} data={data} type={definition.id}>
         {definition.renderControls ? (
@@ -22,17 +33,24 @@ export function createDefinitionComponent(definition: NodeDefinition) {
             isMuted: data.state === 'paused',
           })
         ) : (
-          <div className="space-y-4 px-4 pt-1 pb-5">
-            <div
-              className={
-                Object.keys(definition.parameters).length > 4
-                  ? 'grid grid-cols-3 gap-5'
-                  : 'flex flex-wrap justify-center gap-4'
-              }
-            >
-              {Object.entries(definition.parameters)
-                .filter(([, parameter]) => parameter.when?.(values) ?? true)
-                .map(([key, parameter]) =>
+          <div className="w-64 space-y-4 px-3 pt-1 pb-4">
+            {fields.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 *:only:col-span-2">
+                {fields.map(([key, parameter]) =>
+                  parameter.control === 'knob' ? null : (
+                    <ParameterField
+                      key={key}
+                      parameter={parameter}
+                      value={String(values[key])}
+                      onChange={(value) => updateParameter(key, value)}
+                    />
+                  ),
+                )}
+              </div>
+            )}
+            {knobs.length > 0 && (
+              <div className="grid grid-cols-3 justify-items-center gap-x-2 gap-y-4">
+                {knobs.map(([key, parameter]) =>
                   parameter.control === 'knob' ? (
                     <ParameterKnob
                       key={key}
@@ -43,48 +61,14 @@ export function createDefinitionComponent(definition: NodeDefinition) {
                       step={parameter.step}
                       format={
                         parameter.format ??
-                        ((value) =>
-                          `${Number(value.toFixed(Math.abs(value) < 0.1 ? 3 : 2))}${parameter.unit ?? ''}`)
+                        ((value) => formatNumber(value, parameter.unit))
                       }
                       onChange={(value) => updateParameter(key, value)}
                     />
-                  ) : parameter.control === 'select' ? (
-                    <label
-                      key={key}
-                      className="flex flex-col gap-2 text-xs text-muted-foreground"
-                    >
-                      {parameter.label}
-                      <select
-                        className="nodrag rounded border border-input bg-background p-2 text-foreground"
-                        value={String(values[key])}
-                        onChange={(event) =>
-                          updateParameter(key, event.target.value)
-                        }
-                      >
-                        {parameter.options.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ) : (
-                    <label
-                      key={key}
-                      className="flex flex-col gap-2 text-xs text-muted-foreground"
-                    >
-                      {parameter.label}
-                      <input
-                        className="nodrag rounded border border-input bg-background p-2 text-foreground"
-                        value={String(values[key])}
-                        onChange={(event) =>
-                          updateParameter(key, event.target.value)
-                        }
-                      />
-                    </label>
-                  ),
+                  ) : null,
                 )}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </WorkflowNode>

@@ -80,6 +80,12 @@ describe('parseProgram', () => {
     ]);
   });
 
+  it('reads an LFO as Modulate, and never lets a Filter override it', () => {
+    expect(
+      types('$: s("bd").lpf(sine.range(200, 2000).slow(8)).lpq(12)'),
+    ).toEqual([['custom-node', 'modulate-node', 'method-node']]);
+  });
+
   it('understands Strudel aliases and routes sounds by name', () => {
     expect(types('$: n("0").s("sawtooth").cutoff(500)')).toEqual([
       ['custom-node', 'synth-select-node', 'lpf-node'],
@@ -146,6 +152,9 @@ const corpus = [
   '$: s("sd*2").phaser(2).phaserdepth(0.7).distort(0.5)',
   '$: note("c3").s("sine").every(2, rev).palindrome()',
   '$: (note("c e g").s("piano")).gain(0.5)',
+  '$: s("bd*4").lpf(sine.range(200, 2000).slow(4)).lpq(12)',
+  '$: note("c2*8").s("saw").lpf(400).gain(perlin.range(0.6, 0.9))',
+  '$: s("hh*16").mask("<1!3 0>").pan(saw.range(0, 1).slow(2))',
 ];
 
 describe('round trips', () => {
