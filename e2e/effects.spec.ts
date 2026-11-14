@@ -35,3 +35,13 @@ test('delay code becomes a Delay node and its knobs write code', async ({
     '.delay(0.4).delaytime(0.375).delayfeedback(0.69)',
   );
 });
+
+test('arranging bars on the canvas writes the mask', async ({ page }) => {
+  await typeCode(page, 'acid: note("c2*8").s("sawtooth").mask("<1!4 0!4>")');
+  const arrange = nodeOfType(page, 'arrange-node');
+  await expect(arrange.getByRole('button', { pressed: true })).toHaveCount(4);
+  await arrange.getByRole('button', { name: 'Bar 5' }).click();
+  await expect(editor(page)).toContainText('.mask("<1!5 0!3>")');
+  await arrange.getByRole('button', { name: 'More bars' }).click();
+  await expect(editor(page)).toContainText('.mask("<1!5 0!4>")');
+});

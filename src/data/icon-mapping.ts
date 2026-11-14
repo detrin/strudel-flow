@@ -14,6 +14,7 @@ import {
   Layers,
   Braces,
   Repeat,
+  LayoutList,
 } from 'lucide-react';
 
 export const iconMapping = {
@@ -32,4 +33,5 @@ export const iconMapping = {
   Layers,
   Braces,
   Repeat,
+  LayoutList,
 };
