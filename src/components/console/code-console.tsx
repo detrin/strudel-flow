@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { CircleAlert, PanelLeftClose } from 'lucide-react';
+import { CircleAlert, PanelLeftClose, Play, Square } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
 import { setCode } from '@/store/code-sync';
 import { themeByName } from '@/themes';
@@ -12,24 +12,36 @@ export function CodeConsole({ onClose }: { onClose: () => void }) {
   const code = useAppStore((state) => state.code);
   const error = useAppStore((state) => state.codeError);
   const theme = useAppStore((state) => state.theme);
+  const isPlaying = useAppStore((state) => state.isPlaying);
   const timer = useRef<number | undefined>(undefined);
   const pending = useRef<string | null>(null);
 
+  /** Applies typed code now; true when there was any to apply. */
   const flush = useCallback(() => {
     window.clearTimeout(timer.current);
-    if (pending.current !== null) setCode(pending.current);
+    const code = pending.current;
     pending.current = null;
+    if (code === null) return false;
+    setCode(code);
+    return true;
   }, []);
+  const play = useCallback(() => {
+    flush();
+    useAppStore.setState({ isPlaying: true, error: null });
+  }, [flush]);
+  const stop = () => useAppStore.setState({ isPlaying: false });
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const keys = useMemo(
     () => [
       {
-        // strudel.cc: Ctrl+Enter evaluates, Ctrl+. stops.
+        // Ctrl+Enter plays, or stops when playing. Edits not applied yet
+        // are applied instead (strudel.cc's "update"), so it never cuts
+        // the music off when there is new code to hear. Ctrl+. stops.
         key: 'Mod-Enter',
         run: () => {
-          flush();
-          useAppStore.setState({ isPlaying: true, error: null });
+          if (!useAppStore.getState().isPlaying) play();
+          else if (!flush()) useAppStore.setState({ isPlaying: false });
           return true;
         },
       },
@@ -41,7 +53,7 @@ export function CodeConsole({ onClose }: { onClose: () => void }) {
         },
       },
     ],
-    [flush],
+    [flush, play],
   );
 
   return (
@@ -54,8 +66,22 @@ export function CodeConsole({ onClose }: { onClose: () => void }) {
           Code
         </h2>
         <span className="hidden text-[10px] text-muted-foreground sm:inline">
-          Ctrl+Enter play · Ctrl+. stop
+          Ctrl+Enter play/stop · Ctrl+. stop
         </span>
+        <button
+          type="button"
+          onClick={isPlaying ? stop : play}
+          aria-label={isPlaying ? 'Stop' : 'Play code'}
+          title={isPlaying ? 'Stop (Ctrl+Enter)' : 'Play (Ctrl+Enter)'}
+          className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          {isPlaying ? (
+            <Square className="size-3 fill-current" aria-hidden="true" />
+          ) : (
+            <Play className="size-3 fill-current" aria-hidden="true" />
+          )}
+          {isPlaying ? 'stop' : 'play'}
+        </button>
         <button
           type="button"
           onClick={onClose}

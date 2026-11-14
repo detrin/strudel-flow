@@ -1,115 +1,321 @@
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { Eraser } from 'lucide-react';
 import type { CustomControlsProps } from '../../define-node';
-import type { PadData } from './pad';
-import { NOTES, DEFAULTS, createDefaultGrid } from './pad';
-import { useState, useEffect } from 'react';
+import {
+  BAR_OPTIONS,
+  DEFAULTS,
+  DIVISIONS,
+  LEGACY_CLEARED,
+  ROWS,
+  padClip,
+  placeNote,
+  rescaleNotes,
+  type PadData,
+  type PadNote,
+} from './pad';
 import { getSchedulerNow } from '@/lib/strudel-clock';
-
-import { CellState, ModifierDropdown } from '../../shared/modifiers';
 import { AccordionControls } from '@/components/nodes/shared/accordion-controls';
+import { cn } from '@/lib/utils';
 
+const ROW_HEIGHT = 16;
+/** Width of one cycle on screen; cells divide it. */
+const BAR_WIDTH = 320;
+/** At most this many cycles are visible; longer clips scroll. */
+const VISIBLE_BARS = 2;
+/** Grab zone at a note's right edge for resizing, in screen pixels. */
+const EDGE = 6;
+
+type Drag =
+  | { kind: 'draw'; index: number }
+  | { kind: 'resize'; index: number }
+  | { kind: 'move'; index: number; grab: number; moved: boolean };
+
+/**
+ * A piano roll: draw notes by clicking or dragging on the grid, drag a note
+ * to move it, drag its right edge to change its length, click it to delete.
+ */
 export function PadNode({
   values: data,
   onChange,
   isPlaying,
   isMuted,
 }: CustomControlsProps<PadData>) {
-  const [activeStep, setActiveStep] = useState(-1);
+  const clip = padClip(data);
+  const { division, bars } = clip;
+  const total = division * bars;
+  const cellWidth = BAR_WIDTH / division;
+  const width = total * cellWidth;
 
-  const steps = data.steps || DEFAULTS.steps;
+  const [draft, setDraft] = useState<PadNote[] | null>(null);
+  const notes = draft ?? clip.notes;
+  const drag = useRef<Drag | null>(null);
+  const lastLength = useRef(1);
+  const grid = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!isPlaying || isMuted) {
-      setActiveStep(-1);
+  const playhead = usePlayhead(bars, isPlaying && !isMuted);
+
+  const save = (updates: Partial<PadData>) =>
+    onChange({
+      notes: clip.notes,
+      division,
+      bars,
+      ...LEGACY_CLEARED,
+      ...updates,
+    });
+
+  /** The cell under the pointer, in clip coordinates (zoom-independent). */
+  const cellAt = (event: PointerEvent) => {
+    const bounds = grid.current!.getBoundingClientRect();
+    const scale = bounds.width / width;
+    const x = (event.clientX - bounds.left) / scale;
+    const y = (event.clientY - bounds.top) / scale;
+    return {
+      x,
+      col: Math.max(0, Math.min(total - 1, Math.floor(x / cellWidth))),
+      pitch: Math.max(
+        0,
+        Math.min(ROWS - 1, ROWS - 1 - Math.floor(y / ROW_HEIGHT)),
+      ),
+      scale,
+    };
+  };
+
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const { x, col, pitch, scale } = cellAt(event);
+    const element = (event.target as Element).closest('[data-note]');
+    if (element) {
+      const index = Number(element.getAttribute('data-note'));
+      const note = notes[index];
+      const end = (note.start + note.length) * cellWidth;
+      drag.current =
+        end - x <= EDGE / scale
+          ? { kind: 'resize', index }
+          : { kind: 'move', index, grab: col - note.start, moved: false };
+      setDraft(notes);
       return;
     }
-    let rafId: number;
-    const tick = () => {
-      const now = getSchedulerNow();
-      setActiveStep(now > 0 ? Math.floor((now % 1) * steps) : -1);
-      rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [steps, isPlaying, isMuted]);
-
-  const mode = data.mode || DEFAULTS.mode;
-  const octave = data.octave || DEFAULTS.octave;
-  const selectedKey = data.selectedKey || DEFAULTS.selectedKey;
-  const selectedScaleType =
-    data.selectedScaleType || DEFAULTS.selectedScaleType;
-  const grid = data.grid || createDefaultGrid();
-  const columnModifiers = data.columnModifiers || {};
-  const handleToggleCell = (stepIdx: number, noteIdx: number) => {
-    const nextGrid = grid.map((row) => [...row]);
-    nextGrid[stepIdx][noteIdx] = !nextGrid[stepIdx][noteIdx];
-    onChange({ grid: nextGrid });
+    const length = Math.min(lastLength.current, total - col);
+    drag.current = { kind: 'draw', index: notes.length };
+    setDraft([...notes, { pitch, start: col, length }]);
   };
 
-  const handleColumnModifierSelect = (stepIdx: number, modifier: CellState) => {
-    const newColumnModifiers = { ...columnModifiers };
-    if (modifier.type === 'off') {
-      delete newColumnModifiers[stepIdx];
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const current = drag.current;
+    if (!current || !draft) return;
+    const { col, pitch } = cellAt(event);
+    const note = draft[current.index];
+    let next: PadNote;
+    if (current.kind === 'move') {
+      const start = Math.max(
+        0,
+        Math.min(total - note.length, col - current.grab),
+      );
+      next = { ...note, start, pitch };
+      if (start !== note.start || pitch !== note.pitch) current.moved = true;
     } else {
-      newColumnModifiers[stepIdx] = modifier;
+      next = { ...note, length: Math.max(1, col - note.start + 1) };
     }
-    onChange({ columnModifiers: newColumnModifiers });
+    if (
+      next.start === note.start &&
+      next.pitch === note.pitch &&
+      next.length === note.length
+    )
+      return;
+    setDraft(draft.map((n, index) => (index === current.index ? next : n)));
   };
+
+  const onPointerUp = () => {
+    const current = drag.current;
+    drag.current = null;
+    if (!current || !draft) return;
+    setDraft(null);
+    if (current.kind === 'move' && !current.moved) {
+      save({ notes: draft.filter((_, index) => index !== current.index) });
+      return;
+    }
+    const note = draft[current.index];
+    if (current.kind !== 'move') lastLength.current = note.length;
+    save({ notes: placeNote(draft, note, current.index) });
+  };
+
+  const divisions = DIVISIONS.includes(division as (typeof DIVISIONS)[number])
+    ? DIVISIONS
+    : [...DIVISIONS, division].sort((a, b) => a - b);
+  const beat = division % 4 === 0 ? division / 4 : division;
 
   return (
-    <div className="flex flex-col gap-2 p-3 bg-card text-card-foreground rounded-lg w-full max-w-full overflow-hidden">
-      <div className="flex gap-1 w-full nodrag">
-        {Array.from({ length: steps }, (_, stepIdx) => (
-          <div key={stepIdx} className="flex flex-col gap-1 items-center">
-            <div
-              className={`w-1.5 h-1.5 rounded-full mb-0.5 transition-colors duration-75 ${
-                stepIdx === activeStep ? 'bg-primary' : 'bg-card-foreground/20'
-              }`}
-            />
-            {NOTES.map((_, noteIdx) => {
-              const on = grid[stepIdx]?.[noteIdx] || false;
+    <div className="flex w-full flex-col gap-2 rounded-lg bg-card p-3 text-card-foreground">
+      <div className="nodrag flex items-center gap-3 text-[11px] text-muted-foreground">
+        <label className="flex items-center gap-1.5">
+          Bars
+          <select
+            aria-label="Bars"
+            value={bars}
+            onChange={(event) => save({ bars: Number(event.target.value) })}
+            className={selectClass}
+          >
+            {BAR_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-1.5">
+          Grid
+          <select
+            aria-label="Grid"
+            value={division}
+            onChange={(event) => {
+              const next = Number(event.target.value);
+              save({
+                division: next,
+                notes: rescaleNotes(clip.notes, division, next),
+              });
+              lastLength.current = 1;
+            }}
+            className={selectClass}
+          >
+            {divisions.map((option) => (
+              <option key={option} value={option}>
+                1/{option}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          onClick={() => save({ notes: [] })}
+          disabled={!clip.notes.length}
+          title="Clear all notes"
+          className="ml-auto flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-accent hover:text-foreground disabled:opacity-40"
+        >
+          <Eraser className="size-3.5" aria-hidden="true" />
+          Clear
+        </button>
+      </div>
+
+      <div className="flex">
+        {/* Scale degrees, high to low; the tonic rows are marked. */}
+        <div className="w-6 shrink-0 pr-1 text-right font-mono text-[9px] leading-4 text-muted-foreground">
+          {Array.from({ length: ROWS }, (_, row) => {
+            const pitch = ROWS - 1 - row;
+            return (
+              <div
+                key={pitch}
+                className={cn(pitch % 7 === 0 && 'font-bold text-foreground')}
+              >
+                {pitch}
+              </div>
+            );
+          })}
+        </div>
+        <div
+          className="nodrag nowheel overflow-x-auto overflow-y-hidden rounded-sm"
+          style={{ maxWidth: VISIBLE_BARS * BAR_WIDTH }}
+        >
+          <div
+            ref={grid}
+            role="grid"
+            aria-label="Piano roll: click or drag to draw notes, drag a note to move it, drag its right edge to resize, click it to delete"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            className="nodrag nopan relative cursor-crosshair touch-none bg-muted/40 select-none"
+            style={{ width, height: ROWS * ROW_HEIGHT }}
+          >
+            {Array.from({ length: ROWS }, (_, row) => {
+              const pitch = ROWS - 1 - row;
               return (
-                <button
-                  key={noteIdx}
-                  className={`${getButtonClasses(on)} w-12 h-10`}
-                  onClick={() => handleToggleCell(stepIdx, noteIdx)}
-                  aria-pressed={on}
-                  title={`Note ${noteIdx + 1}, Step ${stepIdx + 1}`}
+                <div
+                  key={pitch}
+                  className={cn(
+                    'absolute inset-x-0 border-b border-border/30',
+                    pitch % 7 === 0 && 'bg-foreground/[0.06]',
+                  )}
+                  style={{ top: row * ROW_HEIGHT, height: ROW_HEIGHT }}
                 />
               );
             })}
-            <ModifierDropdown
-              currentState={columnModifiers[stepIdx] || { type: 'off' }}
-              onModifierSelect={(modifier) =>
-                handleColumnModifierSelect(stepIdx, modifier)
-              }
-            />
+            {Array.from({ length: total }, (_, col) => (
+              <div
+                key={col}
+                className={cn(
+                  'absolute inset-y-0 w-px',
+                  col % division === 0
+                    ? 'bg-foreground/40'
+                    : col % beat === 0
+                      ? 'bg-foreground/20'
+                      : 'bg-foreground/[0.07]',
+                )}
+                style={{ left: col * cellWidth }}
+              />
+            ))}
+            {notes.map((note, index) =>
+              note.start >= total ? null : (
+                <div
+                  key={index}
+                  data-note={index}
+                  title={`Degree ${note.pitch}, ${note.length}/${division}`}
+                  className="absolute cursor-grab rounded-[3px] border border-black/30 bg-primary shadow-sm after:absolute after:inset-y-0 after:right-0 after:w-1.5 after:cursor-ew-resize"
+                  style={{
+                    left: note.start * cellWidth + 1,
+                    width:
+                      Math.min(note.length, total - note.start) * cellWidth - 1,
+                    top: (ROWS - 1 - note.pitch) * ROW_HEIGHT + 1,
+                    height: ROW_HEIGHT - 2,
+                  }}
+                />
+              ),
+            )}
+            {playhead >= 0 && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 w-0.5 bg-primary/80"
+                style={{ left: playhead * width }}
+              />
+            )}
           </div>
-        ))}
+        </div>
       </div>
-      <div className="w-full max-w-full overflow-hidden">
-        <AccordionControls
-          keyScaleOctaveProps={{
-            selectedKey,
-            onKeyChange: (key) => onChange({ selectedKey: key }),
-            selectedScale: selectedScaleType,
-            onScaleChange: (scale) => onChange({ selectedScaleType: scale }),
-            octave,
-            onOctaveChange: (oct) => onChange({ octave: oct }),
-          }}
-          padControlsProps={{
-            steps,
-            onStepsChange: (s) => onChange({ steps: s }),
-            mode,
-            onModeChange: (m) => onChange({ mode: m }),
-          }}
-        />
-      </div>
+
+      <AccordionControls
+        keyScaleOctaveProps={{
+          selectedKey: data.selectedKey || DEFAULTS.selectedKey,
+          onKeyChange: (key) => onChange({ selectedKey: key }),
+          selectedScale: data.selectedScaleType || DEFAULTS.selectedScaleType,
+          onScaleChange: (scale) => onChange({ selectedScaleType: scale }),
+          octave: data.octave || DEFAULTS.octave,
+          onOctaveChange: (octave) => onChange({ octave }),
+        }}
+      />
     </div>
   );
 }
 
-const getButtonClasses = (isPressed: boolean) => {
-  const base =
-    'cursor-pointer border border-white/5 transition-[background-color,box-shadow,transform] ease-out duration-150 rounded-md text-xs font-mono select-none active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none';
-  return `${base} ${isPressed ? 'bg-primary' : 'bg-muted hover:bg-muted-foreground/30'}`;
-};
+const selectClass =
+  'h-7 cursor-pointer rounded-md border border-border bg-background/60 px-1.5 font-mono text-[11px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+/** Where the clip is playing, 0..1, or -1 when it is not. */
+function usePlayhead(bars: number, active: boolean) {
+  const [position, setPosition] = useState(-1);
+  useEffect(() => {
+    if (!active) {
+      setPosition(-1);
+      return;
+    }
+    let frame: number;
+    const tick = () => {
+      const now = getSchedulerNow();
+      setPosition(now > 0 ? (now % bars) / bars : -1);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [bars, active]);
+  return position;
+}

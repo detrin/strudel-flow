@@ -72,7 +72,7 @@ test('Claude Code edits the open patch over MCP', async ({ page }, info) => {
     await call('play');
     await expect(page.getByRole('button', { name: /Pause/ })).toBeVisible();
     await call('stop');
-    await expect(page.getByRole('button', { name: /^Play/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Play \(/ })).toBeVisible();
   } finally {
     await client.close();
   }

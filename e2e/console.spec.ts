@@ -78,5 +78,31 @@ test('Ctrl+Enter plays and Ctrl+. stops', async ({ page }) => {
   await page.keyboard.press('ControlOrMeta+Enter');
   await expect(page.getByRole('button', { name: /Pause/ })).toBeVisible();
   await page.keyboard.press('ControlOrMeta+.');
-  await expect(page.getByRole('button', { name: /^Play/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Play \(/ })).toBeVisible();
+});
+
+test('Ctrl+Enter stops when playing, but applies new code first', async ({
+  page,
+}) => {
+  await typeCode(page, 'kick: s("bd*4")');
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.getByRole('button', { name: /Pause/ })).toBeVisible();
+  // New code while playing: Ctrl+Enter applies it and keeps playing.
+  await page.keyboard.press('ControlOrMeta+End');
+  await page.keyboard.insertText('.gain(0.5)');
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(nodeOfType(page, 'level-node')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /Pause/ })).toBeVisible();
+  // Nothing new: Ctrl+Enter stops.
+  await page.keyboard.press('ControlOrMeta+Enter');
+  await expect(page.getByRole('button', { name: /^Play \(/ })).toBeVisible();
+});
+
+test('the console has its own play and stop button', async ({ page }) => {
+  const console = page.getByRole('region', { name: 'Code console' });
+  await console.getByRole('button', { name: 'Play code' }).click();
+  await expect(console.getByRole('button', { name: 'Stop' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Pause/ })).toBeVisible();
+  await console.getByRole('button', { name: 'Stop' }).click();
+  await expect(page.getByRole('button', { name: /^Play \(/ })).toBeVisible();
 });

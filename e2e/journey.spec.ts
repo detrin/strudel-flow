@@ -29,7 +29,7 @@ test('a whole song: open, play, mix, rewire, undo, share', async ({
     (response) => /RolandTR909/.test(response.url()) && response.ok(),
     { timeout: 20_000 },
   );
-  await page.getByRole('button', { name: /^Play/ }).click();
+  await page.getByRole('button', { name: /^Play \(/ }).click();
   await kit;
   await page.waitForTimeout(1000);
   await expect(page.getByRole('alert')).toHaveCount(0);
