@@ -4,8 +4,10 @@
  * Notes that overlap in time play together.
  */
 
+import { rollMini, type RollNote } from '../../shared/roll';
+
 /** A drawn note: scale degree, start and length in grid cells. */
-export type PadNote = { pitch: number; start: number; length: number };
+export type PadNote = RollNote;
 
 export type PadData = {
   notes?: PadNote[];
@@ -48,8 +50,6 @@ export function pitchRange(data: PadData) {
   const max = Math.max(min, data.maxOctave ?? 0);
   return { low: min * size, high: (max + 1) * size, size };
 }
-export const DIVISIONS = [4, 8, 12, 16, 24, 32] as const;
-export const BAR_OPTIONS = [1, 2, 4, 8] as const;
 
 export const DEFAULTS = {
   division: 16,
@@ -92,111 +92,11 @@ export function padClip(data: PadData): {
   return { notes, division: steps, bars };
 }
 
-const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
-
-type Event = { start: number; length: number; pitches: number[] };
-
-/**
- * Strudel code for the clip. Each voice is a sequence of weighted steps
- * (`0@4 ~@2`); voices stack with commas, so notes can overlap freely.
- */
 export function generatePattern(data: PadData) {
   const { notes, division, bars } = padClip(data);
-  const total = division * bars;
-
-  // Notes starting together with the same length form one chord.
-  const chords = new Map<string, Event>();
-  for (const note of notes) {
-    if (note.start < 0 || note.start >= total || note.length < 1) continue;
-    const length = Math.min(note.length, total - note.start);
-    const key = `${note.start}:${length}`;
-    const chord = chords.get(key) ?? { start: note.start, length, pitches: [] };
-    if (!chord.pitches.includes(note.pitch)) chord.pitches.push(note.pitch);
-    chords.set(key, chord);
-  }
-  const events = [...chords.values()].sort(
-    (a, b) => a.start - b.start || b.length - a.length,
-  );
-  if (!events.length) return '';
-
-  // Fewest voices: each event goes to the first voice that is free by then.
-  const voices: { end: number; events: Event[] }[] = [];
-  for (const event of events) {
-    let voice = voices.find((v) => v.end <= event.start);
-    if (!voice) voices.push((voice = { end: 0, events: [] }));
-    voice.events.push(event);
-    voice.end = event.start + event.length;
-  }
-
-  // The coarsest unit every time fits, to keep the code short.
-  const unit = events.reduce(
-    (g, event) => gcd(gcd(g, event.start), event.length),
-    total,
-  );
-  const step = (value: string, cells: number) =>
-    cells === unit ? value : `${value}@${cells / unit}`;
-  const sequence = (voiceEvents: Event[]) => {
-    const steps: string[] = [];
-    let cursor = 0;
-    for (const { start, length, pitches } of voiceEvents) {
-      if (start > cursor) steps.push(step('~', start - cursor));
-      const sorted = [...pitches].sort((a, b) => a - b);
-      steps.push(
-        step(
-          sorted.length > 1 ? `[${sorted.join(',')}]` : `${sorted[0]}`,
-          length,
-        ),
-      );
-      cursor = start + length;
-    }
-    if (cursor < total) steps.push(step('~', total - cursor));
-    return steps.join(' ');
-  };
-
-  const body = voices.map((voice) => sequence(voice.events)).join(', ');
-  const pattern =
-    bars > 1 ? `[${body}]/${bars}` : voices.length > 1 ? `[${body}]` : body;
+  const pattern = rollMini(notes, division, bars);
+  if (!pattern) return '';
   // An unset octave is left to Strudel, as the step pad did.
   const scale = `${data.selectedKey || DEFAULTS.selectedKey}${data.octave || ''}:${data.selectedScaleType || DEFAULTS.selectedScaleType}`;
   return `n("${pattern}").scale("${scale}")`;
-}
-
-/**
- * Puts `changed` into the clip the way a piano roll does: a note of the same
- * pitch it overlaps is shortened if it starts earlier, otherwise removed.
- */
-export function placeNote(
-  notes: PadNote[],
-  changed: PadNote,
-  replacing?: number,
-): PadNote[] {
-  const end = changed.start + changed.length;
-  const others = notes
-    .filter((_, index) => index !== replacing)
-    .flatMap((note) => {
-      if (
-        note.pitch !== changed.pitch ||
-        note.start >= end ||
-        note.start + note.length <= changed.start
-      )
-        return [note];
-      if (note.start < changed.start)
-        return [{ ...note, length: changed.start - note.start }];
-      return [];
-    });
-  return [...others, changed];
-}
-
-/** Notes moved onto a finer or coarser grid (at least one cell long). */
-export function rescaleNotes(notes: PadNote[], from: number, to: number) {
-  const factor = to / from;
-  let rescaled: PadNote[] = [];
-  for (const note of notes) {
-    rescaled = placeNote(rescaled, {
-      pitch: note.pitch,
-      start: Math.round(note.start * factor),
-      length: Math.max(1, Math.round(note.length * factor)),
-    });
-  }
-  return rescaled;
 }

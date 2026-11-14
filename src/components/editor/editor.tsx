@@ -16,6 +16,13 @@ import { startCodeSync } from '@/store/code-sync';
 import { startBridge } from '@/lib/bridge/connect';
 
 const edgeTypes = { default: deleteEdge };
+/** Room for the panels on the canvas edges, so they never cover nodes. */
+const FIT_PADDING = {
+  top: '72px',
+  bottom: '64px',
+  left: '72px',
+  right: '24px',
+} as const;
 
 export default function Editor() {
   useUrlState();
@@ -43,7 +50,7 @@ export default function Editor() {
   useEffect(() => {
     if (!fitRequest) return;
     const frame = requestAnimationFrame(() =>
-      fitView({ padding: 0.2, maxZoom: 1, duration: 300 }),
+      fitView({ padding: FIT_PADDING, maxZoom: 1, duration: 300 }),
     );
     return () => cancelAnimationFrame(frame);
   }, [fitRequest, fitView]);
@@ -75,7 +82,7 @@ export default function Editor() {
             proOptions={{ hideAttribution: true }}
             minZoom={0.2}
             fitView
-            fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
+            fitViewOptions={{ padding: FIT_PADDING, maxZoom: 1 }}
           >
             <EditorToolbar onAddNode={onAddNode} />
             <NodePalette />

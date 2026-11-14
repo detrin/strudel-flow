@@ -1,5 +1,6 @@
 import { defineNode, knob } from '../../define-node';
 import { readPattern, writePattern } from './pattern';
+import { NotesNode, type NotesView } from './notes-node';
 
 /** Notes in mini-notation: `note("<e4 d#4 b3>")`, or scale degrees `n("0 2 4")`. */
 export default defineNode({
@@ -21,6 +22,8 @@ export default defineNode({
     },
     fast: knob('speed', 1, [0.25, 64, 0.25]),
   },
+  defaults: {} as NotesView,
+  component: NotesNode,
   methods: [],
   parse: () => null,
   parseSource: (call) => readPattern(call, ['note', 'n']),

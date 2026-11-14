@@ -8,6 +8,8 @@ declare module '@strudel/web' {
   export function evaluate(code: string): Promise<unknown>;
   export function hush(): void;
   export function noteToMidi(note: string): number;
+  /** Parses mini-notation into a pattern. */
+  export function mini(code: string): unknown;
   export function getADSRValues(
     values: (number | undefined)[],
     curve?: string,

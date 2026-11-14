@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { haps } from '@/test/strudel';
-import {
-  generatePattern,
-  pitchRange,
-  placeNote,
-  rescaleNotes,
-  type PadData,
-  type PadNote,
-} from './pad';
+import { generatePattern, pitchRange, type PadData, type PadNote } from './pad';
+import { placeNote, rescaleNotes } from '../../shared/roll';
 
 const clip = (notes: PadNote[], extra: PadData = {}): PadData => ({
   notes,
