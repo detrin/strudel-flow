@@ -315,7 +315,14 @@ export function PadNode({
                   key={index}
                   data-note={index}
                   title={`Degree ${note.pitch}, ${note.length}/${division}`}
-                  className="absolute cursor-grab rounded-[3px] border border-black/30 bg-primary shadow-sm after:absolute after:inset-y-0 after:right-0 after:w-1.5 after:cursor-ew-resize"
+                  data-sounding={
+                    playhead >= 0 &&
+                    note.start <= playhead * total &&
+                    playhead * total < note.start + note.length
+                      ? ''
+                      : undefined
+                  }
+                  className="absolute cursor-grab rounded-[3px] border border-black/30 bg-primary shadow-sm transition-[filter,box-shadow] duration-75 after:absolute after:inset-y-0 after:right-0 after:w-1.5 after:cursor-ew-resize data-sounding:brightness-125 data-sounding:shadow-[0_0_0_2px_var(--foreground)]"
                   style={{
                     left: note.start * cellWidth + 1,
                     width:
@@ -329,7 +336,8 @@ export function PadNode({
             {playhead >= 0 && (
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 w-0.5 bg-primary/80"
+                data-playhead=""
+                className="pointer-events-none absolute inset-y-0 w-0.5 bg-foreground/80"
                 style={{ left: playhead * width }}
               />
             )}

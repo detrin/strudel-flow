@@ -85,6 +85,11 @@ export type NodeDefinition = {
   ordered: boolean;
   /** Calls → node data, or null when this node cannot express them. */
   parse: (calls: Call[]) => Record<string, unknown> | null;
+  /**
+   * Instruments: reads a line's base call (`note("c e g")`) into node data,
+   * or null. The node must write that call back exactly.
+   */
+  parseSource?: (call: Call) => Record<string, unknown> | null;
   renderControls?: (
     data: Record<string, unknown>,
     update: (data: Record<string, unknown>) => void,
@@ -123,6 +128,15 @@ export const knob = (
 export const implicitOf = (parameter: Parameter) =>
   parameter.implicit ?? parameter.default;
 
+/**
+ * A knob holds a number or, like Strudel itself, a pattern: the code of
+ * its argument (`"<400 800>"`, `sine.range(200, 2000)`, `slider(0.5)`).
+ */
+export const isPatternValue = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  value.trim() !== '' &&
+  !Number.isFinite(Number(value));
+
 function parameterValues<P extends Parameters>(
   parameters: P,
   data: Record<string, unknown>,
@@ -130,6 +144,8 @@ function parameterValues<P extends Parameters>(
   return Object.fromEntries(
     Object.entries(parameters).map(([key, parameter]) => {
       const raw = data[key] ?? parameter.default;
+      if (parameter.control === 'knob' && isPatternValue(raw))
+        return [key, raw.trim()];
       const value = parameter.control === 'knob' ? Number(raw) : String(raw);
       return [
         key,
@@ -160,7 +176,11 @@ export function parameterCalls(
   return (written.length ? written : entries.slice(0, 1))
     .map(
       ([key, parameter]) =>
-        `${methodOf(key, parameter)}(${literal(values[key])})`,
+        `${methodOf(key, parameter)}(${
+          parameter.control === 'knob' && isPatternValue(values[key])
+            ? values[key]
+            : literal(values[key])
+        })`,
     )
     .join('.');
 }
@@ -186,8 +206,14 @@ export function parseParameters(parameters: Parameters, calls: Call[]) {
           : typeof arg === 'string' && arg.trim()
             ? Number(arg)
             : NaN;
-      if (!Number.isFinite(value)) return null;
-      values[key] = value;
+      // Not a plain number: keep the argument's code as a pattern value.
+      values[key] = Number.isFinite(value)
+        ? value
+        : typeof arg === 'string'
+          ? JSON.stringify(arg)
+          : typeof arg === 'object'
+            ? arg.code
+            : String(arg);
     } else {
       if (typeof arg !== 'string') return null;
       if (
@@ -223,6 +249,7 @@ export function defineNode<
   ordered?: boolean;
   /** Defaults to `parseParameters`. */
   parse?: (calls: Call[]) => Partial<D & ParameterValues<P>> | null;
+  parseSource?: (call: Call) => Partial<D & ParameterValues<P>> | null;
   component?: ComponentType<NodeControlsProps<P, D>>;
 }): NodeDefinition {
   const {
@@ -240,6 +267,7 @@ export function defineNode<
         D & ParameterValues<P>
       > | null,
     ordered = false,
+    parseSource,
     ...metadata
   } = definition;
   const resolve = (data: Record<string, unknown>) => {
@@ -277,6 +305,12 @@ export function defineNode<
       );
       return values && encode({ ...implicit, ...values });
     },
+    parseSource: parseSource
+      ? (call) => {
+          const values = parseSource(call);
+          return values && encode({ ...values });
+        }
+      : undefined,
     renderControls: component
       ? (data, update, context) =>
           createElement(component, {

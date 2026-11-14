@@ -7,7 +7,8 @@ export type Adsr = [
   sustain: number,
   release: number,
 ];
-type Partial4 = [number?, number?, number?, number?];
+type Value = number | string;
+type Partial4 = [Value?, Value?, Value?, Value?];
 
 /**
  * Strudel's own rule (superdough `getADSRValues`) for the envelope values
@@ -25,12 +26,15 @@ export function effectiveAdsr(
     (attack === undefined && decay === undefined)
       ? 1
       : 0.001);
+  // Patterns (`decay("<0.1 0.4>")`) play as written; only numbers clamp.
+  const clamp = (value: Value | undefined, f: (n: number) => number) =>
+    typeof value === 'string' ? value : f(value ?? 0);
   return [
-    Math.max(attack ?? 0, 0.001),
-    Math.max(decay ?? 0, 0.001),
-    Math.min(held, 1),
-    Math.max(release ?? 0, 0.01),
-  ];
+    clamp(attack, (n) => Math.max(n, 0.001)),
+    clamp(decay, (n) => Math.max(n, 0.001)),
+    clamp(held, (n) => Math.min(n, 1)),
+    clamp(release, (n) => Math.max(n, 0.01)),
+  ] as Adsr;
 }
 
 export const ADSR_KEYS = ['attack', 'decay', 'sustain', 'release'] as const;

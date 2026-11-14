@@ -24,7 +24,7 @@ test('the "+" on a node splices the next node into its line', async ({
   page,
 }) => {
   const errors = trackErrors(page);
-  const custom = nodeOfType(page, 'custom-node');
+  const custom = nodeOfType(page, 'sound-node');
   await custom.hover();
   await page
     .getByRole('button', { name: /Add a node after/ })

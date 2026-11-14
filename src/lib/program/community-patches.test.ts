@@ -55,10 +55,15 @@ describe('community patches', () => {
     const unused = Object.keys(nodeDefinitions).filter(
       (type) =>
         !used.has(type) &&
-        // Visual instruments are matched from their own code, not written.
-        !['pad-node', 'chord-node', 'beat-machine-node', 'mix-node'].includes(
-          type,
-        ),
+        // Visual instruments are matched from their own code, not written;
+        // Code is only the fallback for code no node models.
+        ![
+          'pad-node',
+          'chord-node',
+          'beat-machine-node',
+          'mix-node',
+          'custom-node',
+        ].includes(type),
     );
     expect(unused).toEqual([]);
     const arrangements = nodes.filter((node) => node.type === 'arrange-node');

@@ -44,12 +44,16 @@ const CALL = new RegExp(`\\.(${METHODS.join('|')})\\(`, 'g');
  */
 export function tagPunchcards(code: string) {
   let label: string | null = null;
+  let anonymous = 0;
   return code
     .split('\n')
     .map((line) => {
       const match = LABEL.exec(line);
-      if (match) label = match[1].replace(/^_/, '');
-      else if (/^[^\s.)/]/.test(line)) label = null;
+      // Anonymous `$:` lines are `$0`, `$1`, … as Strudel names them.
+      if (match) {
+        label = match[1].replace(/^_/, '');
+        if (label === '$') label = `$${anonymous++}`;
+      } else if (/^[^\s.)/]/.test(line)) label = null;
       return label
         ? // Single quotes: Strudel reads double-quoted strings as mini-notation.
           line.replace(CALL, `.$1({label:'${label}'},`)

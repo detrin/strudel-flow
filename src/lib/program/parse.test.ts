@@ -26,7 +26,7 @@ const expression = (line: string) => line.replace(/^_?[\w$]+: /, '');
 describe('parseProgram', () => {
   it('turns known methods into nodes and keeps the source as Code', () => {
     expect(types('$: s("bd*4").gain(0.5).lpf(800).lpq(4)')).toEqual([
-      ['custom-node', 'level-node', 'lpf-node'],
+      ['sound-node', 'level-node', 'lpf-node'],
     ]);
   });
 
@@ -37,28 +37,36 @@ describe('parseProgram', () => {
     );
     expect(method.data.calls).toBe('scale("C:minor").ply(2)');
     expect(types('$: n("0 2").scale("C:minor").ply(2).fast(2)')).toEqual([
-      ['custom-node', 'method-node', 'time-node'],
+      ['notes-node', 'method-node', 'time-node'],
     ]);
   });
 
   it('never reorders calls to fit a node', () => {
     expect(types('$: s("bd").late(0.5).fast(2)')).toEqual([
-      ['custom-node', 'time-node', 'time-node'],
+      ['sound-node', 'time-node', 'time-node'],
     ]);
   });
 
   it('keeps values a node cannot hold as raw calls', () => {
-    expect(types('$: s("bd").lpq(1)')).toEqual([
-      ['custom-node', 'method-node'],
-    ]);
+    expect(types('$: s("bd").lpq(1)')).toEqual([['sound-node', 'method-node']]);
+  });
+
+  it('lets knobs hold patterns and expressions', () => {
     expect(types('$: s("bd").gain("<1 0.5>")')).toEqual([
-      ['custom-node', 'method-node'],
+      ['sound-node', 'level-node'],
     ]);
+    const [line] = parsed(
+      '$: s("bd").lpf("<400!4 800>").postgain(slider(0.5, 0, 1))',
+    ).lines;
+    const data = (type: string) =>
+      flatten(line.sink).find((node) => node.type === type)?.data;
+    expect(data('lpf-node')).toMatchObject({ cutoff: '"<400!4 800>"' });
+    expect(data('level-node')).toMatchObject({ postgain: 'slider(0.5, 0, 1)' });
   });
 
   it('reads a filter in any order, with its envelope filled in like Strudel', () => {
     expect(types('$: s("bd").lpq(12).lpf(400)')).toEqual([
-      ['custom-node', 'lpf-node'],
+      ['sound-node', 'lpf-node'],
     ]);
     const [line] = parsed('$: note("c2").lpf(400).lpd(0.2)').lines;
     expect(line.sink).toMatchObject({
@@ -76,31 +84,31 @@ describe('parseProgram', () => {
       '$: note("c2")\n  .lpf(400).lpenv(1).lpattack(0.001).lpdecay(0.2).lpsustain(0.001).lprelease(0.01)',
     );
     expect(types('$: s("hh").hpf(3000).hpq(4)')).toEqual([
-      ['custom-node', 'hpf-node'],
+      ['sound-node', 'hpf-node'],
     ]);
   });
 
   it('reads an LFO as Modulate, and never lets a Filter override it', () => {
     expect(
       types('$: s("bd").lpf(sine.range(200, 2000).slow(8)).lpq(12)'),
-    ).toEqual([['custom-node', 'modulate-node', 'method-node']]);
+    ).toEqual([['sound-node', 'modulate-node', 'method-node']]);
   });
 
   it('understands Strudel aliases and routes sounds by name', () => {
     expect(types('$: n("0").s("sawtooth").cutoff(500)')).toEqual([
-      ['custom-node', 'synth-select-node', 'lpf-node'],
+      ['notes-node', 'synth-select-node', 'lpf-node'],
     ]);
     expect(types('$: s("bd").struct("1 ~").s("hh")')).toEqual([
-      ['custom-node', 'method-node', 'drum-sounds-node'],
+      ['sound-node', 'method-node', 'drum-sounds-node'],
     ]);
   });
 
   it('fans stack(...) into the first node after it, or a Mix', () => {
     expect(types('$: stack(s("bd"), s("hh").gain(0.5)).room(0.3)')).toEqual([
-      ['custom-node', 'level-node', 'custom-node', 'room-node'],
+      ['sound-node', 'level-node', 'sound-node', 'room-node'],
     ]);
     expect(types('$: stack(s("bd"), s("hh"))')).toEqual([
-      ['custom-node', 'custom-node', 'mix-node'],
+      ['sound-node', 'sound-node', 'mix-node'],
     ]);
   });
 
@@ -144,7 +152,7 @@ describe('parseProgram', () => {
 
   it('plays a trailing bare expression like Strudel does', () => {
     expect(types('samples("x")\nnote("c e").lpf(500)')).toEqual([
-      ['custom-node', 'lpf-node'],
+      ['notes-node', 'lpf-node'],
     ]);
   });
 
@@ -232,7 +240,7 @@ describe('node contract', () => {
       const [line] = parsed(`$: s("bd").${calls}`).lines;
       expect(line.sink.type).toBe(id);
       expect(line.sink.inputs.map((input) => input.type)).toEqual([
-        'custom-node',
+        'sound-node',
       ]);
     },
   );

@@ -1,6 +1,6 @@
 declare module '@strudel/web' {
   export type StrudelSession = {
-    scheduler: { now: () => number };
+    scheduler: { now: () => number; pattern?: Pattern };
     state: { evalError?: unknown };
   };
 

@@ -28,7 +28,7 @@ describe('reconcile', () => {
     const graph = typeCode(
       '$: s("bd*4").lpf(800).gain(0.5)\n$: s("hh*8").room(0.2)',
     );
-    const [kick, hat] = find(graph, 'custom-node');
+    const [kick, hat] = find(graph, 'sound-node');
     const [filter] = find(graph, 'lpf-node');
     const [level] = find(graph, 'level-node');
     expect(filter.position.y).toBe(kick.position.y);
@@ -71,7 +71,7 @@ describe('reconcile', () => {
     );
     // Survivors keep their place; the new Filter is placed after its input.
     const [filter] = find(after, 'lpf-node');
-    expect(find(after, 'custom-node')[0].position).toEqual({ x: 10, y: 20 });
+    expect(find(after, 'sound-node')[0].position).toEqual({ x: 10, y: 20 });
     expect(filter.position.x).toBeGreaterThan(10);
   });
 
@@ -82,7 +82,7 @@ describe('reconcile', () => {
     expect(after.nodes.map((n) => [n.id, n.position])).toEqual(
       before.nodes.map((n) => [n.id, n.position]),
     );
-    expect(after.nodes[0].data.customPattern).toBe('s("bd*8")');
+    expect(after.nodes[0].data.pattern).toBe('bd*8');
   });
 
   it('makes room for an effect inserted mid-chain', () => {
@@ -101,12 +101,12 @@ describe('reconcile', () => {
 
   it('puts a new line under the line before it, pushing later rows down', () => {
     const before = typeCode('$: s("bd")\n$: s("hh")');
-    const [, hatBefore] = find(before, 'custom-node');
+    const [, hatBefore] = find(before, 'sound-node');
     const after = typeCode('$: s("bd")\n$: s("cp")\n$: s("hh")', before);
-    const clap = after.nodes.find((n) => n.data.customPattern === 's("cp")')!;
+    const clap = after.nodes.find((n) => n.data.pattern === 'cp')!;
     const hat = after.nodes.find((n) => n.id === hatBefore.id)!;
     expect(clap.position.y).toBeGreaterThan(
-      find(after, 'custom-node')[0].position.y,
+      find(after, 'sound-node')[0].position.y,
     );
     expect(hat.position.y).toBeGreaterThan(clap.position.y);
   });
@@ -122,7 +122,7 @@ describe('reconcile', () => {
   it('leaves scratch nodes alone and removes deleted lines', () => {
     const before = {
       nodes: [
-        node('custom-node', 'k', { customPattern: 's("bd")' }),
+        node('sound-node', 'k', { customPattern: 's("bd")' }),
         node('level-node', 'g'),
         node('lpf-node', 'scratch', {}, { x: 900, y: 900 }),
       ],

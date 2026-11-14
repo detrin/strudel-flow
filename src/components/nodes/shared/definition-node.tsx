@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/app-store';
 import type { WorkflowNodeProps } from '../types';
 import type { NodeDefinition } from '../define-node';
 import { ParameterField } from './parameter-field';
+import { isPatternValue } from '../define-node';
 
 const formatNumber = (value: number, unit = '') =>
   `${Number(value.toFixed(Math.abs(value) < 0.1 ? 3 : 2))}${unit}`;
@@ -55,7 +56,17 @@ export function createDefinitionComponent(definition: NodeDefinition) {
                     <ParameterKnob
                       key={key}
                       label={parameter.label}
-                      value={Number(values[key])}
+                      value={
+                        isPatternValue(values[key])
+                          ? parameter.default
+                          : Number(values[key])
+                      }
+                      pattern={
+                        isPatternValue(values[key]) ? values[key] : undefined
+                      }
+                      onPattern={(code) =>
+                        updateParameter(key, code ?? parameter.default)
+                      }
                       min={parameter.min}
                       max={parameter.max}
                       step={parameter.step}

@@ -26,7 +26,7 @@ describe('bridge commands', () => {
     };
     expect(patch.lines.map((line) => line.label)).toEqual(['kick', 'hat']);
     expect(patch.lines[0].nodes.map((node) => node.type)).toEqual([
-      'custom-node',
+      'sound-node',
       'lpf-node',
     ]);
     expect(patch.lines[0].nodes[1].values).toMatchObject({ cutoff: 800 });

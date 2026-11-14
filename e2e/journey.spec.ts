@@ -6,12 +6,12 @@ async function openUndertow(page: Page) {
   await page.getByText('Community patches').click();
   await page.getByRole('button', { name: /Load Undertow/ }).click();
   await page.keyboard.press('Escape');
-  await expect(nodes(page)).toHaveCount(46);
+  await expect(nodes(page)).toHaveCount(49);
 }
-/** The Code node whose pattern contains `text`. */
-const codeNode = (page: Page, text: string) =>
-  nodeOfType(page, 'custom-node').filter({
-    has: page.locator(`textarea:text-is('${text}')`),
+/** The Sound node playing the mini-notation `pattern`. */
+const soundNode = (page: Page, pattern: string) =>
+  nodeOfType(page, 'sound-node').filter({
+    has: page.locator(`input[value="${pattern}"]`),
   });
 
 test('a whole song: open, play, mix, rewire, undo, share', async ({
@@ -35,7 +35,7 @@ test('a whole song: open, play, mix, rewire, undo, share', async ({
   await expect(page.getByRole('alert')).toHaveCount(0);
 
   // Mix: mute the hats line from its source node.
-  await codeNode(page, 's("[~ hh]*4")')
+  await soundNode(page, '[~ hh]*4')
     .getByRole('button', { name: 'Mute instrument' })
     .click();
   await expect(editor(page)).toContainText('_hats: s("[~ hh]*4")');
@@ -79,7 +79,7 @@ test('a whole song: open, play, mix, rewire, undo, share', async ({
   const code = (await editor(page).textContent()) ?? '';
   const elsewhere = await context.newPage();
   await elsewhere.goto(link);
-  await expect(nodes(elsewhere)).toHaveCount(47);
+  await expect(nodes(elsewhere)).toHaveCount(50);
   await expect(editor(elsewhere)).toHaveText(code);
   errors.expectNone();
 });

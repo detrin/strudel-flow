@@ -1,4 +1,6 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { Hash } from 'lucide-react';
+import { typedValue } from '@/lib/typed-value';
 
 type ParameterKnobProps = {
   label: string;
@@ -8,6 +10,10 @@ type ParameterKnobProps = {
   step: number;
   onChange: (value: number) => void;
   format?: (value: number) => string;
+  /** The pattern the knob holds instead of a number (its code). */
+  pattern?: string;
+  /** Sets a pattern, or null to go back to a number. */
+  onPattern?: (code: string | null) => void;
 };
 
 export function ParameterKnob({
@@ -18,8 +24,84 @@ export function ParameterKnob({
   step,
   onChange,
   format = String,
+  pattern,
+  onPattern,
 }: ParameterKnobProps) {
   const drag = useRef<{ x: number; y: number; value: number } | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [invalid, setInvalid] = useState(false);
+  const commit = () => {
+    if (editing === null) return;
+    const value = typedValue(editing);
+    if (value === null) {
+      setInvalid(true);
+      return;
+    }
+    setEditing(null);
+    setInvalid(false);
+    if (typeof value === 'number') {
+      if (pattern !== undefined) onPattern?.(null);
+      onChange(value);
+    } else onPattern?.(value);
+  };
+  const field = (initial: string) => (
+    <input
+      aria-label={`${label} value or pattern`}
+      autoFocus
+      value={editing ?? initial}
+      spellCheck={false}
+      onChange={(event) => {
+        setEditing(event.target.value);
+        setInvalid(false);
+      }}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key === 'Enter') commit();
+        if (event.key === 'Escape') {
+          setEditing(null);
+          setInvalid(false);
+        }
+      }}
+      title="A number, or a pattern: <400 800>, sine.range(200, 2000), …"
+      className={`nodrag nopan nowheel w-full min-w-0 rounded border bg-background px-1 py-0.5 text-center font-mono text-[10px] outline-none ${invalid ? 'border-destructive' : 'border-primary/60'}`}
+    />
+  );
+
+  if (pattern !== undefined)
+    return (
+      <div className="flex w-20 flex-col items-center gap-1.5">
+        <div className="relative grid min-h-20 w-full place-items-center rounded-lg border border-dashed border-primary/50 bg-primary/5 p-1.5">
+          {editing !== null ? (
+            field(pattern)
+          ) : (
+            <button
+              type="button"
+              onClick={() => onPattern && setEditing(pattern)}
+              title="A pattern: click to edit"
+              aria-label={`${label}: pattern ${pattern}`}
+              className="nodrag max-h-16 w-full overflow-hidden font-mono text-[10px] leading-tight break-all text-foreground"
+            >
+              {pattern}
+            </button>
+          )}
+          {onPattern && (
+            <button
+              type="button"
+              onClick={() => onPattern(null)}
+              title="Back to a number"
+              aria-label={`${label}: back to a number`}
+              className="nodrag absolute -top-2 -right-2 grid size-5 place-items-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground"
+            >
+              <Hash className="size-3" />
+            </button>
+          )}
+        </div>
+        <span className="text-[9px] font-medium tracking-widest text-muted-foreground uppercase">
+          {label}
+        </span>
+      </div>
+    );
   const clamped = Math.min(
     max,
     Math.max(min, Number.isFinite(value) ? value : min),
@@ -108,7 +190,7 @@ export function ParameterKnob({
         <svg
           viewBox="0 0 80 80"
           aria-hidden
-          className="absolute inset-0 size-full -rotate-225 fill-none stroke-[3]"
+          className="pointer-events-none absolute inset-0 size-full -rotate-225 fill-none stroke-[3]"
         >
           <circle
             cx="40"
@@ -136,9 +218,22 @@ export function ParameterKnob({
           <span className="absolute top-1.5 h-3 w-0.5 rounded-full bg-primary" />
         </div>
       </div>
-      <span className="font-mono text-xs tabular-nums text-foreground">
-        {format(clamped)}
-      </span>
+      {editing !== null ? (
+        field(String(clamped))
+      ) : (
+        <button
+          type="button"
+          onClick={() => setEditing(String(clamped))}
+          title={
+            onPattern
+              ? 'Click to type a value or a pattern'
+              : 'Click to type a value'
+          }
+          className="nodrag font-mono text-xs tabular-nums text-foreground hover:underline"
+        >
+          {format(clamped)}
+        </button>
+      )}
       <span className="text-[9px] font-medium tracking-widest text-muted-foreground uppercase">
         {label}
       </span>

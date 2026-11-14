@@ -16,6 +16,10 @@ import {
   Repeat,
   LayoutList,
   AudioWaveform,
+  AudioLines,
+  Dices,
+  Route,
+  ChartNoAxesGantt,
 } from 'lucide-react';
 
 export const iconMapping = {
@@ -36,4 +40,8 @@ export const iconMapping = {
   Repeat,
   LayoutList,
   AudioWaveform,
+  AudioLines,
+  Dices,
+  Route,
+  ChartNoAxesGantt,
 };

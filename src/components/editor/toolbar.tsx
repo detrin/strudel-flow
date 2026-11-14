@@ -41,7 +41,7 @@ export function EditorToolbar({
       <Panel
         position="top-center"
         style={{ transform: 'translateX(-50%)' }}
-        className="m-0! mt-12! flex h-10 items-center gap-1.5 rounded-b-md border border-border/70 bg-card/95 py-1 pr-2 pl-1 sm:mt-0! sm:border-t-0"
+        className="m-0! mt-14! flex items-center gap-1.5 rounded-md border border-border/60 bg-card p-1 pr-2 sm:mt-2!"
       >
         <PlayPauseButton />
         <div className="flex items-baseline gap-1.5">

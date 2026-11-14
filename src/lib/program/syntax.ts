@@ -36,6 +36,8 @@ const ALIASES: Record<string, string> = {
   dec: 'decay',
   sus: 'sustain',
   rel: 'release',
+  o: 'orbit',
+  det: 'detune',
 };
 export const canonical = (name: string) => ALIASES[name] ?? name;
 

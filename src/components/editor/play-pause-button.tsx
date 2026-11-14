@@ -10,7 +10,7 @@ export function PlayPauseButton() {
       onClick={toggle}
       title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
       aria-pressed={isPlaying}
-      className="size-8 rounded-md p-0! bg-primary text-primary-foreground  hover:bg-primary/85 hover:text-primary-foreground"
+      className="size-9 rounded-md p-0! bg-primary text-primary-foreground  hover:bg-primary/85 hover:text-primary-foreground"
     >
       {!isPlaying ? (
         <Play className="ml-0.5 size-4 fill-current" />

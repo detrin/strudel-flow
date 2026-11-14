@@ -4,7 +4,7 @@ import type {
   SpreadElement,
   Statement,
 } from 'acorn';
-import { isSource } from '@/components/nodes/define-node';
+import { isPatternValue, isSource } from '@/components/nodes/define-node';
 import { nodeDefinitions } from '@/components/nodes/registry';
 import {
   decompose,
@@ -69,26 +69,42 @@ function byMethod(name: string) {
  * used anyway (their parser guarantees that), but never drop a call.
  */
 function claim(calls: Call[], from: number) {
+  // A node that understands the calls (Modulate for an LFO) beats one that
+  // only keeps them as pattern values; then the longer run wins.
+  let best: ReturnType<typeof claimAs> = null;
+  let bestScore = -1;
   for (const type of byMethod(calls[from].name)) {
+    const found = claimAs(type, calls, from);
+    if (!found) continue;
     const definition = nodeDefinitions[type];
-    let end = from;
-    const seen = new Set<string>();
-    while (
-      end < calls.length &&
-      definition.methods.includes(calls[end].name) &&
-      !seen.has(calls[end].name)
-    )
-      seen.add(calls[end++].name);
-    for (; end > from; end--) {
-      const run = calls.slice(from, end).map((call) => call.name);
-      const data = definition.parse(calls.slice(from, end));
-      const written =
-        data && methodNames(definition.generate(data, { id: '' }));
-      const faithful = definition.ordered
-        ? written?.join() === run.join()
-        : written && run.every((name) => written.includes(name));
-      if (faithful) return { type, data: data!, length: end - from };
-    }
+    const literal = !Object.entries(definition.parameters).some(
+      ([key, parameter]) =>
+        parameter.control === 'knob' && isPatternValue(found.data[key]),
+    );
+    const score = (literal ? 1000 : 0) + found.length;
+    if (score > bestScore) [best, bestScore] = [found, score];
+  }
+  return best;
+}
+
+function claimAs(type: string, calls: Call[], from: number) {
+  const definition = nodeDefinitions[type];
+  let end = from;
+  const seen = new Set<string>();
+  while (
+    end < calls.length &&
+    definition.methods.includes(calls[end].name) &&
+    !seen.has(calls[end].name)
+  )
+    seen.add(calls[end++].name);
+  for (; end > from; end--) {
+    const run = calls.slice(from, end).map((call) => call.name);
+    const data = definition.parse(calls.slice(from, end));
+    const written = data && methodNames(definition.generate(data, { id: '' }));
+    const faithful = definition.ordered
+      ? written?.join() === run.join()
+      : written && run.every((name) => written.includes(name));
+    if (faithful) return { type, data: data!, length: end - from };
   }
   return null;
 }
@@ -149,7 +165,26 @@ function createParser(source: string, known: Known[]) {
       const inputs = base.arguments.map((arg) => tree(arg as Expression));
       return chainEffects(inputs, calls);
     }
-    // 3. Anything else is a Code node holding the base expression.
+    // 3. A call an instrument models (`note("c e g")` is a Notes node).
+    if (base.type === 'CallExpression' && base.callee.type === 'Identifier') {
+      const text = slice(source, base);
+      const call = {
+        name: base.callee.name,
+        args: base.arguments.map((arg) => valueOf(source, arg)),
+        text,
+      };
+      for (const definition of Object.values(nodeDefinitions)) {
+        const data = definition.parseSource?.(call);
+        if (
+          data &&
+          normalize(definition.generate(data, { id: '' })) === normalize(text)
+        ) {
+          const node = { type: definition.id, data, inputs: [] };
+          return calls.length ? chainEffects([node], calls) : node;
+        }
+      }
+    }
+    // 4. Anything else is a Code node holding the base expression.
     const inner =
       base.type === 'ParenthesizedExpression' ? base.expression : base;
     const node = {

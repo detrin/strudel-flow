@@ -69,6 +69,9 @@ export default function Editor() {
             colorMode={themeByName(theme).dark ? 'dark' : 'light'}
             panActivationKeyCode={null}
             zoomOnDoubleClick={false}
+            // Like Miro: two-finger swipe pans, pinch (or Ctrl/⌘ + wheel) zooms.
+            panOnScroll
+            zoomOnPinch
             proOptions={{ hideAttribution: true }}
             minZoom={0.2}
             fitView

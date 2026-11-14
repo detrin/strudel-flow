@@ -5,8 +5,11 @@ import { setCode } from '@/store/code-sync';
 import { themeByName } from '@/themes';
 import { CodeEditor } from './code-editor';
 import { punchcardWidgets } from './punchcard-widgets';
+import { liveHighlight } from './live-highlight';
 
 const SYNC_DELAY = 250;
+
+const consoleExtensions = [punchcardWidgets, liveHighlight];
 
 /** The code console: the patch as Strudel code, editable. */
 export function CodeConsole({ onClose }: { onClose: () => void }) {
@@ -95,7 +98,7 @@ export function CodeConsole({ onClose }: { onClose: () => void }) {
       </header>
       <div className="min-h-0 flex-1">
         <CodeEditor
-          extensions={punchcardWidgets}
+          extensions={consoleExtensions}
           label="Strudel code"
           value={code}
           theme={themeByName(theme).editor}

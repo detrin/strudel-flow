@@ -23,7 +23,7 @@ describe('code ↔ canvas sync', () => {
   it('typing code builds the graph and keeps the text as typed', () => {
     const code = '$: s("bd*4")   .gain( 0.5 )';
     setCode(code);
-    expect(types()).toEqual(['custom-node', 'level-node']);
+    expect(types()).toEqual(['sound-node', 'level-node']);
     expect(state().edges).toHaveLength(1);
     expect(state().code).toBe(code);
   });
@@ -98,7 +98,7 @@ describe('code ↔ canvas sync', () => {
   it('invalid code keeps the graph and reports the error', () => {
     setCode('$: s("bd")');
     setCode('$: s("bd"');
-    expect(types()).toEqual(['custom-node']);
+    expect(types()).toEqual(['sound-node']);
     expect(state().codeError).toBeTruthy();
     expect(state().code).toBe('$: s("bd"');
   });

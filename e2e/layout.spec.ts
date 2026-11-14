@@ -20,8 +20,17 @@ test('node positions live in the code and survive a save', async ({
   const level = nodeOfType(page, 'level-node');
   expect(await position(level)).toEqual({ x: 400, y: 40 });
 
-  // Dragging a node rewrites its line's layout comment.
-  const box = (await level.locator('header').boundingBox())!;
+  // Dragging a node rewrites its line's layout comment. Wait for the
+  // canvas to finish fitting the new nodes into view before grabbing one.
+  const header = level.locator('header');
+  await expect
+    .poll(async () => {
+      const before = JSON.stringify(await header.boundingBox());
+      await page.waitForTimeout(100);
+      return before === JSON.stringify(await header.boundingBox());
+    })
+    .toBe(true);
+  const box = (await header.boundingBox())!;
   await page.mouse.move(box.x + 20, box.y + 10);
   await page.mouse.down();
   await page.mouse.move(box.x + 120, box.y + 110, { steps: 8 });

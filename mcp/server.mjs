@@ -46,7 +46,11 @@ sockets.on('connection', (socket) => {
     else waiting.resolve(reply.result);
   });
   socket.on('close', () => {
-    if (app === socket) app = undefined;
+    // Fall back to another tab that is still open, newest first.
+    if (app === socket)
+      app = [...sockets.clients].findLast(
+        (client) => client !== socket && client.readyState === client.OPEN,
+      );
   });
 });
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Code2, Ellipsis, Plus, Trash2, Volume2, VolumeX } from 'lucide-react';
+import { Code2, Plus, Trash2, Volume2, VolumeX } from 'lucide-react';
 import { Position } from '@xyflow/react';
 import { WorkflowNodeData, AppNodeType } from '@/components/nodes/registry';
 import { nodeDefinitions } from '@/components/nodes/registry';
@@ -7,15 +7,11 @@ import { BaseNode } from '@/components/nodes/shared/base-node';
 import { useAppStore } from '@/store/app-store';
 import PatternPopup from '@/components/nodes/shared/pattern-popup';
 import { BaseHandle } from '@/components/nodes/shared/base-handle';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { NodeMenu } from './node-menu';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAddAfter } from '@/components/editor/add-node-context';
+import { useLive } from '@/lib/live';
 
 function WorkflowNode({
   id,
@@ -32,6 +28,7 @@ function WorkflowNode({
   const removeNode = useAppStore((state) => state.removeNode);
   const setMuted = useAppStore((state) => state.setMuted);
   const addAfter = useAddAfter();
+  const sounding = useLive((state) => state.nodes.has(id));
   const category = nodeDefinitions[type]?.category;
   const isInstrument = category === 'Instruments';
   const isPaused = data.state === 'paused';
@@ -39,6 +36,7 @@ function WorkflowNode({
   return (
     <BaseNode
       data-muted={isPaused || undefined}
+      data-sounding={sounding || undefined}
       className={
         isPaused ? 'border-amber-500/70 ring-1 ring-amber-500/25' : undefined
       }
@@ -90,30 +88,22 @@ function WorkflowNode({
               )}
             </Button>
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                aria-label="Module options"
-                className="nodrag size-7 rounded-md p-1 text-muted-foreground"
-              >
-                <Ellipsis />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-md">
-              <DropdownMenuItem onSelect={() => setShowCode(!showCode)}>
-                <Code2 />
-                {showCode ? 'Hide code' : 'View code'}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                onSelect={() => removeNode(id)}
-              >
-                <Trash2 />
-                Remove
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <NodeMenu
+            id={id}
+            items={[
+              {
+                label: showCode ? 'Hide code' : 'Edit code',
+                icon: <Code2 />,
+                onSelect: () => setShowCode(!showCode),
+              },
+              {
+                label: 'Remove',
+                icon: <Trash2 />,
+                onSelect: () => removeNode(id),
+                destructive: true,
+              },
+            ]}
+          />
         </div>
       </header>
       {isPaused && (

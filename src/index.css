@@ -138,3 +138,17 @@ body,
 .node-add-after:focus-within {
   opacity: 1;
 }
+
+/* A node whose line is sounding right now (lib/live): glow, fade out. */
+.react-flow__node > div {
+  transition:
+    box-shadow 220ms ease-out,
+    border-color 150ms,
+    background-color 150ms;
+}
+.react-flow__node > div[data-sounding] {
+  box-shadow:
+    0 0 0 2px var(--primary),
+    0 0 14px -2px var(--primary);
+  transition: box-shadow 40ms;
+}
