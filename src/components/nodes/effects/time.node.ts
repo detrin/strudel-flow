@@ -1,4 +1,4 @@
-import { defineNode } from '../define-node';
+import { defineNode, knob } from '../define-node';
 export default defineNode({
   id: 'time-node',
   title: 'Time',
@@ -16,23 +16,8 @@ export default defineNode({
         { value: 'pingpong', label: 'palindrome' },
       ],
     },
-    rate: {
-      control: 'knob',
-      label: 'fast',
-      default: 1,
-      min: 0.125,
-      max: 8,
-      step: 0.125,
-      unit: '×',
-    },
-    lateOffset: {
-      control: 'knob',
-      label: 'late',
-      default: 0,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
+    rate: knob('fast', 1, [0.125, 8, 0.125], { unit: '×' }),
+    lateOffset: knob('late', 0, [0, 1, 0.01]),
   },
   methods: ['fast', 'rev', 'palindrome', 'late'],
   ordered: true,

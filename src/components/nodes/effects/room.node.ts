@@ -1,4 +1,4 @@
-import { defineNode } from '../define-node';
+import { defineNode, knob } from '../define-node';
 
 const format = (value: number) =>
   value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
@@ -11,52 +11,10 @@ export default defineNode({
   icon: 'CheckCheck',
   order: 12,
   parameters: {
-    room: {
-      control: 'knob',
-      label: 'room',
-      default: 0.3,
-      implicit: 0,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
-    roomsize: {
-      control: 'knob',
-      label: 'rsize',
-      method: 'rsize',
-      default: 2,
-      min: 0,
-      max: 10,
-      step: 0.1,
-    },
-    roomfade: {
-      control: 'knob',
-      label: 'rfade',
-      method: 'rfade',
-      default: 0.1,
-      min: 0,
-      max: 10,
-      step: 0.1,
-    },
-    roomlp: {
-      control: 'knob',
-      label: 'rlp',
-      method: 'rlp',
-      default: 15000,
-      min: 0,
-      max: 20000,
-      step: 100,
-      format,
-    },
-    roomdim: {
-      control: 'knob',
-      label: 'rdim',
-      method: 'rdim',
-      default: 1000,
-      min: 0,
-      max: 20000,
-      step: 100,
-      format,
-    },
+    room: knob('room', 0.3, [0, 1, 0.01], { implicit: 0 }),
+    roomsize: knob('rsize', 2, [0, 10, 0.1], { method: 'rsize' }),
+    roomfade: knob('rfade', 0.1, [0, 10, 0.1], { method: 'rfade' }),
+    roomlp: knob('rlp', 15000, [0, 20000, 100], { method: 'rlp', format }),
+    roomdim: knob('rdim', 1000, [0, 20000, 100], { method: 'rdim', format }),
   },
 });

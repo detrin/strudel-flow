@@ -1,8 +1,4 @@
-import {
-  parseParameters,
-  type Parameter,
-  type Parameters,
-} from '../define-node';
+import { knob, parseParameters, type Parameters } from '../define-node';
 import type { Call } from '@/lib/program/syntax';
 
 export type Adsr = [
@@ -37,23 +33,6 @@ export function effectiveAdsr(
   ];
 }
 
-const knob = (
-  label: string,
-  method: string,
-  value: number,
-  max: number,
-  step = 0.01,
-  min = 0,
-): Extract<Parameter, { control: 'knob' }> => ({
-  control: 'knob',
-  label,
-  method,
-  default: value,
-  min,
-  max,
-  step,
-});
-
 export const ADSR_KEYS = ['attack', 'decay', 'sustain', 'release'] as const;
 
 /** attack/decay/sustain/release knobs written as `${prefix}attack(...)` etc. */
@@ -62,13 +41,23 @@ export const adsrParameters = (
   defaults: Adsr,
   when?: (values: Record<string, string | number>) => boolean,
 ) => ({
-  attack: { ...knob('att', `${prefix}attack`, defaults[0], 2), when },
-  decay: { ...knob('dec', `${prefix}decay`, defaults[1], 2), when },
-  sustain: { ...knob('sus', `${prefix}sustain`, defaults[2], 1), when },
-  release: { ...knob('rel', `${prefix}release`, defaults[3], 2), when },
+  attack: knob('att', defaults[0], [0, 2, 0.01], {
+    method: `${prefix}attack`,
+    when,
+  }),
+  decay: knob('dec', defaults[1], [0, 2, 0.01], {
+    method: `${prefix}decay`,
+    when,
+  }),
+  sustain: knob('sus', defaults[2], [0, 1, 0.01], {
+    method: `${prefix}sustain`,
+    when,
+  }),
+  release: knob('rel', defaults[3], [0, 2, 0.01], {
+    method: `${prefix}release`,
+    when,
+  }),
 });
-
-export const knobParameter = knob;
 
 /** Parses literal calls, then fills unset envelope values Strudel's way. */
 export function parseEnvelope(

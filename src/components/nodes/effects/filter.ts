@@ -1,9 +1,8 @@
-import { defineNode } from '../define-node';
+import { defineNode, knob } from '../define-node';
 import {
   ADSR_KEYS,
   adsrCalls,
   adsrParameters,
-  knobParameter,
   parseEnvelope,
   type Adsr,
 } from './envelope';
@@ -28,22 +27,15 @@ export function defineFilter(options: {
 }) {
   const { prefix } = options;
   const parameters = {
-    cutoff: {
-      ...knobParameter(
-        `${prefix}f`,
-        `${prefix}f`,
-        options.cutoff,
-        12000,
-        10,
-        20,
-      ),
+    cutoff: knob(`${prefix}f`, options.cutoff, [20, 12000, 10], {
+      method: `${prefix}f`,
       format: hz,
-    },
-    resonance: {
-      ...knobParameter(`${prefix}q`, `${prefix}q`, 1, 30, 0.1),
-      format: (value: number) => value.toFixed(1),
-    },
-    env: knobParameter('env', `${prefix}env`, 0, 8, 0.1, -8),
+    }),
+    resonance: knob(`${prefix}q`, 1, [0, 30, 0.1], {
+      method: `${prefix}q`,
+      format: (value) => value.toFixed(1),
+    }),
+    env: knob('env', 0, [-8, 8, 0.1], { method: `${prefix}env` }),
     // The envelope's shape only matters while it has depth.
     ...adsrParameters(prefix, UNSET, (values) => Number(values.env) !== 0),
   };

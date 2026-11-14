@@ -1,4 +1,4 @@
-import { defineNode } from '../define-node';
+import { defineNode, knob } from '../define-node';
 
 export const WAVES = [
   'sine',
@@ -52,14 +52,7 @@ export default defineNode({
     },
     min: { control: 'text', label: 'from', default: '200' },
     max: { control: 'text', label: 'to', default: '2000' },
-    cycles: {
-      control: 'knob',
-      label: 'cycles',
-      default: 4,
-      min: 0.25,
-      max: 64,
-      step: 0.25,
-    },
+    cycles: knob('cycles', 4, [0.25, 64, 0.25]),
   },
   methods: TARGETS,
   parse: ([call, ...rest]) => {

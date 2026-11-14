@@ -89,3 +89,14 @@ UI's design tokens, so the whole app follows the selected theme.
 - `defineNode`: dropped the unused `write` hook; `updateValues(data, x)`
   became `encode(x)`.
 - Voice and Drums share one sound codec.
+
+**#2 (after F6–F10)**
+
+- `knob(label, default, [min, max, step], options)` is the one way to
+  declare a knob; parameter nodes read like a table (Room: 62 → 22 lines).
+- Dead-code scan (knip) is now a gate in pre-commit and CI; the codebase
+  had no unused files or dependencies.
+- Two invariants found while adding nodes, now enforced by tests instead
+  of convention: every parameter's implicit value equals Strudel's own
+  default, and a node may only claim calls it writes back (order-sensitive
+  nodes in the same order).

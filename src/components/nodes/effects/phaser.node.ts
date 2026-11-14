@@ -1,4 +1,4 @@
-import { defineNode } from '../define-node';
+import { defineNode, knob } from '../define-node';
 
 /** The phaser only runs once `.phaser(rate)` is written. */
 export default defineNode({
@@ -8,22 +8,7 @@ export default defineNode({
   icon: 'Waves',
   order: 11,
   parameters: {
-    phaser: {
-      control: 'knob',
-      label: 'phaser',
-      default: 1,
-      implicit: 0,
-      min: 0,
-      max: 10,
-      step: 0.1,
-    },
-    phaserdepth: {
-      control: 'knob',
-      label: 'phaserdepth',
-      default: 0.75,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
+    phaser: knob('phaser', 1, [0, 10, 0.1], { implicit: 0 }),
+    phaserdepth: knob('phaserdepth', 0.75, [0, 1, 0.01]),
   },
 });

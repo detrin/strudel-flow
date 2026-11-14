@@ -1,4 +1,4 @@
-import { defineNode } from '../define-node';
+import { defineNode, knob } from '../define-node';
 
 /** Echo. `delay` is the wet amount; time is in cycles. */
 export default defineNode({
@@ -8,30 +8,10 @@ export default defineNode({
   icon: 'Repeat',
   order: 12,
   parameters: {
-    delay: {
-      control: 'knob',
-      label: 'delay',
-      default: 0.5,
-      implicit: 0,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
-    delaytime: {
-      control: 'knob',
-      label: 'time',
-      default: 0.25,
-      min: 0,
-      max: 2,
-      step: 0.01,
-    },
-    delayfeedback: {
-      control: 'knob',
-      label: 'feedback',
-      default: 0.5,
-      min: 0,
-      max: 0.98,
-      step: 0.01,
-    },
+    delay: knob('delay', 0.5, [0, 1, 0.01], { implicit: 0 }),
+    delaytime: knob('time', 0.25, [0, 2, 0.01], { method: 'delaytime' }),
+    delayfeedback: knob('feedback', 0.5, [0, 0.98, 0.01], {
+      method: 'delayfeedback',
+    }),
   },
 });

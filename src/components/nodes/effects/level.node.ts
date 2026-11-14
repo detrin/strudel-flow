@@ -1,4 +1,4 @@
-import { defineNode } from '../define-node';
+import { defineNode, knob } from '../define-node';
 
 export default defineNode({
   id: 'level-node',
@@ -7,31 +7,8 @@ export default defineNode({
   icon: 'Volume2',
   order: 3,
   parameters: {
-    gain: {
-      control: 'knob',
-      label: 'gain',
-      default: 0.8,
-      min: 0,
-      max: 2,
-      step: 0.01,
-      unit: '×',
-    },
-    pan: {
-      control: 'knob',
-      label: 'pan',
-      default: 0.5,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
-    postgain: {
-      control: 'knob',
-      label: 'postgain',
-      default: 1,
-      min: 0,
-      max: 2,
-      step: 0.01,
-      unit: '×',
-    },
+    gain: knob('gain', 0.8, [0, 2, 0.01], { unit: '×' }),
+    pan: knob('pan', 0.5, [0, 1, 0.01]),
+    postgain: knob('postgain', 1, [0, 2, 0.01], { unit: '×' }),
   },
 });

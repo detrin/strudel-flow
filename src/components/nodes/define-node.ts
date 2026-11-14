@@ -97,6 +97,29 @@ export const isSource = (definition: Pick<NodeDefinition, 'category'>) =>
 
 export const methodOf = (key: string, parameter: Parameter) =>
   parameter.method ?? key;
+type Knob = Extract<Parameter, { control: 'knob' }>;
+
+/**
+ * Declares a knob: `knob('gain', 0.8, [0, 2, 0.01])`. Its Strudel method is
+ * the parameter's key unless `method` says otherwise.
+ */
+export const knob = (
+  label: string,
+  value: number,
+  [min, max, step]: [min: number, max: number, step: number],
+  options: Partial<
+    Omit<Knob, 'control' | 'default' | 'min' | 'max' | 'step'>
+  > = {},
+): Knob => ({
+  control: 'knob',
+  label,
+  default: value,
+  min,
+  max,
+  step,
+  ...options,
+});
+
 export const implicitOf = (parameter: Parameter) =>
   parameter.implicit ?? parameter.default;
 
