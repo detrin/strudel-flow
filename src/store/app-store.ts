@@ -36,6 +36,8 @@ type AppState = {
   /** Bumped when code adds nodes, so the canvas can bring them into view. */
   fitRequest: number;
   console: ConsoleLayout;
+  /** Connection to a local MCP server (Claude Code), see lib/bridge. */
+  bridge: 'off' | 'connecting' | 'connected';
   isPlaying: boolean;
   error: string | null;
 };
@@ -97,6 +99,7 @@ export const useAppStore = create<AppStore>()(
     codeError: null,
     fitRequest: 0,
     console: savedConsole(),
+    bridge: 'off',
     isPlaying: false,
     error: null,
     setConsole: (layout) => {

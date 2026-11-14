@@ -22,6 +22,7 @@ export function EditorToolbar({
   const error = useAppStore((state) => state.error);
   const setError = useAppStore((state) => state.setError);
   const consoleOpen = useAppStore((state) => state.console.open);
+  const bridge = useAppStore((state) => state.bridge);
   const setConsole = useAppStore((state) => state.setConsole);
 
   return (
@@ -138,6 +139,26 @@ export function EditorToolbar({
         <AppearancePopover />
         <AppInfoPopover />
       </Panel>
+      {bridge !== 'off' && (
+        <Panel
+          position="bottom-right"
+          className="m-4! flex items-center gap-2 rounded-md border border-border/60 bg-card px-2.5 py-1.5 text-[11px] text-muted-foreground sm:m-6!"
+        >
+          <span
+            aria-hidden="true"
+            className={
+              bridge === 'connected'
+                ? 'size-2 rounded-full bg-primary'
+                : 'size-2 rounded-full border border-muted-foreground'
+            }
+          />
+          <span role="status">
+            {bridge === 'connected'
+              ? 'Claude Code connected'
+              : 'Waiting for Claude Code'}
+          </span>
+        </Panel>
+      )}
     </>
   );
 }

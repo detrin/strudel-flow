@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "strudel-flow": {
+      "command": "node",
+      "args": ["mcp/server.mjs"]
+    }
+  }
+}

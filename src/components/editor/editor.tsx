@@ -12,6 +12,7 @@ import { useWorkflowRunner } from '@/hooks/use-workflow-runner';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { themeByName } from '@/themes';
 import { startCodeSync } from '@/store/code-sync';
+import { startBridge } from '@/lib/bridge/connect';
 
 const edgeTypes = { default: deleteEdge };
 
@@ -32,6 +33,7 @@ export default function Editor() {
       })),
     );
   useEffect(startCodeSync, []);
+  useEffect(startBridge, []);
 
   // Nodes created from code may land off screen; bring them into view.
   const fitRequest = useAppStore((state) => state.fitRequest);

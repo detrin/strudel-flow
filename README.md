@@ -42,6 +42,26 @@ code ─parse→ Program ─reconcile + layout→ canvas
 code ←emit── Program ←compile (follows wires)── canvas
 ```
 
+## Claude Code (MCP)
+
+Claude Code can read and change the open patch while you work — "make the
+hats swing", "drop the bass for 8 bars" — and you hear it immediately.
+
+1. `pnpm dev` and open http://localhost:5173. In development the app connects
+   to the bridge by itself (any build: add `?bridge`); the bottom-right badge
+   shows it.
+2. In this repo Claude Code picks up the server from `.mcp.json`. From any
+   other project:
+
+   ```sh
+   claude mcp add strudel-flow -- node /path/to/strudel-flow/mcp/server.mjs
+   ```
+
+Tools: `get_patch`, `set_code`, `set_node`, `set_muted`, `set_tempo`,
+`play`, `stop`, `set_theme`, `list_node_types`. The bridge listens on
+`127.0.0.1:4321` (`STRUDEL_FLOW_PORT` to change; `?bridge=PORT` in the app)
+and only accepts pages served from this machine.
+
 ## Patches
 
 Patches in [`patches/`](patches/README.md) appear in the gallery: graph JSON

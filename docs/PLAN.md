@@ -68,6 +68,8 @@ UI's design tokens, so the whole app follows the selected theme.
 | F10 | Modulate node (LFO: sine/saw/tri/square/perlin → any parameter)  | unit                           |
 | —   | **Simplification review #2**                                     |                                |
 | F11 | Full-song demo patch + whole-app e2e journey                     | e2e                            |
+| F12 | MCP bridge: Claude Code reads and edits the open patch           | unit, e2e (real MCP server)    |
+| F13 | Node positions saved in the code (`// @layout` per line)         | unit, e2e                      |
 
 ## Quality gates
 

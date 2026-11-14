@@ -21,9 +21,10 @@ export function trackErrors(page: Page) {
   };
 }
 
+/** A fresh app that never connects to a real Claude Code session. */
 export async function openFresh(page: Page) {
-  await page.goto('/');
+  await page.goto('/?bridge=off');
   await page.evaluate(() => localStorage.clear());
-  await page.goto('/');
+  await page.goto('/?bridge=off');
   await expect(nodes(page).first()).toBeVisible();
 }
