@@ -6,8 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "typecheck": "tsc",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
+    "prepare": "simple-git-hooks"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.11",
@@ -32,18 +40,36 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "1.64.0",
     "@tailwindcss/vite": "^4.1.10",
     "@types/node": "^24.0.1",
     "@types/react": "^18.2.53",
     "@types/react-dom": "^18.2.18",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",
-    "@vitejs/plugin-react": "^4.2.1",
+    "@vitejs/plugin-react": "^5.2.0",
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "jsdom": "^31.0.1",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.10.1",
+    "simple-git-hooks": "^2.14.0",
     "typescript": "^5.8.3",
-    "vite": "^5.0.12"
+    "vite": "^7.3.8",
+    "vitest": "^5.1.0"
   },
-  "packageManager": "pnpm@9.11.0+sha512.0a203ffaed5a3f63242cd064c8fb5892366c103e328079318f78062f24ea8c9d50bc6a47aa3567cabefd824d170e78fa2745ed1f16b132e16436146b7688f19b"
+  "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "simple-git-hooks"
+    ]
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec lint-staged && pnpm lint && pnpm typecheck && pnpm test"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,cjs,mjs,json,css,md,yml,yaml,html}": "prettier --write"
+  }
 }
