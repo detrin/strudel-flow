@@ -63,7 +63,7 @@ describe('compileGraph + emitProgram', () => {
       node('level-node', 'g'),
     ];
     expect(code(nodes, chainOf('k', 'g'), tempo)).toContain(
-      '$: (s("bd").fast(2))\n  .gain(1)',
+      '$: (s("bd").fast(2))\n  .gain(0.8)',
     );
   });
 
@@ -76,7 +76,7 @@ describe('compileGraph + emitProgram', () => {
   it('keeps an effect at its defaults visible in the code', () => {
     expect(
       code([kick(), node('room-node', 'r')], chainOf('k', 'r'), tempo),
-    ).toContain('.room(0)');
+    ).toContain('.room(0.3)');
   });
 
   it('ignores wires that close a cycle', () => {

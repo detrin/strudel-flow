@@ -13,17 +13,25 @@ export type Parameter = Common &
   (
     | {
         control: 'knob';
+        /** The value a new node starts with. */
         default: number;
+        /**
+         * The value Strudel uses when the method is not written; defaults to
+         * `default`. Values equal to it are left out of the code, and code
+         * that leaves the method out reads back as it.
+         */
+        implicit?: number;
         min: number;
         max: number;
         step: number;
         unit?: string;
         format?: (value: number) => string;
       }
-    | { control: 'text'; default: string }
+    | { control: 'text'; default: string; implicit?: string }
     | {
         control: 'select';
         default: string;
+        implicit?: string;
         options: readonly { value: string; label: string }[];
       }
   );
@@ -89,6 +97,8 @@ export const isSource = (definition: Pick<NodeDefinition, 'category'>) =>
 
 export const methodOf = (key: string, parameter: Parameter) =>
   parameter.method ?? key;
+export const implicitOf = (parameter: Parameter) =>
+  parameter.implicit ?? parameter.default;
 
 function parameterValues<P extends Parameters>(
   parameters: P,
@@ -112,19 +122,19 @@ const literal = (value: string | number) =>
   typeof value === 'number' ? String(value) : JSON.stringify(value);
 
 /**
- * The default code for parameter nodes: one call per parameter that differs
- * from its default. A node whose parameters are all at their defaults still
- * writes its first parameter, so it never disappears from the code.
+ * The default code for parameter nodes: one call per parameter whose value
+ * differs from Strudel's implicit one. A node whose parameters all match
+ * still writes its first parameter, so it never disappears from the code.
  */
 export function parameterCalls(
   parameters: Parameters,
   values: Record<string, string | number>,
 ) {
   const entries = Object.entries(parameters);
-  const changed = entries.filter(
-    ([key, parameter]) => values[key] !== parameter.default,
+  const written = entries.filter(
+    ([key, parameter]) => values[key] !== implicitOf(parameter),
   );
-  return (changed.length ? changed : entries.slice(0, 1))
+  return (written.length ? written : entries.slice(0, 1))
     .map(
       ([key, parameter]) =>
         `${methodOf(key, parameter)}(${literal(values[key])})`,
@@ -238,7 +248,11 @@ export function defineNode<
     ordered,
     parse: (calls) => {
       const values = parse(calls);
-      return values && encode(values);
+      // Whatever the code leaves out is what Strudel would use.
+      const implicit = Object.fromEntries(
+        Object.entries(parameters).map(([key, p]) => [key, implicitOf(p)]),
+      );
+      return values && encode({ ...implicit, ...values });
     },
     renderControls: component
       ? (data, update, context) =>

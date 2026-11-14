@@ -1,6 +1,9 @@
 import { defineNode } from '../define-node';
+
 const format = (value: number) =>
   value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
+
+/** Reverb. Implicit values are Strudel's reverb defaults. */
 export default defineNode({
   id: 'room-node',
   title: 'Space',
@@ -11,37 +14,35 @@ export default defineNode({
     room: {
       control: 'knob',
       label: 'room',
-      default: 0,
+      default: 0.3,
+      implicit: 0,
       min: 0,
       max: 1,
       step: 0.01,
-      format,
     },
     roomsize: {
       control: 'knob',
-      method: 'rsize',
       label: 'rsize',
-      default: 1,
+      method: 'rsize',
+      default: 2,
       min: 0,
       max: 10,
       step: 0.1,
-      format,
     },
     roomfade: {
       control: 'knob',
-      method: 'rfade',
       label: 'rfade',
-      default: 0.5,
+      method: 'rfade',
+      default: 0.1,
       min: 0,
       max: 10,
       step: 0.1,
-      format,
     },
     roomlp: {
       control: 'knob',
-      method: 'rlp',
       label: 'rlp',
-      default: 10000,
+      method: 'rlp',
+      default: 15000,
       min: 0,
       max: 20000,
       step: 100,
@@ -49,9 +50,9 @@ export default defineNode({
     },
     roomdim: {
       control: 'knob',
-      method: 'rdim',
       label: 'rdim',
-      default: 8000,
+      method: 'rdim',
+      default: 1000,
       min: 0,
       max: 20000,
       step: 100,

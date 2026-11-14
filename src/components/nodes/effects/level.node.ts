@@ -10,7 +10,7 @@ export default defineNode({
     gain: {
       control: 'knob',
       label: 'gain',
-      default: 1,
+      default: 0.8,
       min: 0,
       max: 2,
       step: 0.01,

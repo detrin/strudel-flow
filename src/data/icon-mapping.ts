@@ -13,6 +13,7 @@ import {
   Activity,
   Layers,
   Braces,
+  Repeat,
 } from 'lucide-react';
 
 export const iconMapping = {
@@ -30,4 +31,5 @@ export const iconMapping = {
   Activity,
   Layers,
   Braces,
+  Repeat,
 };
