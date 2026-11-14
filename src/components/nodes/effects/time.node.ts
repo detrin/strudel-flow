@@ -35,6 +35,7 @@ export default defineNode({
     },
   },
   methods: ['fast', 'rev', 'palindrome', 'late'],
+  ordered: true,
   parse: (calls) => {
     const values = { rate: 1, direction: 'forward', lateOffset: 0 };
     for (const { name, args } of calls) {

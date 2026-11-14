@@ -56,6 +56,30 @@ describe('parseProgram', () => {
     ]);
   });
 
+  it('reads a filter in any order, with its envelope filled in like Strudel', () => {
+    expect(types('$: s("bd").lpq(12).lpf(400)')).toEqual([
+      ['custom-node', 'lpf-node'],
+    ]);
+    const [line] = parsed('$: note("c2").lpf(400).lpd(0.2)').lines;
+    expect(line.sink).toMatchObject({
+      type: 'lpf-node',
+      data: {
+        cutoff: '400',
+        env: '1',
+        attack: '0.001',
+        decay: '0.2',
+        sustain: '0.001',
+        release: '0.01',
+      },
+    });
+    expect(emitLine(line)).toBe(
+      '$: note("c2")\n  .lpf(400).lpenv(1).lpattack(0.001).lpdecay(0.2).lpsustain(0.001).lprelease(0.01)',
+    );
+    expect(types('$: s("hh").hpf(3000).hpq(4)')).toEqual([
+      ['custom-node', 'hpf-node'],
+    ]);
+  });
+
   it('understands Strudel aliases and routes sounds by name', () => {
     expect(types('$: n("0").s("sawtooth").cutoff(500)')).toEqual([
       ['custom-node', 'synth-select-node', 'lpf-node'],

@@ -57,8 +57,10 @@ function byMethod(name: string) {
 }
 
 /**
- * Finds the node that writes `calls[from…]`: the longest run whose
- * definition parses it and writes the same methods back, in the same order.
+ * Finds the node that writes `calls[from…]`: the longest run its definition
+ * parses and writes back. Order-sensitive nodes must write the same calls in
+ * the same order; control setters may also write values Strudel would have
+ * used anyway (their parser guarantees that), but never drop a call.
  */
 function claim(calls: Call[], from: number) {
   for (const type of byMethod(calls[from].name)) {
@@ -72,12 +74,14 @@ function claim(calls: Call[], from: number) {
     )
       seen.add(calls[end++].name);
     for (; end > from; end--) {
-      const run = calls.slice(from, end);
-      const data = definition.parse(run);
+      const run = calls.slice(from, end).map((call) => call.name);
+      const data = definition.parse(calls.slice(from, end));
       const written =
         data && methodNames(definition.generate(data, { id: '' }));
-      if (written?.join() === run.map((call) => call.name).join())
-        return { type, data: data!, length: end - from };
+      const faithful = definition.ordered
+        ? written?.join() === run.join()
+        : written && run.every((name) => written.includes(name));
+      if (faithful) return { type, data: data!, length: end - from };
     }
   }
   return null;

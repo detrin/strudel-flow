@@ -30,58 +30,60 @@ export function createDefinitionComponent(definition: NodeDefinition) {
                   : 'flex flex-wrap justify-center gap-4'
               }
             >
-              {Object.entries(definition.parameters).map(([key, parameter]) =>
-                parameter.control === 'knob' ? (
-                  <ParameterKnob
-                    key={key}
-                    label={parameter.label}
-                    value={Number(values[key])}
-                    min={parameter.min}
-                    max={parameter.max}
-                    step={parameter.step}
-                    format={
-                      parameter.format ??
-                      ((value) =>
-                        `${Number(value.toFixed(2))}${parameter.unit ?? ''}`)
-                    }
-                    onChange={(value) => updateParameter(key, value)}
-                  />
-                ) : parameter.control === 'select' ? (
-                  <label
-                    key={key}
-                    className="flex flex-col gap-2 text-xs text-muted-foreground"
-                  >
-                    {parameter.label}
-                    <select
-                      className="nodrag rounded border border-input bg-background p-2 text-foreground"
-                      value={String(values[key])}
-                      onChange={(event) =>
-                        updateParameter(key, event.target.value)
+              {Object.entries(definition.parameters)
+                .filter(([, parameter]) => parameter.when?.(values) ?? true)
+                .map(([key, parameter]) =>
+                  parameter.control === 'knob' ? (
+                    <ParameterKnob
+                      key={key}
+                      label={parameter.label}
+                      value={Number(values[key])}
+                      min={parameter.min}
+                      max={parameter.max}
+                      step={parameter.step}
+                      format={
+                        parameter.format ??
+                        ((value) =>
+                          `${Number(value.toFixed(Math.abs(value) < 0.1 ? 3 : 2))}${parameter.unit ?? ''}`)
                       }
-                    >
-                      {parameter.options.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : (
-                  <label
-                    key={key}
-                    className="flex flex-col gap-2 text-xs text-muted-foreground"
-                  >
-                    {parameter.label}
-                    <input
-                      className="nodrag rounded border border-input bg-background p-2 text-foreground"
-                      value={String(values[key])}
-                      onChange={(event) =>
-                        updateParameter(key, event.target.value)
-                      }
+                      onChange={(value) => updateParameter(key, value)}
                     />
-                  </label>
-                ),
-              )}
+                  ) : parameter.control === 'select' ? (
+                    <label
+                      key={key}
+                      className="flex flex-col gap-2 text-xs text-muted-foreground"
+                    >
+                      {parameter.label}
+                      <select
+                        className="nodrag rounded border border-input bg-background p-2 text-foreground"
+                        value={String(values[key])}
+                        onChange={(event) =>
+                          updateParameter(key, event.target.value)
+                        }
+                      >
+                        {parameter.options.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <label
+                      key={key}
+                      className="flex flex-col gap-2 text-xs text-muted-foreground"
+                    >
+                      {parameter.label}
+                      <input
+                        className="nodrag rounded border border-input bg-background p-2 text-foreground"
+                        value={String(values[key])}
+                        onChange={(event) =>
+                          updateParameter(key, event.target.value)
+                        }
+                      />
+                    </label>
+                  ),
+                )}
             </div>
           </div>
         )}

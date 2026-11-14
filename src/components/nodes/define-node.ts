@@ -6,6 +6,8 @@ type Common = {
   label: string;
   /** Strudel method this parameter is written as. Defaults to its key. */
   method?: string;
+  /** Show the control only when this holds for the node's values. */
+  when?: (values: Record<string, string | number>) => boolean;
 };
 export type Parameter = Common &
   (
@@ -68,6 +70,11 @@ export type NodeDefinition = {
   generate: (data: Record<string, unknown>, context: GenerateContext) => string;
   /** Canonical Strudel methods this node writes (effects only). */
   methods: readonly string[];
+  /**
+   * True when call order changes the sound (`fast().late()`). Otherwise the
+   * calls only set controls, which commute.
+   */
+  ordered: boolean;
   /** Calls → node data, or null when this node cannot express them. */
   parse: (calls: Call[]) => Record<string, unknown> | null;
   renderControls?: (
@@ -180,6 +187,7 @@ export function defineNode<
   ) => string;
   /** Defaults to the methods of the parameters. */
   methods?: readonly string[];
+  ordered?: boolean;
   /** Defaults to `parseParameters`. */
   parse?: (calls: Call[]) => Partial<D & ParameterValues<P>> | null;
   component?: ComponentType<NodeControlsProps<P, D>>;
@@ -198,6 +206,7 @@ export function defineNode<
       parseParameters(parameters, calls) as Partial<
         D & ParameterValues<P>
       > | null,
+    ordered = false,
     ...metadata
   } = definition;
   const resolve = (data: Record<string, unknown>) => {
@@ -226,6 +235,7 @@ export function defineNode<
     },
     generate: (data, context) => generate(resolve(data), context),
     methods,
+    ordered,
     parse: (calls) => {
       const values = parse(calls);
       return values && encode(values);

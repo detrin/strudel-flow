@@ -7,6 +7,11 @@ declare module '@strudel/web' {
   export function initStrudel(): Promise<StrudelSession>;
   export function evaluate(code: string): Promise<unknown>;
   export function hush(): void;
+  export function getADSRValues(
+    values: (number | undefined)[],
+    curve?: string,
+    unset?: number[],
+  ): [number, number, number, number];
   export function samples(source: string): Promise<unknown>;
   export function transpiler(
     code: string,
