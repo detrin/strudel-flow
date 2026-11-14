@@ -35,7 +35,7 @@ test('Claude Code edits the open patch over MCP', async ({ page }, info) => {
 
     await openFresh(page);
     await page.goto(`/?bridge=${port}`);
-    await expect(page.getByText('Claude Code connected')).toBeVisible();
+    await expect(page.getByText('Agent connected')).toBeVisible();
 
     const tools = await client.listTools();
     expect(tools.tools.map((tool) => tool.name)).toEqual(
