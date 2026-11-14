@@ -80,7 +80,7 @@ export default function Editor() {
             panOnScroll
             zoomOnPinch
             proOptions={{ hideAttribution: true }}
-            minZoom={0.2}
+            minZoom={0.1}
             fitView
             fitViewOptions={{ padding: FIT_PADDING, maxZoom: 1 }}
           >

@@ -1,5 +1,6 @@
 import { Panel } from '@xyflow/react';
-import { PanelLeftOpen, Plus, X } from 'lucide-react';
+import { PanelLeftOpen, Plus, Rows3, X } from 'lucide-react';
+import { tidyLines } from '@/lib/tidy';
 import type { MouseEventHandler } from 'react';
 import { ControlButton } from './control-button';
 import { AppearancePopover } from './appearance-popover';
@@ -117,6 +118,13 @@ export function EditorToolbar({
           className="nokey nodrag nopan rounded-full"
         >
           <Plus className="size-4" aria-hidden="true" />
+        </ControlButton>
+        <ControlButton
+          title="Tidy all lines (arrange first, order-free nodes stacked)"
+          onClick={() => tidyLines()}
+          className="nokey nodrag nopan"
+        >
+          <Rows3 className="size-4" aria-hidden="true" />
         </ControlButton>
         <PresetPopover />
         <AppearancePopover />

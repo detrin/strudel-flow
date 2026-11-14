@@ -51,6 +51,9 @@ test('a whole song: open, play, mix, rewire, undo, share', async ({
   const kickArrange = nodeOfType(page, 'arrange-node').first();
   await added.getByRole('slider', { name: 'gain', exact: true }).focus();
   await page.keyboard.press('ArrowDown');
+  // The whole song in view, so both ends of the new wire are on screen.
+  await page.getByRole('button', { name: 'Fit patch' }).click();
+  await page.waitForTimeout(400);
   await kickArrange
     .locator('.react-flow__handle.source')
     .dragTo(added.locator('.react-flow__handle.target'));

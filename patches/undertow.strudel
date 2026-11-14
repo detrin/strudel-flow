@@ -4,47 +4,52 @@
 
 setcpm(132/4)
 
+// @layout 390,0 780,0 780,211 1106,0 0,0
 kick: n("0*4")
-  .s("bd")
+  .sound("bd")
   .bank("RolandTR909")
   .gain(1)
   .mask("<1!32 0!8 1!24>")
 
+// @layout 390,420 867,420 1151,420 1151,652 1477,420 0,420
 rumble: note("<c1 c1 eb1 g0>*8")
-  .s("sine")
+  .sound("sine")
   .lpf(140)
   .gain(0.55)
   .delay(0.3).delaytime(0.1875).delayfeedback(0.4)
   .mask("<0!4 1!28 0!8 1!16 0!8>")
 
+// @layout 390,926 716,926 1042,926 1368,926 1694,926 0,926
 hats: s("[~ hh]*4")
   .bank("RolandTR909")
   .degradeBy(0.15)
+  .gain(0.45).pan(sine.range(0.3, 0.7).slow(4))
   .hpf(6000)
-  .gain(0.45)
-  .pan(sine.range(0.3, 0.7).slow(4))
   .mask("<0!4 1!28 0!8 1!24>")
 
+// @layout 390,1346 716,1346 1042,1346 1368,1346 1694,1346 0,1346
 clap: s("~ cp")
   .bank("RolandTR909")
-  .speed(0.95)
   .late(0.01)
+  .speed(0.95)
   .room(0.25)
   .mask("<0!8 1!24 0!8 1!16 0!8>")
 
+// @layout 390,1766 867,1766 1151,1766 1477,1766 1803,1766 1803,1998 2129,1766 2129,2118 0,1766
 acid: note("c2 c2 [c3 c2] eb2 c2 g1 c2 bb1")
-  .s("sawtooth")
-  .lpf(500).lpq(14).lpenv(3).lpdecay(0.12)
+  .sound("sawtooth")
+  .gain(perlin.range(0.6, 0.85))
+  .lpf(500).lpq(14).lpenv(3).lpattack(0.001).lpdecay(0.12).lpsustain(0.001).lprelease(0.01)
   .distort(0.6)
   .delay(0.25).delaytime(0.375)
-  .gain(perlin.range(0.6, 0.85))
   .analyze("acid")
-  .mask("<0!12 1!20 0!4 1!20 0!8>")
   ._punchcard()
+  .mask("<0!12 1!20 0!4 1!20 0!8>")
 
+// @layout 390,2416 780,2416 1064,2416 1390,2416 1716,2416 2042,2416 2368,2416 2694,2416 0,2416
 pad: n("<[0,2,4,6] [5,7,9,11]>/2")
+  .sound("supersaw")
   .scale("C3:minor")
-  .s("supersaw")
   .unison(7).detune(0.3)
   .attack(0.5).decay(0.5).sustain(0.6).release(1.5)
   .phaser(0.5).phaserdepth(0.6)
@@ -52,18 +57,21 @@ pad: n("<[0,2,4,6] [5,7,9,11]>/2")
   .orbit(2)
   .mask("<0!32 1!8 0!16 1!8>")
 
+// @layout 390,2836 867,2836 1151,2836 1477,2836 1477,3068 0,2836
 stab: note("~ [c4,eb4,g4] ~ ~")
-  .s("square")
+  .sound("square")
   .sometimes(x => x.trans(12))
   .hpf(400)
   .delay(0.5).delaytime(0.1875).delayfeedback(0.6)
   .mask("<0!16 1!16 0!8 1!16 0!8>")
 
+// @layout 390,3336 716,3336 1042,3336 0,3336
 riser: s("white*16")
   .hpf(saw.range(500, 8000).slow(2))
   .gain(0.25)
   .mask("<0!14 1!2 0!22 1!2 0!24>")
 
+// @layout 390,3756 716,3756 1042,3756 1042,3988 0,3756
 breaks: s("breaks165")
   .loopAt(2).chop(8)
   .hpf(800)

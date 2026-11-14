@@ -24,20 +24,35 @@ const find = (graph: Graph, type: string) =>
   graph.nodes.filter((node) => node.type === type);
 
 describe('reconcile', () => {
-  it('builds rows from code, left to right in chain order', () => {
+  it('builds rows from code: a chain, with sound effects stacked', () => {
     const graph = typeCode(
-      '$: s("bd*4").lpf(800).gain(0.5)\n$: s("hh*8").room(0.2)',
+      '$: s("bd*4").fast(2).lpf(800).gain(0.5)\n$: s("hh*8").room(0.2)',
     );
     const [kick, hat] = find(graph, 'sound-node');
+    const [time] = find(graph, 'time-node');
     const [filter] = find(graph, 'lpf-node');
     const [level] = find(graph, 'level-node');
-    expect(filter.position.y).toBe(kick.position.y);
-    expect(filter.position.x).toBeGreaterThan(kick.position.x);
-    expect(level.position.x).toBeGreaterThan(filter.position.x);
-    expect(hat.position.y).toBeGreaterThan(kick.position.y);
+    // Order matters for Time: it follows the source in the row.
+    expect(time.position.y).toBe(kick.position.y);
+    expect(time.position.x).toBeGreaterThan(kick.position.x);
+    // Filter and Level don't depend on order: one column, stacked.
+    expect(filter.position).toMatchObject({ y: kick.position.y });
+    expect(filter.position.x).toBeGreaterThan(time.position.x);
+    expect(level.position.x).toBe(filter.position.x);
+    expect(level.position.y).toBeGreaterThan(filter.position.y);
+    // The next line goes below the whole stack.
+    expect(hat.position.y).toBeGreaterThan(level.position.y);
     expect(
       graph.edges.map((edge) => [edge.source, edge.target]),
-    ).toContainEqual([kick.id, filter.id]);
+    ).toContainEqual([time.id, filter.id]);
+  });
+
+  it("puts a line's Arrange first, as its header", () => {
+    const graph = typeCode('$: s("bd*4").lpf(800).mask("<1!4 0!4>")');
+    const [arrange] = find(graph, 'arrange-node');
+    const [kick] = find(graph, 'sound-node');
+    expect(arrange.position.x).toBeLessThan(kick.position.x);
+    expect(arrange.position.y).toBe(kick.position.y);
   });
 
   it('round-trips: the code it writes rebuilds the same canvas', () => {

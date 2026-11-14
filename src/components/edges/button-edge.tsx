@@ -4,6 +4,7 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
+  getSmoothStepPath,
   type EdgeProps,
 } from '@xyflow/react';
 
@@ -18,13 +19,17 @@ export const ButtonEdge = ({
   markerEnd,
   children,
 }: EdgeProps & { children: ReactNode }) => {
-  const [edgePath, labelX, labelY] = getBezierPath({
+  // Into a node stacked below (a channel strip): a tidy stepped line
+  // around the stack instead of a loop.
+  const path = targetX < sourceX ? getSmoothStepPath : getBezierPath;
+  const [edgePath, labelX, labelY] = path({
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
     targetPosition,
+    ...(targetX < sourceX ? { borderRadius: 10, offset: 14 } : {}),
   });
 
   return (

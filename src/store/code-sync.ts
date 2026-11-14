@@ -5,6 +5,7 @@ import { knownSources, parseProgram } from '@/lib/program/parse';
 import { layout, reconcile } from '@/lib/program/reconcile';
 import { updateLayout, withoutLayout } from '@/lib/program/layout-comments';
 import { useAppStore } from './app-store';
+import { tidyLines } from '@/lib/tidy';
 
 type State = ReturnType<typeof useAppStore.getState>;
 
@@ -65,10 +66,44 @@ export function loadCode(
     ...meta,
   });
   setCode(code);
+  requestLayoutCheck();
   // A fresh patch starts a fresh undo history.
   useAppStore.setState({
     graphRevision: useAppStore.getState().graphRevision + 1,
   });
+}
+
+let layoutCheck = false;
+/**
+ * After a patch opens: once the canvas has measured its nodes, tidy it if
+ * any of them overlap (a layout saved when nodes were smaller, say).
+ * Layouts that fit are left as they were arranged.
+ */
+export function requestLayoutCheck() {
+  layoutCheck = true;
+}
+function checkLayout(state: State) {
+  if (!layoutCheck || state.nodes.some((node) => !node.measured?.width)) return;
+  layoutCheck = false;
+  const box = (node: State['nodes'][number]) => ({
+    left: node.position.x,
+    top: node.position.y,
+    right: node.position.x + (node.measured?.width ?? 0),
+    bottom: node.position.y + (node.measured?.height ?? 0),
+  });
+  const boxes = state.nodes.map(box);
+  const overlap = boxes.some((a, i) =>
+    boxes.some(
+      (b, j) =>
+        j > i &&
+        a.left < b.right - 4 &&
+        b.left < a.right - 4 &&
+        a.top < b.bottom - 4 &&
+        b.top < a.bottom - 4,
+    ),
+  );
+  // Positions only: opening a patch never changes its code's order.
+  if (overlap) tidyLines(undefined, false);
 }
 
 /** Re-runs the layout for code-created nodes once the canvas measured them. */
@@ -104,8 +139,11 @@ export function upgradePatch() {
     lines.flatMap((line) => flatten(line.sink).map((node) => node.type));
   if (
     types(result.program.lines).join() !== types(programOf(state).lines).join()
-  )
+  ) {
     setCode(code);
+    // Its layout was made for the old nodes; check it once they're measured.
+    requestLayoutCheck();
+  }
 }
 
 /** Rewrites the console whenever the canvas changes what the code says. */
@@ -132,6 +170,7 @@ export function startCodeSync() {
       state.prelude !== previous.prelude
     ) {
       relayout(state);
+      checkLayout(useAppStore.getState());
       sync(useAppStore.getState());
     }
   });

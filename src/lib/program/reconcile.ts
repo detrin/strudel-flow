@@ -5,11 +5,16 @@ import { nodeDefinitions } from '@/components/nodes/registry';
 import { compileGraph, flatten } from './compile';
 import type { ParsedProgram } from './parse';
 import { ANONYMOUS, type Line, type ProgramNode } from './types';
+import { groupsOf, type Group } from './groups';
 
 type Graph = { nodes: AppNode[]; edges: Edge[] };
 type Size = { width: number; height: number };
 
 export const GAP = 60;
+/** Space between nodes stacked in one column. */
+const STACK_GAP = 24;
+/** A stack may always grow this tall before it wraps into a new column. */
+const MIN_STACK = 520;
 const DEFAULT_SIZE: Size = { width: 300, height: 220 };
 
 /** Upstream first, the order nodes appear in a line of code. */
@@ -149,12 +154,77 @@ export function reconcile(
   return { ...graph, autoPlaced };
 }
 
-/** Places the `created` nodes next to their neighbours. Mutates positions. */
+/**
+ * Positions for one line laid out as a track: its header (Arrange) first,
+ * then the source and the chain left to right, with each run of `sound`
+ * nodes stacked in one column like a channel strip.
+ */
+function rowPositions(
+  members: AppNode[],
+  groups: Group[],
+  origin: XYPosition,
+  size: (node: AppNode) => Size,
+) {
+  const positions: XYPosition[] = [];
+  let x = origin.x;
+  let bottom = origin.y;
+  const header = groups.indexOf('header');
+  if (header >= 0) {
+    positions[header] = { ...origin };
+    x += size(members[header]).width + GAP;
+    bottom = origin.y + size(members[header]).height;
+  }
+  let column: {
+    x: number;
+    next: number;
+    width: number;
+    stack: Group | null;
+  } | null = null;
+  // A stack wraps into another column rather than outgrow the row's source.
+  const source = members.find((_, i) => groups[i] === 'source');
+  const tallest = Math.max(MIN_STACK, source ? size(source).height : 0);
+  members.forEach((node, index) => {
+    if (index === header) return;
+    const { width, height } = size(node);
+    // Voices, order-free effects and visuals each stack in a column.
+    const stack =
+      groups[index] === 'shape' || groups[index] === 'source'
+        ? null
+        : groups[index];
+    if (
+      stack &&
+      column?.stack === stack &&
+      column.next + height <= origin.y + tallest
+    ) {
+      positions[index] = { x: column.x, y: column.next };
+      column.next += height + STACK_GAP;
+      column.width = Math.max(column.width, width);
+    } else {
+      if (column) x = column.x + column.width + GAP;
+      positions[index] = { x, y: origin.y };
+      column = { x, next: origin.y + height + STACK_GAP, width, stack };
+    }
+    bottom = Math.max(bottom, positions[index].y + height);
+  });
+  return { positions, bottom };
+}
+
+/** True when every node in the line has at most one input. */
+const isChain = (members: AppNode[], edges: Edge[]) =>
+  members.every(
+    (node) => edges.filter((edge) => edge.target === node.id).length <= 1,
+  );
+
+/**
+ * Places the `created` nodes next to their neighbours; lines that are new,
+ * or listed in `relayout`, are laid out whole as tracks. Mutates positions.
+ */
 export function layout(
   { nodes, edges }: Graph,
   lines: Line[],
   created: Set<string>,
   reference: AppNode[] = nodes,
+  relayout: Set<string> = new Set(),
 ) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const size = (node: AppNode): Size => {
@@ -191,6 +261,40 @@ export function layout(
     ordered(line).map((node) => byId.get(node.id!)!),
   );
   lineNodes.forEach((members, index) => {
+    const fresh = members.every((node) => !placed.has(node.id));
+    const forced = members.some((node) => relayout.has(node.id));
+    if ((fresh || forced) && isChain(members, edges)) {
+      const groups = groupsOf(members);
+      const others = nodes.filter(
+        (node) => placed.has(node.id) && !members.includes(node),
+      );
+      let origin: XYPosition;
+      let oldBottom: number;
+      if (fresh) {
+        const above = lineNodes.slice(0, index).flat();
+        origin = {
+          x: Math.min(0, ...others.map((n) => n.position.x)),
+          y: above.some((n) => placed.has(n.id))
+            ? bottom(above) + GAP
+            : Math.min(0, ...others.map((n) => n.position.y)),
+        };
+        oldBottom = origin.y - GAP;
+      } else {
+        origin = {
+          x: Math.min(...members.map((n) => n.position.x)),
+          y: Math.min(...members.map((n) => n.position.y)),
+        };
+        oldBottom = bottom(members);
+      }
+      const row = rowPositions(members, groups, origin, size);
+      members.forEach((node, i) => move(node, row.positions[i]));
+      // Rows below move to keep the gap between lines.
+      const shift = row.bottom - oldBottom;
+      if (shift)
+        for (const other of others)
+          if (other.position.y >= origin.y) other.position.y += shift;
+      return;
+    }
     for (const node of members) {
       if (placed.has(node.id)) continue;
       const input = edges

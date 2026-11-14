@@ -1,4 +1,4 @@
-import { EdgeProps, useReactFlow } from '@xyflow/react';
+import { EdgeProps, useInternalNode, useReactFlow } from '@xyflow/react';
 import { memo } from 'react';
 import { X } from 'lucide-react';
 
@@ -7,6 +7,11 @@ import { ButtonEdge } from '@/components/edges/button-edge';
 
 const DeleteEdge = memo((props: EdgeProps) => {
   const { setEdges } = useReactFlow();
+  const target = useInternalNode(props.target);
+  // A line's Arrange sits at the start of its row as the track header; the
+  // wire into it would cross the whole row backwards.
+  if (target?.type === 'arrange-node' && props.targetX < props.sourceX)
+    return null;
 
   const onDeleteEdge = () => {
     setEdges((edges) => edges.filter((edge) => edge.id !== props.id));

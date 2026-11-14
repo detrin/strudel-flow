@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Code2, Plus, Trash2, Volume2, VolumeX } from 'lucide-react';
+import { Code2, Plus, Rows3, Trash2, Volume2, VolumeX } from 'lucide-react';
 import { Position } from '@xyflow/react';
 import { WorkflowNodeData, AppNodeType } from '@/components/nodes/registry';
 import { nodeDefinitions } from '@/components/nodes/registry';
@@ -11,7 +11,8 @@ import { NodeMenu } from './node-menu';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAddAfter } from '@/components/editor/add-node-context';
-import { useLive } from '@/lib/live';
+import { lineLabelOf, useLive } from '@/lib/live';
+import { tidyLines } from '@/lib/tidy';
 
 function WorkflowNode({
   id,
@@ -31,6 +32,10 @@ function WorkflowNode({
   const sounding = useLive((state) => state.nodes.has(id));
   const category = nodeDefinitions[type]?.category;
   const isInstrument = category === 'Instruments';
+  // A line's Arrange heads its row like a DAW track: its name and a mute.
+  useAppStore((state) => state.edges);
+  const label = type === 'arrange-node' ? lineLabelOf(id) : undefined;
+  const isHeader = label !== undefined;
   const isPaused = data.state === 'paused';
 
   return (
@@ -54,7 +59,12 @@ function WorkflowNode({
         style={{ top: 28 }}
       />
       {/* Miro-style "+": add the next node in this chain (or press Tab). */}
-      <div className="node-add-after nodrag nopan pointer-events-none absolute top-[14px] -right-[42px]">
+      <div
+        className={cn(
+          'node-add-after nodrag nopan pointer-events-none absolute top-[14px] -right-[42px]',
+          isHeader && 'hidden',
+        )}
+      >
         <button
           type="button"
           title="Add next node (Tab)"
@@ -67,10 +77,19 @@ function WorkflowNode({
       </div>
       <header className="mb-1 flex h-12 items-center gap-3 px-3">
         <h3 className="flex-1 text-[11px] font-semibold tracking-[.16em] uppercase">
-          {data.title}
+          {isHeader ? (
+            <>
+              {label.startsWith('$') ? 'line' : label}
+              <span className="ml-2 font-normal tracking-normal text-muted-foreground normal-case">
+                arrange
+              </span>
+            </>
+          ) : (
+            data.title
+          )}
         </h3>
         <div className="flex items-center gap-1">
-          {isInstrument && (
+          {(isInstrument || isHeader) && (
             <Button
               variant="ghost"
               aria-label={isPaused ? 'Unmute instrument' : 'Mute instrument'}
@@ -95,6 +114,11 @@ function WorkflowNode({
                 label: showCode ? 'Hide code' : 'Edit code',
                 icon: <Code2 />,
                 onSelect: () => setShowCode(!showCode),
+              },
+              {
+                label: 'Tidy line',
+                icon: <Rows3 />,
+                onSelect: () => tidyLines(id),
               },
               {
                 label: 'Remove',

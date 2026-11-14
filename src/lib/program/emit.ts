@@ -53,7 +53,11 @@ export function emitLine({ label, muted, sink }: Line): string {
 
 /** Program → Strudel code. */
 export function emitProgram(program: Program): string {
-  const prelude = program.prelude.trim();
+  // A song's opening comments (its title, notes) stay at the very top.
+  const lines = program.prelude.trim().split('\n');
+  const opening = lines.findIndex((line) => !line.trimStart().startsWith('//'));
+  const intro = (opening === -1 ? lines : lines.slice(0, opening)).join('\n');
+  const prelude = opening === -1 ? '' : lines.slice(opening).join('\n').trim();
   const { cpm, bpc, tempoName } = program;
   // A tempo written with a constant (`const BPM = 81`, `setcpm(BPM/4)`)
   // stays that way: the constant takes the tempo, setcpm follows it.
@@ -66,8 +70,8 @@ export function emitProgram(program: Program): string {
     constant && constant.test(prelude)
       ? [prelude.replace(constant, `$1${cpm}`), `setcpm(${tempoName}/${bpc})`]
       : [`setcpm(${cpm}/${bpc})`, ...(prelude ? [prelude] : [])];
-  const lines = program.lines.map(emitLine).filter(Boolean);
-  return [head.join('\n'), ...lines].join('\n\n') + '\n';
+  const body = program.lines.map(emitLine).filter(Boolean);
+  return [intro, head.join('\n'), ...body].filter(Boolean).join('\n\n') + '\n';
 }
 
 /** True when at least one line would make sound. */
