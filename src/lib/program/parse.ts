@@ -41,17 +41,27 @@ const SETUP = new Set([
 /** Line breaks and indentation between chain links don't change meaning. */
 const normalize = (code: string) => code.replace(/\s*\n\s*/g, '');
 
-const byMethod = new Map<string, string[]>();
-for (const definition of Object.values(nodeDefinitions))
-  for (const method of definition.methods)
-    byMethod.set(method, [...(byMethod.get(method) ?? []), definition.id]);
+let methodIndex: Map<string, string[]> | undefined;
+/** Node types by the methods they write; built on first use. */
+function byMethod(name: string) {
+  if (!methodIndex) {
+    methodIndex = new Map();
+    for (const definition of Object.values(nodeDefinitions))
+      for (const method of definition.methods)
+        methodIndex.set(method, [
+          ...(methodIndex.get(method) ?? []),
+          definition.id,
+        ]);
+  }
+  return methodIndex.get(name) ?? [];
+}
 
 /**
  * Finds the node that writes `calls[from…]`: the longest run whose
  * definition parses it and writes the same methods back, in the same order.
  */
 function claim(calls: Call[], from: number) {
-  for (const type of byMethod.get(calls[from].name) ?? []) {
+  for (const type of byMethod(calls[from].name)) {
     const definition = nodeDefinitions[type];
     let end = from;
     const seen = new Set<string>();

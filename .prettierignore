@@ -2,3 +2,5 @@ dist
 pnpm-lock.yaml
 test-results
 playwright-report
+src/themes/strudel
+*.tmp.mjs

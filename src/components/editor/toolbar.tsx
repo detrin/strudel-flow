@@ -1,6 +1,6 @@
 import { Panel } from '@xyflow/react';
 import logo from '@/assets/logo.svg?raw';
-import { Plus, X } from 'lucide-react';
+import { PanelLeftOpen, Plus, X } from 'lucide-react';
 import type { MouseEventHandler } from 'react';
 import { ControlButton } from './control-button';
 import { AppearancePopover } from './appearance-popover';
@@ -21,6 +21,8 @@ export function EditorToolbar({
   const setBpc = useAppStore((state) => state.setBpc);
   const error = useAppStore((state) => state.error);
   const setError = useAppStore((state) => state.setError);
+  const consoleOpen = useAppStore((state) => state.console.open);
+  const setConsole = useAppStore((state) => state.setConsole);
 
   return (
     <>
@@ -41,6 +43,15 @@ export function EditorToolbar({
             dangerouslySetInnerHTML={{ __html: logo }}
           />
         </a>
+        {!consoleOpen && (
+          <ControlButton
+            title="Show code console (Ctrl+B)"
+            onClick={() => setConsole({ open: true })}
+            className="nokey nodrag nopan"
+          >
+            <PanelLeftOpen className="size-4" aria-hidden="true" />
+          </ControlButton>
+        )}
       </Panel>
 
       <Panel

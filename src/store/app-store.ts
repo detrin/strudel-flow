@@ -29,11 +29,32 @@ type AppState = {
   /** Code statements that are not lines; kept verbatim. */
   prelude: string;
   pattern: string;
+  /** The code console's text; in sync with the graph (see code-sync). */
+  code: string;
+  codeError: string | null;
+  /** Bumped when code adds nodes, so the canvas can bring them into view. */
+  fitRequest: number;
+  console: ConsoleLayout;
   isPlaying: boolean;
   error: string | null;
 };
 
+/** The code console panel; remembered per browser. */
+export type ConsoleLayout = { open: boolean; width: number };
+const CONSOLE_KEY = 'strudel-flow:console';
+function savedConsole(): ConsoleLayout {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CONSOLE_KEY) ?? 'null');
+    if (typeof saved?.open === 'boolean' && Number.isFinite(saved?.width))
+      return saved;
+  } catch {
+    // Storage can be unavailable (private mode); use the default.
+  }
+  return { open: true, width: 440 };
+}
+
 type AppActions = {
+  setConsole: (layout: Partial<ConsoleLayout>) => void;
   setCpm: (cpm: string) => void;
   setBpc: (bpc: string) => void;
   setPattern: (pattern: string) => void;
@@ -65,8 +86,21 @@ export const useAppStore = create<AppStore>()(
     bpc: '4',
     prelude: '',
     pattern: '',
+    code: '',
+    codeError: null,
+    fitRequest: 0,
+    console: savedConsole(),
     isPlaying: false,
     error: null,
+    setConsole: (layout) => {
+      const next = { ...get().console, ...layout };
+      set({ console: next });
+      try {
+        localStorage.setItem(CONSOLE_KEY, JSON.stringify(next));
+      } catch {
+        // Not remembered; still applied.
+      }
+    },
     setCpm: (cpm) => set({ cpm }),
     setBpc: (bpc) => set({ bpc }),
     setPattern: (pattern) => set({ pattern }),

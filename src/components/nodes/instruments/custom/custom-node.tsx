@@ -11,7 +11,7 @@ export function CustomNode({
   const error = codeSyntaxError(draft);
 
   return (
-    <div className="w-[32rem] max-w-[calc(100vw-32px)] px-3 pb-3">
+    <div className="w-80 max-w-[calc(100vw-32px)] px-3 pb-3">
       <Textarea
         aria-label="Strudel pattern"
         aria-invalid={Boolean(error)}
@@ -25,7 +25,8 @@ export function CustomNode({
           });
         }}
         placeholder={'note("c3 e3 g3")\n  .sound("triangle")'}
-        className="nodrag nowheel min-h-80 resize-y rounded-lg border border-input bg-transparent px-3 py-3 font-mono text-xs leading-relaxed"
+        rows={Math.min(12, Math.max(2, draft.split('\n').length))}
+        className="nodrag nowheel min-h-0 resize-y rounded-lg border border-input bg-transparent px-3 py-2 font-mono text-xs leading-relaxed"
         spellCheck={false}
         autoCapitalize="off"
         autoCorrect="off"
