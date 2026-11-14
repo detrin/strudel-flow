@@ -1,4 +1,4 @@
-import { defineNode, generateParameterEffects } from '../define-node';
+import { defineNode } from '../define-node';
 
 export default defineNode({
   id: 'texture-node',
@@ -32,5 +32,4 @@ export default defineNode({
       step: 0.1,
     },
   },
-  generate: generateParameterEffects,
 });

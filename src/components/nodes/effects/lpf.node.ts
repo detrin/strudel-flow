@@ -10,6 +10,7 @@ export default defineNode({
     cutoff: {
       control: 'knob',
       label: 'lpf',
+      method: 'lpf',
       default: 1000,
       min: 100,
       max: 5000,
@@ -20,6 +21,7 @@ export default defineNode({
     resonance: {
       control: 'knob',
       label: 'lpq',
+      method: 'lpq',
       default: 1,
       min: 0.1,
       max: 10,
@@ -27,20 +29,10 @@ export default defineNode({
       format: (value) => value.toFixed(1),
     },
   },
+  // Patches saved before the fork stored both values as `lpf: "1000 1"`.
   read: (data) => {
-    const [cutoff = 1000, resonance = 1] = String(data.lpf || '1000 1')
-      .split(' ')
-      .map(Number);
+    if (typeof data.lpf !== 'string' || data.cutoff !== undefined) return data;
+    const [cutoff, resonance] = data.lpf.split(' ').map(Number);
     return { ...data, cutoff, resonance };
   },
-  write: (updates, data) => {
-    const [cutoff = 1000, resonance = 1] = String(data.lpf || '1000 1')
-      .split(' ')
-      .map(Number);
-    return {
-      lpf: `${updates.cutoff ?? cutoff} ${updates.resonance ?? resonance}`,
-    };
-  },
-  generate: ({ cutoff, resonance }, input) =>
-    [input, `lpf(${cutoff}).lpq(${resonance})`].filter(Boolean).join('.'),
 });

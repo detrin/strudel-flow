@@ -40,11 +40,4 @@ export default defineNode({
       step: 0.01,
     },
   },
-  generate: (_values, input, { parameters, data }) => {
-    const calls = Object.entries(parameters).flatMap(([key, parameter]) => {
-      const value = parseFloat(String(data[key] || parameter.default));
-      return value === parameter.default ? [] : [`${key}("${value}")`];
-    });
-    return [input, ...calls].filter(Boolean).join('.');
-  },
 });

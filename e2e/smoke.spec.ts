@@ -9,5 +9,7 @@ test('app loads the default patch and starts playing', async ({ page }) => {
   await expect(
     page.getByRole('button', { name: /pause/i }).first(),
   ).toBeVisible();
+  await page.waitForTimeout(1500);
+  await expect(page.getByRole('alert')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

@@ -13,6 +13,7 @@ export function capturePatch(): ProjectState {
     colorMode,
     cpm,
     bpc,
+    prelude,
   } = useAppStore.getState();
   return {
     name: name.trim() || 'Untitled patch',
@@ -38,6 +39,7 @@ export function capturePatch(): ProjectState {
     colorMode,
     cpm,
     bpc,
+    ...(prelude ? { prelude } : {}),
   };
 }
 
@@ -60,6 +62,7 @@ export function applyPatch(state: ProjectState): boolean {
     colorMode: state.colorMode,
     cpm: state.cpm,
     bpc: state.bpc ?? '4',
+    prelude: state.prelude ?? '',
     isPlaying: false,
     error: null,
   });

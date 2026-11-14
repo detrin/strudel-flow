@@ -44,7 +44,7 @@ const patternToString = (
 
 export const DEFAULT_STEPS = 8;
 
-export function generatePattern(data: BeatMachineData, strudelString: string) {
+export function generatePattern(data: BeatMachineData) {
   const modifiersEnabled =
     typeof data.modifiersEnabled === 'boolean' ? data.modifiersEnabled : false;
   const steps = typeof data.steps === 'number' ? data.steps : DEFAULT_STEPS;
@@ -56,12 +56,6 @@ export function generatePattern(data: BeatMachineData, strudelString: string) {
         `sound("${row.instrument}").struct("${patternToString(row.pattern, modifiersEnabled ? (row.modifiers ?? {}) : {})}")`,
     );
 
-  if (patterns.length === 0) {
-    return strudelString;
-  }
-
-  const beatCall =
-    patterns.length === 1 ? patterns[0] : `stack(${patterns.join(', ')})`;
-
-  return strudelString ? `${strudelString}.stack(${beatCall})` : beatCall;
+  if (patterns.length === 0) return '';
+  return patterns.length === 1 ? patterns[0] : `stack(${patterns.join(', ')})`;
 }

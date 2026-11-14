@@ -26,7 +26,7 @@ export const DEFAULTS = {
 export const createDefaultGrid = (): boolean[][] =>
   Array.from({ length: 16 }, () => Array(8).fill(false));
 
-export function generatePattern(data: PadData, strudelString: string) {
+export function generatePattern(data: PadData) {
   const grid = data.grid || createDefaultGrid();
   const columnModifiers = data.columnModifiers || {};
 
@@ -55,12 +55,10 @@ export function generatePattern(data: PadData, strudelString: string) {
   const pattern = stepPatternsWithEmpty.join(' ');
 
   if (!pattern || !pattern.trim() || /^[~\s]*$/.test(pattern.trim())) {
-    return strudelString;
+    return '';
   }
   const octavePart = data.octave ? data.octave : '';
   const scale = `${data.selectedKey || DEFAULTS.selectedKey}${octavePart}:${data.selectedScaleType || DEFAULTS.selectedScaleType}`;
 
-  return strudelString
-    ? `${strudelString}.n("${pattern}").scale("${scale}")`
-    : `n("${pattern}").scale("${scale}")`;
+  return `n("${pattern}").scale("${scale}")`;
 }

@@ -1,7 +1,8 @@
 import '@/lib/strudel-scope';
 import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '@/store/app-store';
-import { generateOutput } from '@/lib/strudel';
+import { compileGraph } from '@/lib/program/compile';
+import { emitProgram, isAudible } from '@/lib/program/emit';
 import {
   initStrudel,
   evaluate,
@@ -103,18 +104,25 @@ export function useWorkflowRunner() {
   const bpc = useAppStore((state) => state.bpc);
   const setPattern = useAppStore((state) => state.setPattern);
   const isPlaying = useAppStore((state) => state.isPlaying);
+  const prelude = useAppStore((state) => state.prelude);
   const setError = useAppStore((state) => state.setError);
 
   const compiled = useMemo(() => {
     try {
-      return { pattern: generateOutput(nodes, edges, cpm, bpc), error: null };
+      const program = compileGraph(nodes, edges, { cpm, bpc, prelude });
+      return {
+        pattern: emitProgram(program),
+        audible: isAudible(program),
+        error: null,
+      };
     } catch (error) {
       return {
         pattern: '',
+        audible: false,
         error: error instanceof Error ? error.message : String(error),
       };
     }
-  }, [nodes, edges, cpm, bpc]);
+  }, [nodes, edges, cpm, bpc, prelude]);
 
   useEffect(() => {
     const instance = createPlaybackEngine({
@@ -136,19 +144,14 @@ export function useWorkflowRunner() {
   }, [compiled, setPattern, setError]);
 
   useEffect(() => {
-    const activePattern = compiled.pattern
-      .split('\n')
-      .filter((line) => !line.trim().startsWith('//'))
-      .join('\n');
-    const hasNotes = activePattern.replace(/setcpm\([^)]+\)/g, '').trim();
-    if (!isPlaying || !hasNotes || compiled.error) {
+    if (!isPlaying || !compiled.audible || compiled.error) {
       engine.current?.setPattern(null);
       return;
     }
     const timer = window.setTimeout(
-      () => engine.current?.setPattern(activePattern),
+      () => engine.current?.setPattern(compiled.pattern),
       40,
     );
     return () => window.clearTimeout(timer);
-  }, [compiled.pattern, compiled.error, isPlaying]);
+  }, [compiled, isPlaying]);
 }

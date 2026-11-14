@@ -17,7 +17,7 @@ export default function PatternPopup({
     state.nodes.find((node) => node.id === id),
   );
   const strudelPattern = node
-    ? nodeDefinitions[node.type]?.generatePattern(node.data, '')
+    ? nodeDefinitions[node.type]?.generate(node.data, { id })
     : '';
   const { copy: copyCode, status: copyStatus } = useCopyText(
     strudelPattern ?? '',

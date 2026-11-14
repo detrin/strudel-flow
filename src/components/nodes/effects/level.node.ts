@@ -1,4 +1,4 @@
-import { defineNode, generateParameterEffects } from '../define-node';
+import { defineNode } from '../define-node';
 
 export default defineNode({
   id: 'level-node',
@@ -34,5 +34,4 @@ export default defineNode({
       unit: '×',
     },
   },
-  generate: generateParameterEffects,
 });

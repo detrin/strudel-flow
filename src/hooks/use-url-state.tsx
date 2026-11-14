@@ -45,6 +45,7 @@ export function useUrlState() {
           state.colorMode === previous.colorMode &&
           state.cpm === previous.cpm &&
           state.bpc === previous.bpc &&
+          state.prelude === previous.prelude &&
           state.name === previous.name &&
           state.author === previous.author &&
           state.description === previous.description)

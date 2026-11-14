@@ -35,7 +35,12 @@ export const initialNodes: AppNode[] = [
     id: 'filter_1',
     type: 'lpf-node',
     position: { x: 560, y: 255 },
-    data: { title: 'Filter', icon: 'Filter', state: 'running', lpf: '1500 1' },
+    data: {
+      title: 'Filter',
+      icon: 'Filter',
+      state: 'running',
+      cutoff: '1500',
+    },
   },
 ];
 

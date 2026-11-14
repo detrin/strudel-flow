@@ -1,24 +1,29 @@
 import { createElement, type ComponentType, type ReactNode } from 'react';
 import type { iconMapping } from '@/data/icon-mapping';
 
-export type Parameter =
-  | {
-      control: 'knob';
-      label: string;
-      default: number;
-      min: number;
-      max: number;
-      step: number;
-      unit?: string;
-      format?: (value: number) => string;
-    }
-  | { control: 'text'; label: string; default: string }
-  | {
-      control: 'select';
-      label: string;
-      default: string;
-      options: readonly { value: string; label: string }[];
-    };
+type Common = {
+  label: string;
+  /** Strudel method this parameter is written as. Defaults to its key. */
+  method?: string;
+};
+export type Parameter = Common &
+  (
+    | {
+        control: 'knob';
+        default: number;
+        min: number;
+        max: number;
+        step: number;
+        unit?: string;
+        format?: (value: number) => string;
+      }
+    | { control: 'text'; default: string }
+    | {
+        control: 'select';
+        default: string;
+        options: readonly { value: string; label: string }[];
+      }
+  );
 export type Parameters = Record<string, Parameter>;
 export type ParameterValues<P extends Parameters> = {
   [K in keyof P]: P[K] extends { control: 'knob' } ? number : string;
@@ -39,10 +44,14 @@ type ControlsContext = Pick<
   CustomControlsProps<Record<never, never>>,
   'id' | 'isPlaying' | 'isMuted'
 >;
+export type Category = 'Instruments' | 'Synths' | 'Audio Effects';
+/** Per-node context the compiler passes to `generate`. */
+export type GenerateContext = { id: string };
+
 export type NodeDefinition = {
   id: string;
   title: string;
-  category: 'Instruments' | 'Synths' | 'Audio Effects';
+  category: Category;
   icon: keyof typeof iconMapping;
   order?: number;
   parameters: Parameters;
@@ -52,17 +61,24 @@ export type NodeDefinition = {
     data: Record<string, unknown>,
     updates: Record<string, unknown>,
   ) => Record<string, unknown>;
-  generatePattern: (
-    data: Record<string, unknown>,
-    input: string,
-    scopeId?: string,
-  ) => string;
+  /**
+   * Instruments return a full pattern expression (`s("bd*4")`).
+   * Everything else returns the method calls it appends to its input,
+   * without the leading dot (`lpf(800).lpq(4)`), or '' to pass through.
+   */
+  generate: (data: Record<string, unknown>, context: GenerateContext) => string;
   renderControls?: (
     data: Record<string, unknown>,
     update: (data: Record<string, unknown>) => void,
     context: ControlsContext,
   ) => ReactNode;
 };
+
+export const isSource = (definition: Pick<NodeDefinition, 'category'>) =>
+  definition.category === 'Instruments';
+
+export const methodOf = (key: string, parameter: Parameter) =>
+  parameter.method ?? key;
 
 function parameterValues<P extends Parameters>(
   parameters: P,
@@ -82,13 +98,37 @@ function parameterValues<P extends Parameters>(
   ) as ParameterValues<P>;
 }
 
+const literal = (value: string | number) =>
+  typeof value === 'number' ? String(value) : JSON.stringify(value);
+
+/**
+ * The default code for parameter nodes: one call per parameter that differs
+ * from its default. A node whose parameters are all at their defaults still
+ * writes its first parameter, so it never disappears from the code.
+ */
+export function parameterCalls(
+  parameters: Parameters,
+  values: Record<string, string | number>,
+) {
+  const entries = Object.entries(parameters);
+  const changed = entries.filter(
+    ([key, parameter]) => values[key] !== parameter.default,
+  );
+  return (changed.length ? changed : entries.slice(0, 1))
+    .map(
+      ([key, parameter]) =>
+        `${methodOf(key, parameter)}(${literal(values[key])})`,
+    )
+    .join('.');
+}
+
 export function defineNode<
   const P extends Parameters,
   D extends Record<string, unknown> = Record<never, never>,
 >(definition: {
   id: string;
   title: string;
-  category: NodeDefinition['category'];
+  category: Category;
   icon: NodeDefinition['icon'];
   order?: number;
   parameters: P;
@@ -98,17 +138,18 @@ export function defineNode<
     updates: Partial<D & ParameterValues<P>>,
     data: Record<string, unknown>,
   ) => Record<string, unknown>;
-  generate: (
+  /** Defaults to `parameterCalls` for parameter-only effect nodes. */
+  generate?: (
     values: D & ParameterValues<P>,
-    input: string,
-    context: { parameters: P; scopeId?: string; data: Record<string, unknown> },
+    context: GenerateContext,
   ) => string;
   component?: ComponentType<NodeControlsProps<P, D>>;
 }): NodeDefinition {
   const {
     parameters,
     component,
-    generate,
+    generate = (values) =>
+      parameterCalls(parameters, values as Record<string, string | number>),
     defaults = {} as D,
     read = (data) => data,
     write,
@@ -147,12 +188,7 @@ export function defineNode<
         write ? write(resolve({}), {}) : parameterValues(parameters, {}),
       ),
     },
-    generatePattern: (data, input, scopeId) =>
-      generate(resolve(data), input, {
-        parameters,
-        scopeId,
-        data,
-      }),
+    generate: (data, context) => generate(resolve(data), context),
     renderControls: component
       ? (data, update, context) =>
           createElement(component, {
@@ -162,14 +198,4 @@ export function defineNode<
           })
       : undefined,
   };
-}
-export function generateParameterEffects(
-  values: Record<string, number>,
-  input: string,
-  { parameters }: { parameters: Parameters },
-) {
-  const calls = Object.entries(parameters).flatMap(([key, parameter]) =>
-    values[key] === parameter.default ? [] : [`${key}(${values[key]})`],
-  );
-  return [input, ...calls].filter(Boolean).join('.');
 }

@@ -118,11 +118,7 @@ export const DEFAULTS = {
   scaleType: 'major',
 } as const;
 
-export function generatePattern(data: ChordData, strudelString: string) {
-  const pattern = chordPattern(data);
-  if (!pattern) return strudelString;
-  return strudelString ? `stack(${strudelString}, ${pattern})` : pattern;
-}
+export const generatePattern = chordPattern;
 
 export function chordLabels(data: ChordData) {
   const scaleType = data.scaleType ?? DEFAULTS.scaleType;

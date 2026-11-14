@@ -16,6 +16,7 @@ export interface ProjectState {
   colorMode: ColorMode;
   cpm: string;
   bpc?: string;
+  prelude?: string;
 }
 
 function encodeState(state: ProjectState): string {
@@ -74,7 +75,7 @@ function validateState(value: unknown): ProjectState | null {
   )
     return null;
   if (
-    ['name', 'author', 'description'].some((key) => {
+    ['name', 'author', 'description', 'prelude'].some((key) => {
       const field = (value as Record<string, unknown>)[key];
       return field !== undefined && typeof field !== 'string';
     })

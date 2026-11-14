@@ -26,6 +26,8 @@ type AppState = {
   theme: string;
   cpm: string;
   bpc: string;
+  /** Code statements that are not lines; kept verbatim. */
+  prelude: string;
   pattern: string;
   isPlaying: boolean;
   error: string | null;
@@ -61,6 +63,7 @@ export const useAppStore = create<AppStore>()(
     colorMode: 'system',
     cpm: '120',
     bpc: '4',
+    prelude: '',
     pattern: '',
     isPlaying: false,
     error: null,

@@ -18,9 +18,7 @@ export function codeSyntaxError(code: string): string | null {
   }
 }
 
-export function generatePattern(data: CustomData, strudelString: string) {
+export function generatePattern(data: CustomData) {
   const expression = codeExpression(data.customPattern ?? DEFAULT_CODE);
-  if (!expression) return strudelString;
-  const pattern = `(\n${expression}\n)`;
-  return strudelString ? `stack(${strudelString}, ${pattern})` : pattern;
+  return expression ? `(${expression})` : '';
 }

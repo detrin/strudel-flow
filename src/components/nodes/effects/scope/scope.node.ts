@@ -1,6 +1,6 @@
 import { defineNode } from '../../define-node';
 import { ScopeNode } from './scope-node';
-import { generatePattern, type ScopeData } from './scope';
+import { scopeId, type ScopeData } from './scope';
 
 export default defineNode({
   id: 'scope-node',
@@ -11,6 +11,5 @@ export default defineNode({
   parameters: {},
   defaults: {} as ScopeData,
   component: ScopeNode,
-  generate: (values, input, { scopeId }) =>
-    generatePattern(values, input, scopeId),
+  generate: (_values, { id }) => `analyze(${JSON.stringify(scopeId(id))})`,
 });

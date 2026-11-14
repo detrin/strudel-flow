@@ -19,6 +19,7 @@ export default defineNode({
     },
     roomsize: {
       control: 'knob',
+      method: 'rsize',
       label: 'rsize',
       default: 1,
       min: 0,
@@ -28,6 +29,7 @@ export default defineNode({
     },
     roomfade: {
       control: 'knob',
+      method: 'rfade',
       label: 'rfade',
       default: 0.5,
       min: 0,
@@ -37,6 +39,7 @@ export default defineNode({
     },
     roomlp: {
       control: 'knob',
+      method: 'rlp',
       label: 'rlp',
       default: 10000,
       min: 0,
@@ -46,6 +49,7 @@ export default defineNode({
     },
     roomdim: {
       control: 'knob',
+      method: 'rdim',
       label: 'rdim',
       default: 8000,
       min: 0,
@@ -53,15 +57,5 @@ export default defineNode({
       step: 100,
       format,
     },
-  },
-  generate: (_values, input, { data }) => {
-    const calls = [
-      data.room && `room("${data.room}")`,
-      data.roomsize && `rsize(${data.roomsize})`,
-      data.roomfade && `rfade(${data.roomfade})`,
-      data.roomlp && `rlp(${data.roomlp})`,
-      data.roomdim && `rdim(${data.roomdim})`,
-    ].filter(Boolean);
-    return [input, ...calls].filter(Boolean).join('.');
   },
 });

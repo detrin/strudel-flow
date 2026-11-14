@@ -34,12 +34,12 @@ export default defineNode({
       step: 0.01,
     },
   },
-  generate: ({ rate, direction, lateOffset }, input) => {
+  generate: ({ rate, direction, lateOffset }) => {
     const calls = [];
     if (rate !== 1) calls.push(`fast(${rate})`);
     if (direction === 'reverse') calls.push('rev()');
     if (direction === 'pingpong') calls.push('palindrome()');
     if (lateOffset !== 0) calls.push(`late(${lateOffset})`);
-    return [input, ...calls].filter(Boolean).join('.');
+    return calls.join('.');
   },
 });

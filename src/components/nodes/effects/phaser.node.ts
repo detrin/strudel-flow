@@ -24,15 +24,4 @@ export default defineNode({
       step: 0.01,
     },
   },
-  write: (updates, data) => ({
-    phaser: data.phaser ?? '1',
-    phaserdepth: data.phaserdepth ?? '0.5',
-    ...updates,
-  }),
-  generate: (_values, input, { data }) => {
-    if (!data.phaser || !data.phaserdepth) return input;
-    return [input, `phaser(${data.phaser}).phaserdepth(${data.phaserdepth})`]
-      .filter(Boolean)
-      .join('.');
-  },
 });

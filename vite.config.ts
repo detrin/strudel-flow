@@ -10,6 +10,9 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
-    environment: 'node',
+    environment: 'jsdom',
+    setupFiles: ['src/test/setup.ts'],
+    // @strudel/web's `main` is a browser IIFE; tests need its ESM build.
+    alias: { '@strudel/web': '@strudel/web/dist/index.mjs' },
   },
 });
