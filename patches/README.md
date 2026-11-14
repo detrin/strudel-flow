@@ -1,5 +1,26 @@
 # Share a patch
 
+A patch is either **Strudel code** (`*.strudel`) or **graph JSON** exported from
+the app (`*.json`). Both appear in **Patches → Community patches**.
+
+## As code
+
+Write it in the console, then save it here as `your-patch.strudel` with a
+header:
+
+```js
+// @name My patch
+// @author your-github-handle
+// @description One sentence about it.
+setcpm(120 / 4);
+kick: s('bd*4').bank('RolandTR909');
+```
+
+Opening it builds the nodes from the code, like typing it in the console. See
+[undertow.strudel](undertow.strudel).
+
+## As graph JSON
+
 1. Make something in Strudel Flow. Open **Patches**, give it a name, and click **Export**.
 2. Put the downloaded JSON file in this folder. Fill in the empty `author` (your GitHub handle) and `description` fields directly in the JSON.
 3. Run `pnpm dev`. Find your patch under **Patches → Community patches** and check that it loads and plays.

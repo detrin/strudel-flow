@@ -1,0 +1,85 @@
+import { expect, test, type Page } from '@playwright/test';
+import { editor, nodeOfType, nodes, openFresh, trackErrors } from './helpers';
+
+async function openUndertow(page: Page) {
+  await page.getByRole('button', { name: 'Patches' }).click();
+  await page.getByText('Community patches').click();
+  await page.getByRole('button', { name: /Load Undertow/ }).click();
+  await page.keyboard.press('Escape');
+  await expect(nodes(page)).toHaveCount(46);
+}
+/** The Code node whose pattern contains `text`. */
+const codeNode = (page: Page, text: string) =>
+  nodeOfType(page, 'custom-node').filter({
+    has: page.locator(`textarea:text-is('${text}')`),
+  });
+
+test('a whole song: open, play, mix, rewire, undo, share', async ({
+  page,
+  context,
+}) => {
+  const errors = trackErrors(page);
+  await openFresh(page);
+  await openUndertow(page);
+  await expect(editor(page)).toContainText('kick: n("0*4")');
+  await expect(page.getByLabel('Tempo in beats per minute')).toHaveValue('132');
+
+  // Play: the 909 kit loads and nothing fails.
+  const kit = page.waitForResponse(
+    (response) => /RolandTR909/.test(response.url()) && response.ok(),
+    { timeout: 20_000 },
+  );
+  await page.getByRole('button', { name: /^Play/ }).click();
+  await kit;
+  await page.waitForTimeout(1000);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+
+  // Mix: mute the hats line from its source node.
+  await codeNode(page, 's("[~ hh]*4")')
+    .getByRole('button', { name: 'Mute instrument' })
+    .click();
+  await expect(editor(page)).toContainText('_hats: s("[~ hh]*4")');
+
+  // Rewire: a new Level node wired after the kick's last node joins its line.
+  const before = await nodeOfType(page, 'level-node').count();
+  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('menuitem', { name: 'Effects' }).focus();
+  await page.getByRole('menuitem', { name: 'Add Level' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(nodeOfType(page, 'level-node')).toHaveCount(before + 1);
+  const added = nodeOfType(page, 'level-node').last();
+  const kickArrange = nodeOfType(page, 'arrange-node').first();
+  await added.getByRole('slider', { name: 'gain', exact: true }).focus();
+  await page.keyboard.press('ArrowDown');
+  await kickArrange
+    .locator('.react-flow__handle.source')
+    .dragTo(added.locator('.react-flow__handle.target'));
+  await expect(editor(page)).toContainText(
+    // CodeMirror's text joins lines without newlines.
+    '.mask("<1!32 0!8 1!24>")  .gain(0.79)',
+  );
+
+  // Undo: delete the stab's Delay node, then bring it back.
+  const delays = nodeOfType(page, 'delay-node');
+  const delayCount = await delays.count();
+  await delays.last().locator('header').click();
+  await page.keyboard.press('Backspace');
+  await expect(delays).toHaveCount(delayCount - 1);
+  await expect(editor(page)).not.toContainText('.delayfeedback(0.6)');
+  await page.locator('.react-flow__pane').click({ position: { x: 5, y: 500 } });
+  await page.keyboard.press('ControlOrMeta+Z');
+  await expect(delays).toHaveCount(delayCount);
+  await expect(editor(page)).toContainText('.delayfeedback(0.6)');
+
+  // Share: the link opens the same song somewhere else.
+  await page.getByRole('button', { name: 'Patches' }).click();
+  const link = await page
+    .getByRole('textbox', { name: 'Shareable patch link' })
+    .inputValue();
+  const code = (await editor(page).textContent()) ?? '';
+  const elsewhere = await context.newPage();
+  await elsewhere.goto(link);
+  await expect(nodes(elsewhere)).toHaveCount(47);
+  await expect(editor(elsewhere)).toHaveText(code);
+  errors.expectNone();
+});

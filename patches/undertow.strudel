@@ -1,0 +1,59 @@
+// @name Undertow (flow edition)
+// @author detrin
+// @description Acid techno in 64 bars: 909 drums, an acid line with a filter envelope, LFOs, dub stabs and a riser. Each line's Arrange node is its part of the song.
+
+setcpm(132/4)
+
+kick: n("0*4")
+  .s("bd")
+  .bank("RolandTR909")
+  .gain(1)
+  .mask("<1!32 0!8 1!24>")
+
+rumble: note("<c1 c1 eb1 g0>*8")
+  .s("sine")
+  .lpf(140)
+  .gain(0.55)
+  .delay(0.3).delaytime(0.1875).delayfeedback(0.4)
+  .mask("<0!4 1!28 0!8 1!16 0!8>")
+
+hats: s("[~ hh]*4")
+  .bank("RolandTR909")
+  .hpf(6000)
+  .gain(0.45)
+  .pan(sine.range(0.3, 0.7).slow(4))
+  .mask("<0!4 1!28 0!8 1!24>")
+
+clap: s("~ cp")
+  .bank("RolandTR909")
+  .late(0.01)
+  .room(0.25)
+  .mask("<0!8 1!24 0!8 1!16 0!8>")
+
+acid: note("c2 c2 [c3 c2] eb2 c2 g1 c2 bb1")
+  .s("sawtooth")
+  .lpf(500).lpq(14).lpenv(3).lpdecay(0.12)
+  .distort(0.6)
+  .delay(0.25).delaytime(0.375)
+  .gain(perlin.range(0.6, 0.85))
+  .analyze("acid")
+  .mask("<0!12 1!20 0!4 1!20 0!8>")
+
+pad: n("<[0,2,4,6] [5,7,9,11]>/2")
+  .scale("C3:minor")
+  .s("triangle")
+  .attack(0.5).decay(0.5).sustain(0.6).release(1.5)
+  .phaser(0.5).phaserdepth(0.6)
+  .room(0.6).rsize(6)
+  .mask("<0!32 1!8 0!16 1!8>")
+
+stab: note("~ [c4,eb4,g4] ~ ~")
+  .s("square")
+  .hpf(400)
+  .delay(0.5).delaytime(0.1875).delayfeedback(0.6)
+  .mask("<0!16 1!16 0!8 1!16 0!8>")
+
+riser: s("white*16")
+  .hpf(saw.range(500, 8000).slow(2))
+  .gain(0.25)
+  .mask("<0!14 1!2 0!22 1!2 0!24>")

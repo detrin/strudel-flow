@@ -13,6 +13,8 @@ import type { ProjectState } from '@/lib/project-state';
 import { PatchGallery } from './patch-gallery';
 import { ControlButton } from './control-button';
 import { useAppStore } from '@/store/app-store';
+import { loadCode } from '@/store/code-sync';
+import type { CommunityPatch } from '@/lib/community-patches';
 
 export function PresetPopover() {
   const name = useAppStore((state) => state.name);
@@ -30,6 +32,12 @@ export function PresetPopover() {
     requestAnimationFrame(() => {
       void fitView({ padding: 0.3, maxZoom: 1 });
     });
+  };
+  const loadCommunity = (patch: CommunityPatch) => {
+    if (patch.state) return loadPatch(patch.state);
+    loadCode(patch.code, patch);
+    setLink(getShareUrl(capturePatch()));
+    setStatus('Patch loaded');
   };
   const copy = async () => {
     const url = getShareUrl(capturePatch());
@@ -139,7 +147,7 @@ export function PresetPopover() {
         >
           {status || 'Export your patch or copy a link to share.'}
         </p>
-        <PatchGallery onLoad={(patch) => loadPatch(patch.state)} />
+        <PatchGallery onLoad={loadCommunity} />
       </PopoverContent>
     </Popover>
   );

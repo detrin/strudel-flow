@@ -1,90 +1,81 @@
-# Strudel Flow
+# Strudel Flow (fork)
 
-A visual drum machine and pattern sequencer built with [Strudel.cc](https://strudel.cc), [React Flow](https://reactflow.dev), and styled using [Tailwind CSS](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/). Create complex musical patterns by connecting instrument nodes to effect nodes with a drag-and-drop interface.
+A visual editor for [Strudel](https://strudel.cc) patterns where **code and
+nodes are two views of the same program**. Type Strudel code in the console on
+the left and the canvas on the right builds and wires the nodes; turn a knob,
+wire a node or mute a line and the code is rewritten. Forked from
+[xyflow/strudel-flow](https://github.com/xyflow/strudel-flow).
 
-## Play locally
+- **Code console** (optional, Ctrl+B): CodeMirror with strudel.cc's
+  highlighting and keys (Ctrl+Enter play, Ctrl+. stop). Invalid code keeps
+  the last valid canvas and says why.
+- **Two-way sync**: each `label: expression` line is a row of nodes. New nodes
+  are placed next to their neighbours; edited nodes keep their place. Code
+  the nodes don't model is never lost — it becomes a Code or Method node.
+- **Every node a song needs**: drum-machine banks, filters with Strudel's
+  filter envelope, high-pass, delay, reverb, LFOs (Modulate), and Arrange
+  for song structure (which bars a line plays).
+- **strudel.cc's themes** (all 41, Strudel and Blue Screen included) for the
+  editor and the whole UI, and strudel.cc's sample library.
+- Knobs show exactly what plays: values the code leaves out are Strudel's own
+  defaults (pinned by tests against Strudel's source).
+
+Open **Patches → Community patches → Undertow** for a 64-bar acid techno
+track that uses every node.
+
+## Develop
 
 ```sh
 pnpm install
-pnpm dev
+pnpm dev          # http://localhost:5173
+pnpm check        # format, lint, typecheck, dead code (knip), unit tests
+pnpm e2e          # Playwright end-to-end tests (local only)
 ```
 
-## Share your patch with us
+Commits run `pnpm check`'s gates in a pre-commit hook; CI runs them (plus a
+build) on every push to `main`. End-to-end tests run locally only.
 
-Have you made something cool that you'd like others to use? Export your patch and [add it to `patches/`](patches/README.md) in a pull request. Accepted patches appear in the searchable community gallery.
+How it works, and the plan this fork follows: [docs/PLAN.md](docs/PLAN.md).
 
-## Adding new nodes
+```
+code ─parse→ Program ─reconcile + layout→ canvas
+code ←emit── Program ←compile (follows wires)── canvas
+```
 
-Want to add a new node? Strudel has endless features and combinations to explore, and we'd love if you wanted to help contribute to Strudel Flow. We've defined a small API to make it easy to turn them into nodes for everyone to use.
+## Patches
 
-You provide the controls and the Strudel code. The app handles the menu entry, UI, and saved settings.
+Patches in [`patches/`](patches/README.md) appear in the gallery: graph JSON
+exported from the app, or plain Strudel code (`.strudel`).
 
-### Create a file
+## Adding a node
 
-Add a file named `your-name.node.ts` inside `src/components/nodes/`:
-
-- `instruments/` for nodes that create patterns.
-- `sounds/` for nodes that choose sounds.
-- `effects/` for nodes that modify patterns.
-
-The app discovers `.node.ts` files automatically. No registry edits needed. A single-file node can live directly in its category folder; use a folder when you have several related files.
-
-### Copy the boilerplate
-
-Paste this into your file, then change it to match what you want to build:
+Add `your-name.node.ts` under `src/components/nodes/` (`instruments/`,
+`sounds/` or `effects/`); it is discovered automatically. A parameter node
+needs no code at all — its parameters are its Strudel methods:
 
 ```ts
-import { defineNode } from '@/components/nodes/define-node';
+import { defineNode, knob } from '@/components/nodes/define-node';
 
 export default defineNode({
-  id: 'your-name-node',
-  title: 'Your node',
+  id: 'shape-node',
+  title: 'Shape',
   category: 'Audio Effects',
   icon: 'Waves',
   parameters: {
-    amount: {
-      control: 'knob',
-      label: 'Amount',
-      default: 0.3,
-      min: 0,
-      max: 1,
-      step: 0.01,
-    },
+    // .shape(0.3); `implicit` is Strudel's value when the method is absent.
+    shape: knob('shape', 0.3, [0, 1, 0.01], { implicit: 0 }),
   },
-  generate: ({ amount }, input) => (input ? `${input}.delay(${amount})` : ''),
 });
 ```
 
-This example adds a delay control. Replace `.delay(...)` with the Strudel code for your node, and add whatever parameters it needs.
+That one declaration gives the node its knobs, writes `.shape(0.3)`, and reads
+`.shape(...)` from typed code back into the node. Nodes with richer code
+provide `generate` (values → method calls, or a full expression for
+instruments) and `parse` (calls → values), and the test suite checks that each
+node reads its own code back. See the nodes in `src/components/nodes/` for
+custom controls, envelopes and instruments.
 
-### Customize your node
+## License
 
-**`generate(values, input)`** returns a string of Strudel code. `values` contains your current parameter values; `input` contains the connected pattern.
-
-Effects and sounds usually append to `input`. Instruments create a pattern of their own. For example, an instrument could use:
-
-```ts
-parameters: {
-  notes: { control: 'text', label: 'Notes', default: 'c4 e4 g4' },
-},
-generate: ({ notes }) => `note(${JSON.stringify(notes)})`,
-```
-
-### Custom interfaces
-
-Need a grid, keyboard, or something beyond the built-in controls? All you need to do is pass a React **`component`**.
-
-## Acknowledgments
-
-- [Strudel.cc](https://strudel.cc)
-- [tweakcn](https://tweakcn.com)
-- [React Flow](https://reactflow.dev)
-- [shadcn/ui](https://ui.shadcn.com)
-
-## Contact Us
-
-We’re here to help! If you have any questions, feedback, instrument recommendations, or just want to share your project with us, feel free to reach out:
-
-- **Contact Form**: Use the contact form on our [website](https://xyflow.com/contact).
-- **Email**: Drop us an email at [info@xyflow.com](mailto:info@xyflow.com).
-- **Discord**: Join our [Discord server](https://discord.com/invite/RVmnytFmGW) to connect with the community and get support.
+AGPL-3.0, like Strudel. `src/themes/strudel/` is vendored from
+`@strudel/codemirror`.

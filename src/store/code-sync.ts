@@ -45,6 +45,26 @@ export function setCode(code: string) {
   });
 }
 
+/** Replaces the whole patch with code, e.g. a code patch from the gallery. */
+export function loadCode(
+  code: string,
+  meta: { name: string; author: string; description: string },
+) {
+  useAppStore.setState({
+    nodes: [],
+    edges: [],
+    prelude: '',
+    isPlaying: false,
+    error: null,
+    ...meta,
+  });
+  setCode(code);
+  // A fresh patch starts a fresh undo history.
+  useAppStore.setState({
+    graphRevision: useAppStore.getState().graphRevision + 1,
+  });
+}
+
 /** Re-runs the layout for code-created nodes once the canvas measured them. */
 function relayout(state: State) {
   const pending = state.nodes.filter((node) => unmeasured.has(node.id));
