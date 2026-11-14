@@ -7,7 +7,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { WebSocketServer } from 'ws';
 import { z } from 'zod';
 
-const PORT = Number(process.env.STRUDEL_FLOW_PORT ?? 4321);
+const PORT = Number(process.env.STRUDEL_FLOW_PORT ?? 4331);
 const TIMEOUT_MS = 10_000;
 const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 const NOT_CONNECTED =

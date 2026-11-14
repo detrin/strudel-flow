@@ -64,7 +64,7 @@ hats swing", "drop the bass for 8 bars" — and you hear it immediately.
 
 Tools: `get_patch`, `set_code`, `set_node`, `set_muted`, `set_tempo`,
 `play`, `stop`, `set_theme`, `list_node_types`. The bridge listens on
-`127.0.0.1:4321` (`STRUDEL_FLOW_PORT` to change; `?bridge=PORT` in the app)
+`127.0.0.1:4331` (`STRUDEL_FLOW_PORT` to change; `?bridge=PORT` in the app)
 and only accepts pages served from this machine.
 
 ## Patches

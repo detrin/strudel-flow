@@ -81,9 +81,9 @@ describe('bridge commands', () => {
 
 describe('bridgePort', () => {
   it('is on in development and with ?bridge, off otherwise', () => {
-    expect(bridgePort('http://x/', true)).toBe(4321);
+    expect(bridgePort('http://x/', true)).toBe(4331);
     expect(bridgePort('http://x/', false)).toBeNull();
-    expect(bridgePort('http://x/?bridge', false)).toBe(4321);
+    expect(bridgePort('http://x/?bridge', false)).toBe(4331);
     expect(bridgePort('http://x/?bridge=5000', false)).toBe(5000);
     expect(bridgePort('http://x/?bridge=off', true)).toBeNull();
   });

@@ -1,7 +1,7 @@
 import { useAppStore } from '@/store/app-store';
 import { commands } from './commands';
 
-export const DEFAULT_BRIDGE_PORT = 4321;
+export const DEFAULT_BRIDGE_PORT = 4331;
 const RETRY_MS = 2000;
 
 /** Request from the MCP server, and the app's reply. */
