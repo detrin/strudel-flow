@@ -69,6 +69,7 @@ export default function Editor() {
             colorMode={themeByName(theme).dark ? 'dark' : 'light'}
             panActivationKeyCode={null}
             zoomOnDoubleClick={false}
+            proOptions={{ hideAttribution: true }}
             minZoom={0.2}
             fitView
             fitViewOptions={{ padding: 0.3, maxZoom: 1 }}

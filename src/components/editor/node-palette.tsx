@@ -40,7 +40,7 @@ export function NodePalette() {
     <>
       <Panel
         position="center-left"
-        className="m-4! sm:m-6!"
+        className="m-2!"
         ref={panel}
         aria-label="Add nodes"
       >
@@ -122,7 +122,7 @@ export function NodePalette() {
       {placing && (
         <Panel
           position="bottom-center"
-          className="m-4! rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs text-muted-foreground sm:m-6!"
+          className="m-2! rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs text-muted-foreground"
         >
           <span role="status">
             Click the canvas to place{' '}

@@ -7,6 +7,7 @@ declare module '@strudel/web' {
   export function initStrudel(): Promise<StrudelSession>;
   export function evaluate(code: string): Promise<unknown>;
   export function hush(): void;
+  export function noteToMidi(note: string): number;
   export function getADSRValues(
     values: (number | undefined)[],
     curve?: string,
@@ -40,4 +41,9 @@ declare module '@strudel/web' {
       color: string;
     },
   ): void;
+}
+
+declare module '@strudel/soundfonts' {
+  /** Registers the General MIDI soundfonts (gm_*) as sounds. */
+  export function registerSoundfonts(): void;
 }

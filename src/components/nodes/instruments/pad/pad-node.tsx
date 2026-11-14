@@ -6,8 +6,9 @@ import {
   DEFAULTS,
   DIVISIONS,
   LEGACY_CLEARED,
-  ROWS,
+  OCTAVE_OFFSETS,
   padClip,
+  pitchRange,
   placeNote,
   rescaleNotes,
   type PadData,
@@ -45,6 +46,16 @@ export function PadNode({
   const total = division * bars;
   const cellWidth = BAR_WIDTH / division;
   const width = total * cellWidth;
+  const { low, high, size } = pitchRange(data);
+  const rows = high - low + 1;
+  const minOctave = data.minOctave ?? 0;
+  const maxOctave = Math.max(minOctave, data.maxOctave ?? 0);
+  const isRoot = (pitch: number) => ((pitch % size) + size) % size === 0;
+  /** Row from the top for a degree. */
+  const rowOf = (pitch: number) => high - pitch;
+  const hidden = clip.notes.filter(
+    (note) => note.pitch < low || note.pitch > high,
+  ).length;
 
   const [draft, setDraft] = useState<PadNote[] | null>(null);
   const notes = draft ?? clip.notes;
@@ -72,10 +83,7 @@ export function PadNode({
     return {
       x,
       col: Math.max(0, Math.min(total - 1, Math.floor(x / cellWidth))),
-      pitch: Math.max(
-        0,
-        Math.min(ROWS - 1, ROWS - 1 - Math.floor(y / ROW_HEIGHT)),
-      ),
+      pitch: Math.max(low, Math.min(high, high - Math.floor(y / ROW_HEIGHT))),
       scale,
     };
   };
@@ -148,7 +156,7 @@ export function PadNode({
 
   return (
     <div className="flex w-full flex-col gap-2 rounded-lg bg-card p-3 text-card-foreground">
-      <div className="nodrag flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="nodrag flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground">
         <label className="flex items-center gap-1.5">
           Bars
           <select
@@ -186,6 +194,48 @@ export function PadNode({
             ))}
           </select>
         </label>
+        <span className="flex items-center gap-1.5">
+          Oct
+          <select
+            aria-label="Lowest octave"
+            title="Lowest octave shown"
+            value={minOctave}
+            onChange={(event) =>
+              onChange({ minOctave: Number(event.target.value), maxOctave })
+            }
+            className={selectClass}
+          >
+            {OCTAVE_OFFSETS.filter((o) => o <= maxOctave).map((option) => (
+              <option key={option} value={option}>
+                {option > 0 ? `+${option}` : option}
+              </option>
+            ))}
+          </select>
+          to
+          <select
+            aria-label="Highest octave"
+            title="Highest octave shown"
+            value={maxOctave}
+            onChange={(event) =>
+              onChange({ minOctave, maxOctave: Number(event.target.value) })
+            }
+            className={selectClass}
+          >
+            {OCTAVE_OFFSETS.filter((o) => o >= minOctave).map((option) => (
+              <option key={option} value={option}>
+                {option > 0 ? `+${option}` : option}
+              </option>
+            ))}
+          </select>
+        </span>
+        {hidden > 0 && (
+          <span
+            title="Notes outside the octaves shown; they still play"
+            className="text-amber-600 dark:text-amber-400"
+          >
+            {hidden} hidden
+          </span>
+        )}
         <button
           type="button"
           onClick={() => save({ notes: [] })}
@@ -201,12 +251,12 @@ export function PadNode({
       <div className="flex">
         {/* Scale degrees, high to low; the tonic rows are marked. */}
         <div className="w-6 shrink-0 pr-1 text-right font-mono text-[9px] leading-4 text-muted-foreground">
-          {Array.from({ length: ROWS }, (_, row) => {
-            const pitch = ROWS - 1 - row;
+          {Array.from({ length: rows }, (_, row) => {
+            const pitch = high - row;
             return (
               <div
                 key={pitch}
-                className={cn(pitch % 7 === 0 && 'font-bold text-foreground')}
+                className={cn(isRoot(pitch) && 'font-bold text-foreground')}
               >
                 {pitch}
               </div>
@@ -226,16 +276,18 @@ export function PadNode({
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
             className="nodrag nopan relative cursor-crosshair touch-none bg-muted/40 select-none"
-            style={{ width, height: ROWS * ROW_HEIGHT }}
+            data-low={low}
+            data-high={high}
+            style={{ width, height: rows * ROW_HEIGHT }}
           >
-            {Array.from({ length: ROWS }, (_, row) => {
-              const pitch = ROWS - 1 - row;
+            {Array.from({ length: rows }, (_, row) => {
+              const pitch = high - row;
               return (
                 <div
                   key={pitch}
                   className={cn(
                     'absolute inset-x-0 border-b border-border/30',
-                    pitch % 7 === 0 && 'bg-foreground/[0.06]',
+                    isRoot(pitch) && 'bg-foreground/[0.06]',
                   )}
                   style={{ top: row * ROW_HEIGHT, height: ROW_HEIGHT }}
                 />
@@ -256,7 +308,9 @@ export function PadNode({
               />
             ))}
             {notes.map((note, index) =>
-              note.start >= total ? null : (
+              note.start >= total ||
+              note.pitch < low ||
+              note.pitch > high ? null : (
                 <div
                   key={index}
                   data-note={index}
@@ -266,7 +320,7 @@ export function PadNode({
                     left: note.start * cellWidth + 1,
                     width:
                       Math.min(note.length, total - note.start) * cellWidth - 1,
-                    top: (ROWS - 1 - note.pitch) * ROW_HEIGHT + 1,
+                    top: rowOf(note.pitch) * ROW_HEIGHT + 1,
                     height: ROW_HEIGHT - 2,
                   }}
                 />

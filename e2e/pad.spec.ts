@@ -1,8 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { editor, nodeOfType, openFresh, trackErrors } from './helpers';
 
-const ROWS = 15;
-
 /** The default patch's Pad, cleared, with a helper to point at cells. */
 async function emptyPad(page: Page) {
   await openFresh(page);
@@ -10,13 +8,17 @@ async function emptyPad(page: Page) {
   await pad.getByRole('button', { name: 'Clear' }).click();
   await pad.getByLabel('Grid').selectOption('16');
   const roll = pad.getByRole('grid');
+  // Three octaves, so the degrees used below are all on screen.
+  await pad.getByLabel('Highest octave').selectOption('1');
   const box = (await roll.boundingBox())!;
+  const low = Number(await roll.getAttribute('data-low'));
+  const high = Number(await roll.getAttribute('data-high'));
   const cell = box.width / 16;
-  const row = box.height / ROWS;
+  const row = box.height / (high - low + 1);
   /** Page coordinates of a cell (column, scale degree), `at` 0..1 across. */
   const point = (col: number, pitch: number, at = 0.5) => ({
     x: box.x + (col + at) * cell,
-    y: box.y + (ROWS - 1 - pitch + 0.5) * row,
+    y: box.y + (high - pitch + 0.5) * row,
   });
   const drag = async (
     from: { x: number; y: number },
@@ -69,4 +71,30 @@ test('a clip can span several bars', async ({ page }) => {
   await page.mouse.click(x, y);
   await pad.getByLabel('Bars').selectOption('2');
   await expect(padCode(page)).toContainText('n("[0 ~@31]/2")');
+});
+
+test('the octaves shown can be chosen, lowest never above highest', async ({
+  page,
+}) => {
+  await openFresh(page);
+  const pad = nodeOfType(page, 'pad-node');
+  const roll = pad.getByRole('grid');
+  await expect(roll).toHaveAttribute('data-low', '0');
+  await expect(roll).toHaveAttribute('data-high', '7');
+  await pad.getByLabel('Lowest octave').selectOption('-1');
+  await expect(roll).toHaveAttribute('data-low', '-7');
+  await pad.getByLabel('Highest octave').selectOption('2');
+  await expect(roll).toHaveAttribute('data-high', '21');
+  // The lowest octave cannot go above the highest, nor the other way round.
+  const lowest = await pad
+    .getByLabel('Lowest octave')
+    .locator('option')
+    .allTextContents();
+  expect(lowest).toEqual(['-3', '-2', '-1', '0', '+1', '+2']);
+  await pad.getByLabel('Lowest octave').selectOption('2');
+  const highest = await pad
+    .getByLabel('Highest octave')
+    .locator('option')
+    .allTextContents();
+  expect(highest).toEqual(['+2', '+3']);
 });

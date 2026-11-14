@@ -9,7 +9,7 @@ export function ZoomSlider({ className, ...props }: ZoomSliderProps) {
   return (
     <Panel
       className={cn(
-        'm-4! flex rounded-md border border-border/60 bg-card/90 p-1 sm:m-6!',
+        'm-2! flex rounded-md border border-border/60 bg-card/90 p-1',
         className,
       )}
       {...props}

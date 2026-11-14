@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/app-store';
 import { setCode } from '@/store/code-sync';
 import { themeByName } from '@/themes';
 import { CodeEditor } from './code-editor';
+import { punchcardWidgets } from './punchcard-widgets';
 
 const SYNC_DELAY = 250;
 
@@ -94,6 +95,7 @@ export function CodeConsole({ onClose }: { onClose: () => void }) {
       </header>
       <div className="min-h-0 flex-1">
         <CodeEditor
+          extensions={punchcardWidgets}
           label="Strudel code"
           value={code}
           theme={themeByName(theme).editor}

@@ -1,5 +1,4 @@
 import { Panel } from '@xyflow/react';
-import logo from '@/assets/logo.svg?raw';
 import { PanelLeftOpen, Plus, X } from 'lucide-react';
 import type { MouseEventHandler } from 'react';
 import { ControlButton } from './control-button';
@@ -27,23 +26,7 @@ export function EditorToolbar({
 
   return (
     <>
-      <Panel
-        position="top-left"
-        className="m-4! flex h-12 items-center gap-2.5 sm:m-6!"
-      >
-        <a
-          href="https://xyflow.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="xyflow website"
-          className="rounded-lg transition-opacity hover:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
-        >
-          <span
-            aria-hidden="true"
-            className="block size-10 text-foreground"
-            dangerouslySetInnerHTML={{ __html: logo }}
-          />
-        </a>
+      <Panel position="top-left" className="m-2! flex items-center gap-2">
         {!consoleOpen && (
           <ControlButton
             title="Show code console (Ctrl+B)"
@@ -58,7 +41,7 @@ export function EditorToolbar({
       <Panel
         position="top-center"
         style={{ transform: 'translateX(-50%)' }}
-        className="m-0! mt-20! flex h-14 items-center gap-2 rounded-md border border-border/70 bg-card/95 py-1.5 pr-3 pl-1.5 sm:mt-6!"
+        className="m-0! mt-12! flex h-10 items-center gap-1.5 rounded-b-md border border-border/70 bg-card/95 py-1 pr-2 pl-1 sm:mt-0! sm:border-t-0"
       >
         <PlayPauseButton />
         <div className="flex items-baseline gap-1.5">
@@ -74,20 +57,20 @@ export function EditorToolbar({
               if (Number.isFinite(value))
                 setCpm(String(Math.min(200, Math.max(1, value))));
             }}
-            className="nodrag w-12 bg-transparent text-right font-mono text-xl tabular-nums outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-ring [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="nodrag w-10 bg-transparent text-right font-mono text-base tabular-nums outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-ring [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <span className="text-[9px] font-medium tracking-widest text-muted-foreground">
             BPM
           </span>
         </div>
-        <div className="flex items-baseline gap-1.5 border-l border-border pl-3">
+        <div className="flex items-baseline gap-1 border-l border-border pl-2">
           <select
             id="beats-per-cycle"
             aria-label="Beats per cycle"
             title="Beats per cycle"
             value={bpc}
             onChange={(event) => setBpc(event.target.value)}
-            className="nodrag h-9 w-12 cursor-pointer rounded-md bg-card text-center font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="nodrag h-7 w-10 cursor-pointer rounded-md bg-card text-center font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {Array.from({ length: 16 }, (_, index) => index + 1).map(
               (value) => (
@@ -111,7 +94,7 @@ export function EditorToolbar({
         <Panel
           position="top-center"
           style={{ transform: 'translateX(-50%)' }}
-          className="m-0! mt-36! flex max-w-[min(420px,90vw)] sm:mt-24! items-start gap-3 rounded-md border border-destructive/40 bg-card p-3 text-xs"
+          className="m-0! mt-24! flex max-w-[min(420px,90vw)] sm:mt-12! items-start gap-3 rounded-md border border-destructive/40 bg-card p-3 text-xs"
           role="alert"
         >
           <span>Couldn’t play this patch. {error}</span>
@@ -126,7 +109,7 @@ export function EditorToolbar({
       <ZoomSlider position="bottom-left" />
       <Panel
         position="top-right"
-        className="m-4! flex gap-1 rounded-md border border-border/60 bg-card p-1 sm:m-6!"
+        className="m-2! flex gap-1 rounded-md border border-border/60 bg-card p-1"
       >
         <ControlButton
           title="Add node"
@@ -142,7 +125,7 @@ export function EditorToolbar({
       {bridge === 'connected' && (
         <Panel
           position="bottom-right"
-          className="m-4! flex items-center gap-2 rounded-md border border-border/60 bg-card px-2.5 py-1.5 text-[11px] text-muted-foreground sm:m-6!"
+          className="m-2! flex items-center gap-2 rounded-md border border-border/60 bg-card px-2.5 py-1.5 text-[11px] text-muted-foreground"
         >
           <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
           <span role="status">Agent connected</span>

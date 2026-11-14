@@ -6,7 +6,16 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
-    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    alias: [
+      {
+        find: '@',
+        replacement: fileURLToPath(new URL('./src', import.meta.url)),
+      },
+      // @strudel/web bundles core and webaudio; packages that import them
+      // directly (@strudel/soundfonts) must share that one copy, or their
+      // sounds register where playback never looks.
+      { find: /^@strudel\/(core|webaudio)$/, replacement: '@strudel/web' },
+    ],
   },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],

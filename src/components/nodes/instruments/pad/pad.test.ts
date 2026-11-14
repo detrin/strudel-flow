@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { haps } from '@/test/strudel';
 import {
   generatePattern,
+  pitchRange,
   placeNote,
   rescaleNotes,
   type PadData,
@@ -87,5 +88,37 @@ describe('editing notes', () => {
       n(0, 1, 2),
       n(1, 2, 1),
     ]);
+  });
+});
+
+describe('octave range', () => {
+  it('shows one octave and its top root by default', () => {
+    expect(pitchRange({})).toEqual({ low: 0, high: 7, size: 7 });
+  });
+
+  it('spans the chosen octaves, in degrees of the scale', () => {
+    expect(
+      pitchRange({ minOctave: -1, maxOctave: 1, selectedScaleType: 'major' }),
+    ).toEqual({ low: -7, high: 14, size: 7 });
+    expect(
+      pitchRange({
+        minOctave: -2,
+        maxOctave: 0,
+        selectedScaleType: 'minor:pentatonic',
+      }),
+    ).toEqual({ low: -10, high: 5, size: 5 });
+  });
+
+  it('never lets the lowest octave pass the highest', () => {
+    expect(pitchRange({ minOctave: 2, maxOctave: -1 })).toMatchObject({
+      low: 14,
+      high: 21,
+    });
+  });
+
+  it('plays notes below the root octave', () => {
+    const code = generatePattern(clip([n(-7, 0, 16)]));
+    expect(code).toBe('n("-7").scale("C3:major")');
+    expect(events(code)).toEqual(['0-1 C2']);
   });
 });

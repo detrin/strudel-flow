@@ -13,7 +13,13 @@ export const SAMPLE_PACKS = [
 ].map((pack) => `${DOUGH}/${pack}.json`);
 
 export function loadSamples() {
-  return Promise.allSettled(SAMPLE_PACKS.map((pack) => samples(pack)));
+  return Promise.allSettled([
+    // General MIDI instruments (gm_pad_halo, gm_piano, …), as on strudel.cc.
+    import('@strudel/soundfonts').then((soundfonts) =>
+      soundfonts.registerSoundfonts(),
+    ),
+    ...SAMPLE_PACKS.map((pack) => samples(pack)),
+  ]);
 }
 
 /** Drum machines in tidal-drum-machines, usable with `.bank(name)`. */

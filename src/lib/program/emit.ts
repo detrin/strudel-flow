@@ -53,8 +53,19 @@ export function emitLine({ label, muted, sink }: Line): string {
 
 /** Program → Strudel code. */
 export function emitProgram(program: Program): string {
-  const head = [`setcpm(${program.cpm}/${program.bpc})`];
-  if (program.prelude.trim()) head.push(program.prelude.trim());
+  const prelude = program.prelude.trim();
+  const { cpm, bpc, tempoName } = program;
+  // A tempo written with a constant (`const BPM = 81`, `setcpm(BPM/4)`)
+  // stays that way: the constant takes the tempo, setcpm follows it.
+  const constant =
+    tempoName &&
+    new RegExp(
+      `(\\bconst\\s+${tempoName.replace(/\$/g, '\\$')}\\s*=\\s*)-?[\\d.]+`,
+    );
+  const head =
+    constant && constant.test(prelude)
+      ? [prelude.replace(constant, `$1${cpm}`), `setcpm(${tempoName}/${bpc})`]
+      : [`setcpm(${cpm}/${bpc})`, ...(prelude ? [prelude] : [])];
   const lines = program.lines.map(emitLine).filter(Boolean);
   return [head.join('\n'), ...lines].join('\n\n') + '\n';
 }

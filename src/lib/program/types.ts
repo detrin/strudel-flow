@@ -21,6 +21,11 @@ export type Program = {
   bpc: string;
   /** Statements that are not lines (`samples(...)`, `const x = ...`). */
   prelude: string;
+  /**
+   * The prelude constant the tempo is written with (`const BPM = 81` and
+   * `setcpm(BPM/4)`); a new tempo is written into that constant.
+   */
+  tempoName?: string;
   lines: Line[];
 };
 

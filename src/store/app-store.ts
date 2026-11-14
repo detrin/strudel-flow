@@ -30,6 +30,8 @@ type AppState = {
   bpc: string;
   /** Code statements that are not lines; kept verbatim. */
   prelude: string;
+  /** The prelude constant the tempo is written with, see Program. */
+  tempoName?: string;
   /** The code console's text; in sync with the graph (see code-sync). */
   code: string;
   codeError: string | null;

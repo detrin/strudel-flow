@@ -14,6 +14,9 @@ export type PadData = {
   /** Cycles the clip spans before it loops. */
   bars?: number;
   octave?: number;
+  /** Octaves shown, relative to `octave` (-3..3, min ≤ max). */
+  minOctave?: number;
+  maxOctave?: number;
   selectedKey?: string;
   selectedScaleType?: string;
   /** Legacy step grid (before the piano roll): grid[step][degree]. */
@@ -23,8 +26,28 @@ export type PadData = {
   columnModifiers?: unknown;
 };
 
-/** Scale degrees shown, low to high: two octaves of a 7-note scale. */
-export const ROWS = 15;
+export const OCTAVE_OFFSETS = [-3, -2, -1, 0, 1, 2, 3] as const;
+
+const SCALE_SIZES: Record<string, number> = {
+  'major:pentatonic': 5,
+  'minor:pentatonic': 5,
+  blues: 6,
+  diminished: 8,
+  chromatic: 12,
+};
+/** Notes per octave of a scale (7 unless listed). */
+export const scaleSize = (scale: string) => SCALE_SIZES[scale] ?? 7;
+
+/**
+ * Scale degrees the roll shows: from the root of the lowest octave to the
+ * root above the highest (0 and 0 = one octave, 8 rows in a major scale).
+ */
+export function pitchRange(data: PadData) {
+  const size = scaleSize(data.selectedScaleType || DEFAULTS.selectedScaleType);
+  const min = data.minOctave ?? 0;
+  const max = Math.max(min, data.maxOctave ?? 0);
+  return { low: min * size, high: (max + 1) * size, size };
+}
 export const DIVISIONS = [4, 8, 12, 16, 24, 32] as const;
 export const BAR_OPTIONS = [1, 2, 4, 8] as const;
 

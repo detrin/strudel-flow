@@ -109,4 +109,15 @@ describe('code ↔ canvas sync', () => {
     expect(state()).toMatchObject({ cpm: '132', bpc: '4' });
     expect(state().fitRequest).toBe(before + 1);
   });
+
+  it('reads a tempo written with a constant, and keeps it in step', () => {
+    setCode('const BPM = 81\nsetcpm(BPM/4)\n$: s("bd")');
+    expect(state()).toMatchObject({ cpm: '81', bpc: '4' });
+    // Changing the tempo on the toolbar rewrites the constant too.
+    state().setCpm('90');
+    expect(state().code).toContain('const BPM = 90\nsetcpm(BPM/4)');
+    // And typing a new constant moves the toolbar.
+    setCode(state().code.replace('const BPM = 90', 'const BPM = 140'));
+    expect(state().cpm).toBe('140');
+  });
 });

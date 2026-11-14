@@ -11,7 +11,7 @@ const byPosition = (a: AppNode, b: AppNode) =>
 export function compileGraph(
   nodes: AppNode[],
   edges: Edge[],
-  tempo: Pick<Program, 'cpm' | 'bpc' | 'prelude'>,
+  tempo: Pick<Program, 'cpm' | 'bpc' | 'prelude' | 'tempoName'>,
 ): Program {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const valid = edges.filter(

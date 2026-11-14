@@ -33,6 +33,7 @@ export function setCode(code: string) {
     cpm: program.cpm ?? state.cpm,
     bpc: program.bpc ?? state.bpc,
     prelude: program.prelude,
+    tempoName: program.tempoName,
   };
   const before = new Set(state.nodes.map((node) => node.id));
   const created = graph.nodes.filter((node) => !before.has(node.id));

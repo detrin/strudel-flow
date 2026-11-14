@@ -1,4 +1,9 @@
-import type { Expression, Statement } from 'acorn';
+import type {
+  Expression,
+  PrivateIdentifier,
+  SpreadElement,
+  Statement,
+} from 'acorn';
 import { isSource } from '@/components/nodes/define-node';
 import { nodeDefinitions } from '@/components/nodes/registry';
 import {
@@ -158,7 +163,16 @@ function createParser(source: string, known: Known[]) {
   return tree;
 }
 
-function tempoOf(statement: Statement, source: string) {
+/**
+ * Tempo from `setcpm(120/4)`, `setcpm(30)` or `setcps(0.5)`. Names bound by
+ * an earlier `const BPM = 81` count as their number, so `setcpm(BPM/4)`
+ * reads as 81 BPM in 4 beats; `tempoName` is then that constant.
+ */
+function tempoOf(
+  statement: Statement,
+  source: string,
+  constants: ReadonlyMap<string, number>,
+) {
   if (
     statement.type !== 'ExpressionStatement' ||
     statement.expression.type !== 'CallExpression' ||
@@ -168,21 +182,43 @@ function tempoOf(statement: Statement, source: string) {
     return null;
   const { name } = statement.expression.callee;
   const [arg] = statement.expression.arguments;
-  const number = (value: unknown) =>
-    typeof value === 'number' && value > 0 ? value : null;
+  type Operand = Expression | PrivateIdentifier | SpreadElement;
+  const resolve = (node: Operand) => {
+    const value =
+      node.type === 'Identifier'
+        ? constants.get(node.name)
+        : valueOf(source, node);
+    return typeof value === 'number' && value > 0 ? value : null;
+  };
+  const nameOf = (node: Operand) =>
+    node.type === 'Identifier' ? { tempoName: node.name } : {};
   if (name === 'setcpm' && arg.type === 'BinaryExpression') {
-    const cpm = number(valueOf(source, arg.left));
-    const bpc = number(valueOf(source, arg.right));
+    const cpm = resolve(arg.left);
+    const bpc = resolve(arg.right);
     return arg.operator === '/' && cpm && bpc
-      ? { cpm: String(cpm), bpc: String(bpc) }
+      ? { cpm: String(cpm), bpc: String(bpc), ...nameOf(arg.left) }
       : null;
   }
-  const value = number(valueOf(source, arg));
+  const value = resolve(arg);
   if (!value) return null;
-  if (name === 'setcpm') return { cpm: String(value), bpc: '1' };
+  if (name === 'setcpm')
+    return { cpm: String(value), bpc: '1', ...nameOf(arg) };
   if (name === 'setcps' || name === 'setCps')
     return { cpm: String(value * 60), bpc: '1' };
   return null;
+}
+
+/** Numbers bound by `const NAME = 81` (literals only). */
+function constantsOf(statement: Statement, source: string) {
+  if (statement.type !== 'VariableDeclaration' || statement.kind !== 'const')
+    return [];
+  return statement.declarations.flatMap((declaration) => {
+    if (declaration.id.type !== 'Identifier' || !declaration.init) return [];
+    const value = valueOf(source, declaration.init);
+    return typeof value === 'number'
+      ? [[declaration.id.name, value] as const]
+      : [];
+  });
 }
 
 /** True for a bare statement that plays a pattern rather than setting up. */
@@ -218,8 +254,9 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
   const lineRanges: { start: number; end: number }[] = [];
   let lastBare: { statement: Statement; index: number } | undefined;
 
+  const constants = new Map<string, number>();
   for (const statement of body) {
-    const tempo = tempoOf(statement, source);
+    const tempo = tempoOf(statement, source, constants);
     if (tempo) {
       Object.assign(program, tempo);
       continue;
@@ -254,6 +291,8 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
       });
       continue;
     }
+    for (const [name, value] of constantsOf(statement, source))
+      constants.set(name, value);
     if (isPattern(statement, source))
       lastBare = { statement, index: prelude.length };
     prelude.push({ start: statement.start, text: slice(source, statement) });

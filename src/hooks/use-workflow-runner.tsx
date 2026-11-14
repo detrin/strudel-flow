@@ -6,6 +6,7 @@ import { emitProgram, isAudible } from '@/lib/program/emit';
 import { initStrudel, evaluate, hush, type StrudelSession } from '@strudel/web';
 import { setSchedulerNow } from '@/lib/strudel-clock';
 import { loadSamples } from '@/data/samples';
+import { collectPunchcards, tagPunchcards } from '@/lib/punchcards';
 
 const ready: Promise<StrudelSession> = initStrudel().then(
   (session: StrudelSession) => {
@@ -24,8 +25,10 @@ void loadSamples();
 
 async function evaluateAudio(pattern: string) {
   const session = await ready;
-  await evaluate(pattern);
-  if (session.state.evalError) throw session.state.evalError;
+  await collectPunchcards(async () => {
+    await evaluate(tagPunchcards(pattern));
+    if (session.state.evalError) throw session.state.evalError;
+  });
 }
 
 type PlaybackAdapter = {
