@@ -1,4 +1,4 @@
-import { compileGraph } from '@/lib/program/compile';
+import { programOf } from '@/lib/program';
 import { emitProgram } from '@/lib/program/emit';
 import { knownSources, parseProgram } from '@/lib/program/parse';
 import { layout, reconcile } from '@/lib/program/reconcile';
@@ -6,9 +6,8 @@ import { useAppStore } from './app-store';
 
 type State = ReturnType<typeof useAppStore.getState>;
 
-const graphCode = (
-  state: Pick<State, 'nodes' | 'edges' | 'cpm' | 'bpc' | 'prelude'>,
-) => emitProgram(compileGraph(state.nodes, state.edges, state));
+const graphCode = (state: Parameters<typeof programOf>[0]) =>
+  emitProgram(programOf(state));
 
 /** The code the graph last wrote; graph changes that don't change it are ignored. */
 let lastGraphCode = '';
@@ -55,7 +54,7 @@ function relayout(state: State) {
     ...node,
     position: { ...node.position },
   }));
-  const { lines } = compileGraph(nodes, state.edges, state);
+  const { lines } = programOf({ ...state, nodes });
   layout(
     { nodes, edges: state.edges },
     lines,

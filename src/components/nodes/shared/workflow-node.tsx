@@ -29,7 +29,7 @@ function WorkflowNode({
 }) {
   const [showCode, setShowCode] = useState(false);
   const removeNode = useAppStore((state) => state.removeNode);
-  const setGroupState = useAppStore((state) => state.setGroupState);
+  const setMuted = useAppStore((state) => state.setMuted);
   const category = nodeDefinitions[type]?.category;
   const isInstrument = category === 'Instruments';
   const isPaused = data.state === 'paused';
@@ -62,7 +62,7 @@ function WorkflowNode({
             <Button
               variant="ghost"
               aria-label={isPaused ? 'Unmute instrument' : 'Mute instrument'}
-              onClick={() => setGroupState(id, isPaused ? 'running' : 'paused')}
+              onClick={() => setMuted(id, !isPaused)}
               className={cn(
                 'nodrag size-7 rounded-md p-1 text-muted-foreground',
                 isPaused &&
@@ -110,11 +110,11 @@ function WorkflowNode({
           <VolumeX className="size-4 shrink-0" aria-hidden="true" />
           <div className="flex-1">
             <p className="text-xs font-semibold">Muted</p>
-            <p className="text-[10px] opacity-80">This group is silent</p>
+            <p className="text-[10px] opacity-80">This line is silent</p>
           </div>
           <button
-            aria-label={`Unmute ${data.title} group`}
-            onClick={() => setGroupState(id, 'running')}
+            aria-label={`Unmute ${data.title} line`}
+            onClick={() => setMuted(id, false)}
             className="nodrag rounded-md border border-amber-600/30 bg-background/70 px-2 py-1.5 text-xs font-semibold hover:bg-background"
           >
             Unmute

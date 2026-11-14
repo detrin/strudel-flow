@@ -12,7 +12,8 @@ import {
 
 import type { AppNode } from '@/components/nodes/registry';
 import { initialEdges, initialNodes } from '@/data/workflow-data';
-import { findConnectedComponents } from '@/lib/graph-utils';
+import { programOf } from '@/lib/program';
+import { flatten } from '@/lib/program/compile';
 import { DEFAULT_THEME } from '@/themes';
 import { applyTheme } from '@/themes/ui';
 
@@ -29,7 +30,6 @@ type AppState = {
   bpc: string;
   /** Code statements that are not lines; kept verbatim. */
   prelude: string;
-  pattern: string;
   /** The code console's text; in sync with the graph (see code-sync). */
   code: string;
   codeError: string | null;
@@ -67,12 +67,12 @@ type AppActions = {
   setConsole: (layout: Partial<ConsoleLayout>) => void;
   setCpm: (cpm: string) => void;
   setBpc: (bpc: string) => void;
-  setPattern: (pattern: string) => void;
   toggle: () => void;
   setError: (error: string | null) => void;
   onNodesChange: OnNodesChange<AppNode>;
   removeNode: (nodeId: string) => void;
-  setGroupState: (nodeId: string, state: 'running' | 'paused') => void;
+  /** Mutes or unmutes every line the node is part of. */
+  setMuted: (nodeId: string, muted: boolean) => void;
   updateNodeData: (nodeId: string, updates: Record<string, unknown>) => void;
   onConnect: OnConnect;
   setTheme: (theme: string) => void;
@@ -93,7 +93,6 @@ export const useAppStore = create<AppStore>()(
     cpm: '120',
     bpc: '4',
     prelude: '',
-    pattern: '',
     code: '',
     codeError: null,
     fitRequest: 0,
@@ -111,7 +110,6 @@ export const useAppStore = create<AppStore>()(
     },
     setCpm: (cpm) => set({ cpm }),
     setBpc: (bpc) => set({ bpc }),
-    setPattern: (pattern) => set({ pattern }),
     toggle: () =>
       set((state) => ({ isPlaying: !state.isPlaying, error: null })),
     setError: (error) => set({ error, ...(error ? { isPlaying: false } : {}) }),
@@ -128,17 +126,20 @@ export const useAppStore = create<AppStore>()(
         ),
       })),
 
-    setGroupState: (nodeId, playbackState) =>
+    setMuted: (nodeId, muted) =>
       set((state) => {
-        const group = new Set(
-          findConnectedComponents(state.nodes, state.edges).find((ids) =>
-            ids.includes(nodeId),
-          ) ?? [nodeId],
+        const line = new Set(
+          programOf(state)
+            .lines.map((line) => flatten(line.sink).map((node) => node.id))
+            .find((ids) => ids.includes(nodeId)) ?? [nodeId],
         );
         return {
           nodes: state.nodes.map((node) =>
-            group.has(node.id)
-              ? { ...node, data: { ...node.data, state: playbackState } }
+            line.has(node.id)
+              ? {
+                  ...node,
+                  data: { ...node.data, state: muted ? 'paused' : 'running' },
+                }
               : node,
           ),
         };

@@ -11,7 +11,6 @@ import { capturePatch, applyPatch } from '@/lib/patch-state';
 import { downloadState, getShareUrl, stateFromJson } from '@/lib/project-state';
 import type { ProjectState } from '@/lib/project-state';
 import { PatchGallery } from './patch-gallery';
-import { PatternPanel } from './pattern-panel';
 import { ControlButton } from './control-button';
 import { useAppStore } from '@/store/app-store';
 
@@ -141,9 +140,6 @@ export function PresetPopover() {
           {status || 'Export your patch or copy a link to share.'}
         </p>
         <PatchGallery onLoad={(patch) => loadPatch(patch.state)} />
-        <div className="border-t pt-3">
-          <PatternPanel />
-        </div>
       </PopoverContent>
     </Popover>
   );

@@ -1,6 +1,5 @@
 import type { CustomControlsProps } from '../../define-node';
-import type { DrumSoundsData } from './drum-sounds';
-import { DEFAULT_SOUND } from './drum-sounds';
+import type { SoundData } from '../sound';
 import {
   Select,
   SelectContent,
@@ -13,8 +12,8 @@ import { CategorySelectItems } from '@/components/nodes/shared/category-select-i
 export function DrumSoundsNode({
   values: data,
   onChange,
-}: CustomControlsProps<DrumSoundsData>) {
-  const sound = data.sound || DEFAULT_SOUND;
+}: CustomControlsProps<SoundData>) {
+  const sound = data.sound ?? '';
 
   const handleValueChange = (value: string) => {
     onChange({ sound: value });

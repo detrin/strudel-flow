@@ -12,7 +12,7 @@ export function createDefinitionComponent(definition: NodeDefinition) {
     const updateValues = (updates: Record<string, unknown>) =>
       update(id, updates);
     const updateParameter = (key: string, value: string | number) =>
-      updateValues(definition.updateValues(data, { [key]: value }));
+      updateValues(definition.encode({ [key]: value }));
     return (
       <WorkflowNode id={id} data={data} type={definition.id}>
         {definition.renderControls ? (

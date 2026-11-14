@@ -1,6 +1,5 @@
 import type { CustomControlsProps } from '../../define-node';
-import type { VoiceData } from './synth-select';
-import { DEFAULT_SOUND } from './synth-select';
+import type { SoundData } from '../sound';
 import {
   Select,
   SelectContent,
@@ -26,8 +25,8 @@ const waveforms = [
 export function SynthSelectNode({
   values: data,
   onChange,
-}: CustomControlsProps<VoiceData>) {
-  const sound = data.sound || DEFAULT_SOUND;
+}: CustomControlsProps<SoundData>) {
+  const sound = data.sound ?? '';
 
   const handleValueChange = (value: string) => {
     onChange({ sound: value });

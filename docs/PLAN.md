@@ -76,3 +76,16 @@ UI's design tokens, so the whole app follows the selected theme.
 - **CI** (every push to `main`, every PR): install with frozen lockfile,
   format check, lint, typecheck, unit + integration tests, build.
 - **E2E** (Playwright) runs locally only: `pnpm e2e`.
+
+## Simplification reviews
+
+**#1 (after F1–F5)**
+
+- Removed the read-only code panel and the store's `pattern` field: the
+  console shows the code now.
+- Mute works per line (from the compiler) instead of per connected
+  component; `graph-utils.ts` is gone.
+- One `programOf(patch)` for the runner and code sync.
+- `defineNode`: dropped the unused `write` hook; `updateValues(data, x)`
+  became `encode(x)`.
+- Voice and Drums share one sound codec.

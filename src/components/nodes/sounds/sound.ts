@@ -1,5 +1,11 @@
 import type { Call } from '@/lib/program/syntax';
 
+/** Voice and Drums both write `.sound("name")`. */
+export type SoundData = { sound?: string };
+
+export const soundCode = ({ sound }: SoundData) =>
+  sound ? `sound(${JSON.stringify(sound)})` : '';
+
 /** `.sound("name")` → `{ sound: "name" }` when `accepts(name)`. */
 export const parseSound =
   (accepts: (sound: string) => boolean) =>

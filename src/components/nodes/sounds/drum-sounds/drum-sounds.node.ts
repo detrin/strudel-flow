@@ -1,7 +1,6 @@
 import { defineNode } from '../../define-node';
 import { DrumSoundsNode } from './drum-sounds-node';
-import { generatePattern, type DrumSoundsData } from './drum-sounds';
-import { parseSound } from '../parse-sound';
+import { parseSound, soundCode, type SoundData } from '../sound';
 import { DRUM_CATEGORIES } from '@/data/sounds';
 
 const DRUM_SOUNDS = new Set(
@@ -15,9 +14,9 @@ export default defineNode({
   icon: 'Music',
   order: 8,
   parameters: {},
-  defaults: {} as DrumSoundsData,
+  defaults: {} as SoundData,
   component: DrumSoundsNode,
-  generate: generatePattern,
+  generate: soundCode,
   methods: ['sound'],
   // Drum names go to Drums; every other sound to Voice.
   parse: parseSound((sound) => DRUM_SOUNDS.has(sound)),

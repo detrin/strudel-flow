@@ -58,10 +58,8 @@ export type NodeDefinition = {
   parameters: Parameters;
   defaults: Record<string, unknown>;
   getValues: (data: Record<string, unknown>) => Record<string, string | number>;
-  updateValues: (
-    data: Record<string, unknown>,
-    updates: Record<string, unknown>,
-  ) => Record<string, unknown>;
+  /** Values → node data (parameters are stored as strings). */
+  encode: (values: Record<string, unknown>) => Record<string, unknown>;
   /**
    * Instruments return a full pattern expression (`s("bd*4")`).
    * Everything else returns the method calls it appends to its input,
@@ -175,10 +173,6 @@ export function defineNode<
   parameters: P;
   defaults?: D;
   read?: (data: Record<string, unknown>) => Record<string, unknown>;
-  write?: (
-    updates: Partial<D & ParameterValues<P>>,
-    data: Record<string, unknown>,
-  ) => Record<string, unknown>;
   /** Defaults to `parameterCalls` for parameter-only effect nodes. */
   generate?: (
     values: D & ParameterValues<P>,
@@ -197,7 +191,6 @@ export function defineNode<
       parameterCalls(parameters, values as Record<string, string | number>),
     defaults = {} as D,
     read = (data) => data,
-    write,
     methods = Object.entries(parameters).map(([key, parameter]) =>
       methodOf(key, parameter),
     ),
@@ -222,36 +215,27 @@ export function defineNode<
         key in parameters && value !== undefined ? String(value) : value,
       ]),
     );
-  const updateValues = (
-    data: Record<string, unknown>,
-    updates: Record<string, unknown>,
-  ) =>
-    encode(
-      write ? write(updates as Partial<D & ParameterValues<P>>, data) : updates,
-    );
   return {
     ...metadata,
     parameters,
     getValues: (data) => parameterValues(parameters, read(data)),
-    updateValues,
+    encode,
     defaults: {
       ...defaults,
-      ...encode(
-        write ? write(resolve({}), {}) : parameterValues(parameters, {}),
-      ),
+      ...encode(parameterValues(parameters, {})),
     },
     generate: (data, context) => generate(resolve(data), context),
     methods,
     parse: (calls) => {
       const values = parse(calls);
-      return values && updateValues({}, values);
+      return values && encode(values);
     },
     renderControls: component
       ? (data, update, context) =>
           createElement(component, {
             ...context,
             values: resolve(data),
-            onChange: (updates) => update(updateValues(data, updates)),
+            onChange: (updates) => update(encode(updates)),
           })
       : undefined,
   };

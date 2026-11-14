@@ -71,6 +71,14 @@ describe('code ↔ canvas sync', () => {
     expect(state().code).toMatch(/hh[\s\S]*bd/);
   });
 
+  it('muting a node mutes its whole line and only that line', () => {
+    setCode('kick: s("bd").gain(0.5)\nhat: s("hh")');
+    const level = state().nodes.find((node) => node.type === 'level-node')!;
+    state().setMuted(level.id, true);
+    expect(state().code).toContain('_kick: s("bd")');
+    expect(state().code).toContain('\nhat: s("hh")');
+  });
+
   it('invalid code keeps the graph and reports the error', () => {
     setCode('$: s("bd")');
     setCode('$: s("bd"');

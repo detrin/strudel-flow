@@ -1,7 +1,7 @@
 import '@/lib/strudel-scope';
 import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '@/store/app-store';
-import { compileGraph } from '@/lib/program/compile';
+import { programOf } from '@/lib/program';
 import { emitProgram, isAudible } from '@/lib/program/emit';
 import {
   initStrudel,
@@ -102,14 +102,13 @@ export function useWorkflowRunner() {
   const edges = useAppStore((state) => state.edges);
   const cpm = useAppStore((state) => state.cpm);
   const bpc = useAppStore((state) => state.bpc);
-  const setPattern = useAppStore((state) => state.setPattern);
   const isPlaying = useAppStore((state) => state.isPlaying);
   const prelude = useAppStore((state) => state.prelude);
   const setError = useAppStore((state) => state.setError);
 
   const compiled = useMemo(() => {
     try {
-      const program = compileGraph(nodes, edges, { cpm, bpc, prelude });
+      const program = programOf({ nodes, edges, cpm, bpc, prelude });
       return {
         pattern: emitProgram(program),
         audible: isAudible(program),
@@ -139,9 +138,8 @@ export function useWorkflowRunner() {
   }, [setError]);
 
   useEffect(() => {
-    setPattern(compiled.pattern);
     if (compiled.error) setError(compiled.error);
-  }, [compiled, setPattern, setError]);
+  }, [compiled, setError]);
 
   useEffect(() => {
     if (!isPlaying || !compiled.audible || compiled.error) {
