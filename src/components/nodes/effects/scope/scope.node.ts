@@ -12,4 +12,6 @@ export default defineNode({
   defaults: {} as ScopeData,
   component: ScopeNode,
   generate: (_values, { id }) => `analyze(${JSON.stringify(scopeId(id))})`,
+  methods: ['analyze'],
+  parse: () => ({}),
 });

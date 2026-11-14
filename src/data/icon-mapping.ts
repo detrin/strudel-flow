@@ -11,6 +11,8 @@ import {
   Filter,
   Waves,
   Activity,
+  Layers,
+  Braces,
 } from 'lucide-react';
 
 export const iconMapping = {
@@ -26,4 +28,6 @@ export const iconMapping = {
   Filter,
   Waves,
   Activity,
+  Layers,
+  Braces,
 };

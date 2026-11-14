@@ -1,6 +1,7 @@
 import { defineNode } from '../../define-node';
 import { SynthSelectNode } from './synth-select-node';
 import { generatePattern, type VoiceData } from './synth-select';
+import { parseSound } from '../parse-sound';
 
 export default defineNode({
   id: 'synth-select-node',
@@ -12,4 +13,6 @@ export default defineNode({
   defaults: {} as VoiceData,
   component: SynthSelectNode,
   generate: generatePattern,
+  methods: ['sound'],
+  parse: parseSound(() => true),
 });

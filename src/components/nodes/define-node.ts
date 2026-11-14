@@ -1,5 +1,6 @@
 import { createElement, type ComponentType, type ReactNode } from 'react';
 import type { iconMapping } from '@/data/icon-mapping';
+import type { Call } from '@/lib/program/syntax';
 
 type Common = {
   label: string;
@@ -67,6 +68,10 @@ export type NodeDefinition = {
    * without the leading dot (`lpf(800).lpq(4)`), or '' to pass through.
    */
   generate: (data: Record<string, unknown>, context: GenerateContext) => string;
+  /** Canonical Strudel methods this node writes (effects only). */
+  methods: readonly string[];
+  /** Calls → node data, or null when this node cannot express them. */
+  parse: (calls: Call[]) => Record<string, unknown> | null;
   renderControls?: (
     data: Record<string, unknown>,
     update: (data: Record<string, unknown>) => void,
@@ -122,6 +127,42 @@ export function parameterCalls(
     .join('.');
 }
 
+/** The default parser for parameter nodes: one literal per parameter. */
+export function parseParameters(parameters: Parameters, calls: Call[]) {
+  const byMethod = new Map(
+    Object.entries(parameters).map(([key, parameter]) => [
+      methodOf(key, parameter),
+      [key, parameter] as const,
+    ]),
+  );
+  const values: Record<string, string | number> = {};
+  for (const { name, args } of calls) {
+    const entry = byMethod.get(name);
+    if (!entry || args.length !== 1) return null;
+    const [key, parameter] = entry;
+    const [arg] = args;
+    if (parameter.control === 'knob') {
+      const value =
+        typeof arg === 'number'
+          ? arg
+          : typeof arg === 'string' && arg.trim()
+            ? Number(arg)
+            : NaN;
+      if (!Number.isFinite(value)) return null;
+      values[key] = value;
+    } else {
+      if (typeof arg !== 'string') return null;
+      if (
+        parameter.control === 'select' &&
+        !parameter.options.some((option) => option.value === arg)
+      )
+        return null;
+      values[key] = arg;
+    }
+  }
+  return values;
+}
+
 export function defineNode<
   const P extends Parameters,
   D extends Record<string, unknown> = Record<never, never>,
@@ -143,6 +184,10 @@ export function defineNode<
     values: D & ParameterValues<P>,
     context: GenerateContext,
   ) => string;
+  /** Defaults to the methods of the parameters. */
+  methods?: readonly string[];
+  /** Defaults to `parseParameters`. */
+  parse?: (calls: Call[]) => Partial<D & ParameterValues<P>> | null;
   component?: ComponentType<NodeControlsProps<P, D>>;
 }): NodeDefinition {
   const {
@@ -153,6 +198,13 @@ export function defineNode<
     defaults = {} as D,
     read = (data) => data,
     write,
+    methods = Object.entries(parameters).map(([key, parameter]) =>
+      methodOf(key, parameter),
+    ),
+    parse = (calls) =>
+      parseParameters(parameters, calls) as Partial<
+        D & ParameterValues<P>
+      > | null,
     ...metadata
   } = definition;
   const resolve = (data: Record<string, unknown>) => {
@@ -189,6 +241,11 @@ export function defineNode<
       ),
     },
     generate: (data, context) => generate(resolve(data), context),
+    methods,
+    parse: (calls) => {
+      const values = parse(calls);
+      return values && updateValues({}, values);
+    },
     renderControls: component
       ? (data, update, context) =>
           createElement(component, {

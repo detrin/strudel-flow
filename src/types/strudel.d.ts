@@ -10,8 +10,13 @@ declare module '@strudel/web' {
   export function samples(source: string): Promise<unknown>;
   export function transpiler(
     code: string,
-    options: { emitWidgets: boolean },
-  ): unknown;
+    options: {
+      emitWidgets?: boolean;
+      emitMiniLocations?: boolean;
+      wrapAsync?: boolean;
+      addReturn?: boolean;
+    },
+  ): { output: string };
 
   export class Pattern {
     analyze(id: string | number): Pattern;

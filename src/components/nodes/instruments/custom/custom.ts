@@ -1,4 +1,5 @@
 import { transpiler } from '@strudel/web';
+import { isAtom } from '@/lib/program/syntax';
 
 export type CustomData = { customPattern?: string; customDraft?: string };
 
@@ -20,5 +21,6 @@ export function codeSyntaxError(code: string): string | null {
 
 export function generatePattern(data: CustomData) {
   const expression = codeExpression(data.customPattern ?? DEFAULT_CODE);
-  return expression ? `(${expression})` : '';
+  if (!expression) return '';
+  return isAtom(expression) ? expression : `(${expression})`;
 }

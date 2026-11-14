@@ -11,7 +11,7 @@ const kick = (id = 'k', y = 0) =>
 
 describe('compileGraph + emitProgram', () => {
   it('writes tempo and one line per sink', () => {
-    expect(code([kick()], [], tempo)).toBe('setcpm(120/4)\n\n$: (s("bd*4"))\n');
+    expect(code([kick()], [], tempo)).toBe('setcpm(120/4)\n\n$: s("bd*4")\n');
   });
 
   it('applies effects in wire order, not node order', () => {
@@ -21,7 +21,7 @@ describe('compileGraph + emitProgram', () => {
       node('lpf-node', 'f', { cutoff: '800' }),
     ];
     expect(code(nodes, chainOf('k', 'f', 'g'), tempo)).toContain(
-      '$: (s("bd*4"))\n  .lpf(800)\n  .gain(0.5)',
+      '$: s("bd*4")\n  .lpf(800)\n  .gain(0.5)',
     );
   });
 
@@ -32,7 +32,7 @@ describe('compileGraph + emitProgram', () => {
       node('level-node', 'g', { gain: '0.8' }),
     ];
     expect(code(nodes, [wire('a', 'g'), wire('b', 'g')], tempo)).toContain(
-      '$: stack((s("hh*8")), (s("bd*4")))\n  .gain(0.8)',
+      '$: stack(s("hh*8"), s("bd*4"))\n  .gain(0.8)',
     );
   });
 
@@ -43,7 +43,7 @@ describe('compileGraph + emitProgram', () => {
       node('custom-node', 'b', { customPattern: 'note("c")' }),
     ];
     expect(code(nodes, chainOf('k', 'f', 'b'), tempo)).toContain(
-      '$: stack((s("bd*4")).lpf(800), (note("c")))',
+      '$: stack(s("bd*4").lpf(800), note("c"))',
     );
   });
 
@@ -57,10 +57,20 @@ describe('compileGraph + emitProgram', () => {
     expect(code([node('lpf-node', 'f')], [], tempo)).toBe('setcpm(120/4)\n');
   });
 
+  it('wraps Code that is more than a call in parentheses', () => {
+    const nodes = [
+      node('custom-node', 'k', { customPattern: 's("bd").fast(2)' }),
+      node('level-node', 'g'),
+    ];
+    expect(code(nodes, chainOf('k', 'g'), tempo)).toContain(
+      '$: (s("bd").fast(2))\n  .gain(1)',
+    );
+  });
+
   it('writes labels and mutes with Strudel label syntax', () => {
     const nodes = [kick()];
     nodes[0].data = { ...nodes[0].data, label: 'kick', state: 'paused' };
-    expect(code(nodes, [], tempo)).toContain('_kick: (s("bd*4"))');
+    expect(code(nodes, [], tempo)).toContain('_kick: s("bd*4")');
   });
 
   it('keeps an effect at its defaults visible in the code', () => {
