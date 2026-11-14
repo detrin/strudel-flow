@@ -4,7 +4,6 @@ import {
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
-  ColorMode,
   OnConnect,
   OnEdgesChange,
   OnNodesChange,
@@ -14,6 +13,8 @@ import {
 import type { AppNode } from '@/components/nodes/registry';
 import { initialEdges, initialNodes } from '@/data/workflow-data';
 import { findConnectedComponents } from '@/lib/graph-utils';
+import { DEFAULT_THEME } from '@/themes';
+import { applyTheme } from '@/themes/ui';
 
 type AppState = {
   name: string;
@@ -22,7 +23,7 @@ type AppState = {
   graphRevision: number;
   nodes: AppNode[];
   edges: Edge[];
-  colorMode: ColorMode;
+  /** strudel.cc theme name; a per-browser preference, not part of patches. */
   theme: string;
   cpm: string;
   bpc: string;
@@ -53,6 +54,15 @@ function savedConsole(): ConsoleLayout {
   return { open: true, width: 440 };
 }
 
+const THEME_KEY = 'strudel-flow:theme';
+function savedTheme() {
+  try {
+    return localStorage.getItem(THEME_KEY) ?? DEFAULT_THEME;
+  } catch {
+    return DEFAULT_THEME;
+  }
+}
+
 type AppActions = {
   setConsole: (layout: Partial<ConsoleLayout>) => void;
   setCpm: (cpm: string) => void;
@@ -60,7 +70,6 @@ type AppActions = {
   setPattern: (pattern: string) => void;
   toggle: () => void;
   setError: (error: string | null) => void;
-  setColorMode: (colorMode: ColorMode) => void;
   onNodesChange: OnNodesChange<AppNode>;
   removeNode: (nodeId: string) => void;
   setGroupState: (nodeId: string, state: 'running' | 'paused') => void;
@@ -80,8 +89,7 @@ export const useAppStore = create<AppStore>()(
     description: '',
     nodes: initialNodes,
     edges: initialEdges,
-    theme: 'caffeine',
-    colorMode: 'system',
+    theme: savedTheme(),
     cpm: '120',
     bpc: '4',
     prelude: '',
@@ -157,9 +165,14 @@ export const useAppStore = create<AppStore>()(
       });
     },
 
-    setTheme: (theme) => set({ theme }),
-
-    setColorMode: (colorMode) => set({ colorMode }),
+    setTheme: (theme) => {
+      set({ theme });
+      try {
+        localStorage.setItem(THEME_KEY, theme);
+      } catch {
+        // Not remembered; still applied.
+      }
+    },
 
     updateNodeData: (nodeId, updates) =>
       set((state) => ({
@@ -172,26 +185,9 @@ export const useAppStore = create<AppStore>()(
   })),
 );
 
-const systemAppearance = window.matchMedia('(prefers-color-scheme: dark)');
-function applyColorMode() {
-  const { colorMode } = useAppStore.getState();
-  document.documentElement.classList.toggle(
-    'dark',
-    colorMode === 'dark' ||
-      (colorMode === 'system' && systemAppearance.matches),
-  );
-}
-const unsubscribeAppearance = useAppStore.subscribe(
-  (state) => state.colorMode,
-  applyColorMode,
-  {
-    fireImmediately: true,
-  },
+const unsubscribeTheme = useAppStore.subscribe(
+  (state) => state.theme,
+  applyTheme,
+  { fireImmediately: true },
 );
-systemAppearance.addEventListener('change', applyColorMode);
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => {
-    unsubscribeAppearance();
-    systemAppearance.removeEventListener('change', applyColorMode);
-  });
-}
+if (import.meta.hot) import.meta.hot.dispose(unsubscribeTheme);

@@ -41,8 +41,6 @@ export function useUrlState() {
         loading ||
         (state.nodes === previous.nodes &&
           state.edges === previous.edges &&
-          state.theme === previous.theme &&
-          state.colorMode === previous.colorMode &&
           state.cpm === previous.cpm &&
           state.bpc === previous.bpc &&
           state.prelude === previous.prelude &&

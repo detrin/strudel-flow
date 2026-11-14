@@ -3,18 +3,8 @@ import { nodeTypes, type AppNode } from '@/components/nodes/registry';
 import type { ProjectState } from './project-state';
 
 export function capturePatch(): ProjectState {
-  const {
-    name,
-    author,
-    description,
-    nodes,
-    edges,
-    theme,
-    colorMode,
-    cpm,
-    bpc,
-    prelude,
-  } = useAppStore.getState();
+  const { name, author, description, nodes, edges, cpm, bpc, prelude } =
+    useAppStore.getState();
   return {
     name: name.trim() || 'Untitled patch',
     author: author.trim(),
@@ -35,8 +25,6 @@ export function capturePatch(): ProjectState {
         type,
       }),
     ),
-    theme,
-    colorMode,
     cpm,
     bpc,
     ...(prelude ? { prelude } : {}),
@@ -58,8 +46,6 @@ export function applyPatch(state: ProjectState): boolean {
     description: state.description ?? '',
     nodes: state.nodes as AppNode[],
     edges: state.edges,
-    theme: state.theme,
-    colorMode: state.colorMode,
     cpm: state.cpm,
     bpc: state.bpc ?? '4',
     prelude: state.prelude ?? '',

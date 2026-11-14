@@ -10,7 +10,7 @@ import { EditorToolbar } from './toolbar';
 import { useUrlState } from '@/hooks/use-url-state';
 import { useWorkflowRunner } from '@/hooks/use-workflow-runner';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
-import { useThemeCss } from '@/hooks/use-theme-css';
+import { themeByName } from '@/themes';
 import { startCodeSync } from '@/store/code-sync';
 
 const edgeTypes = { default: deleteEdge };
@@ -20,26 +20,17 @@ export default function Editor() {
   useWorkflowRunner();
   useKeyboardShortcuts();
 
-  const {
-    nodes,
-    edges,
-    colorMode,
-    theme,
-    onNodesChange,
-    onEdgesChange,
-    onConnect,
-  } = useAppStore(
-    useShallow((state) => ({
-      nodes: state.nodes,
-      edges: state.edges,
-      colorMode: state.colorMode,
-      theme: state.theme,
-      onNodesChange: state.onNodesChange,
-      onEdgesChange: state.onEdgesChange,
-      onConnect: state.onConnect,
-    })),
-  );
-  useThemeCss(theme);
+  const { nodes, edges, theme, onNodesChange, onEdgesChange, onConnect } =
+    useAppStore(
+      useShallow((state) => ({
+        nodes: state.nodes,
+        edges: state.edges,
+        theme: state.theme,
+        onNodesChange: state.onNodesChange,
+        onEdgesChange: state.onEdgesChange,
+        onConnect: state.onConnect,
+      })),
+    );
   useEffect(startCodeSync, []);
 
   // Nodes created from code may land off screen; bring them into view.
@@ -70,7 +61,7 @@ export default function Editor() {
             onConnect={onConnect}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            colorMode={colorMode}
+            colorMode={themeByName(theme).dark ? 'dark' : 'light'}
             panActivationKeyCode={null}
             minZoom={0.2}
             fitView

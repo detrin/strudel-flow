@@ -5,8 +5,6 @@ const state: ProjectState = {
   name: 'Test',
   nodes: [{ id: 'a', type: 'pad-node', position: { x: 0, y: 0 }, data: {} }],
   edges: [],
-  theme: 'strudelTheme',
-  colorMode: 'dark',
   cpm: '120',
   bpc: '4',
 };

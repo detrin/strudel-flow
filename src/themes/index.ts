@@ -4,8 +4,10 @@ import type { Extension } from '@codemirror/state';
 export type ThemeSettings = {
   background: string;
   foreground: string;
-  caret: string;
+  /** Some themes have none; the UI then uses `selection`. */
+  caret?: string;
   selection: string;
+  light?: boolean;
   selectionMatch?: string;
   lineHighlight: string;
   lineBackground?: string;
@@ -64,7 +66,9 @@ export const themes: Theme[] = Object.entries(modules)
     return {
       name,
       label: LABELS[name] ?? humanize(name),
-      dark: luminance(module.settings.background) < 0.5,
+      dark: module.settings.light
+        ? false
+        : luminance(module.settings.background) < 0.5,
       settings: module.settings,
       editor: module.default,
     };

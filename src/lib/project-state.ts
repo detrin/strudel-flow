@@ -4,7 +4,7 @@ const {
   decompressFromEncodedURIComponent,
   decompressFromBase64,
 } = LZString;
-import type { Node, Edge, ColorMode } from '@xyflow/react';
+import type { Node, Edge } from '@xyflow/react';
 
 export interface ProjectState {
   name?: string;
@@ -12,8 +12,9 @@ export interface ProjectState {
   description?: string;
   nodes: Node[];
   edges: Edge[];
-  theme: string;
-  colorMode: ColorMode;
+  /** Ignored; older patches carried the author's appearance. */
+  theme?: string;
+  colorMode?: string;
   cpm: string;
   bpc?: string;
   prelude?: string;
@@ -66,8 +67,6 @@ function validateState(value: unknown): ProjectState | null {
   if (
     !Array.isArray(state.nodes) ||
     !Array.isArray(state.edges) ||
-    typeof state.theme !== 'string' ||
-    !['light', 'dark', 'system'].includes(state.colorMode) ||
     !Number.isFinite(Number(state.cpm)) ||
     Number(state.cpm) <= 0 ||
     (state.bpc !== undefined &&
