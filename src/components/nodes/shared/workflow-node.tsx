@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Code2, Ellipsis, Trash2, Volume2, VolumeX } from 'lucide-react';
+import { Code2, Ellipsis, Plus, Trash2, Volume2, VolumeX } from 'lucide-react';
 import { Position } from '@xyflow/react';
 import { WorkflowNodeData, AppNodeType } from '@/components/nodes/registry';
 import { nodeDefinitions } from '@/components/nodes/registry';
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useAddAfter } from '@/components/editor/add-node-context';
 
 function WorkflowNode({
   id,
@@ -30,6 +31,7 @@ function WorkflowNode({
   const [showCode, setShowCode] = useState(false);
   const removeNode = useAppStore((state) => state.removeNode);
   const setMuted = useAppStore((state) => state.setMuted);
+  const addAfter = useAddAfter();
   const category = nodeDefinitions[type]?.category;
   const isInstrument = category === 'Instruments';
   const isPaused = data.state === 'paused';
@@ -53,6 +55,18 @@ function WorkflowNode({
         aria-label="Patch output"
         style={{ top: 28 }}
       />
+      {/* Miro-style "+": add the next node in this chain (or press Tab). */}
+      <div className="node-add-after nodrag nopan pointer-events-none absolute top-[14px] -right-[42px]">
+        <button
+          type="button"
+          title="Add next node (Tab)"
+          aria-label={`Add a node after ${data.title}`}
+          onClick={() => addAfter(id)}
+          className="pointer-events-auto flex size-7 items-center justify-center rounded-full border border-primary/50 bg-card text-primary shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+        </button>
+      </div>
       <header className="mb-1 flex h-12 items-center gap-3 px-3">
         <h3 className="flex-1 text-[11px] font-semibold tracking-[.16em] uppercase">
           {data.title}

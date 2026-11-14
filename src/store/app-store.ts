@@ -40,6 +40,8 @@ type AppState = {
   bridge: 'off' | 'connecting' | 'connected';
   isPlaying: boolean;
   error: string | null;
+  /** Node type waiting to be placed by a click on the canvas (toolbar). */
+  placing: string | null;
 };
 
 /** The code console panel; remembered per browser. */
@@ -71,6 +73,7 @@ type AppActions = {
   setBpc: (bpc: string) => void;
   toggle: () => void;
   setError: (error: string | null) => void;
+  setPlacing: (type: string | null) => void;
   onNodesChange: OnNodesChange<AppNode>;
   removeNode: (nodeId: string) => void;
   /** Mutes or unmutes every line the node is part of. */
@@ -102,6 +105,8 @@ export const useAppStore = create<AppStore>()(
     bridge: 'off',
     isPlaying: false,
     error: null,
+    placing: null,
+    setPlacing: (placing) => set({ placing }),
     setConsole: (layout) => {
       const next = { ...get().console, ...layout };
       set({ console: next });

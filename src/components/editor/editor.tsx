@@ -7,6 +7,7 @@ import { nodeTypes } from '@/components/nodes/registry';
 import deleteEdge from '@/components/edges/delete-edge';
 import { useAppStore } from '@/store/app-store';
 import { EditorToolbar } from './toolbar';
+import { NodePalette } from './node-palette';
 import { useUrlState } from '@/hooks/use-url-state';
 import { useWorkflowRunner } from '@/hooks/use-workflow-runner';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
@@ -37,6 +38,7 @@ export default function Editor() {
 
   // Nodes created from code may land off screen; bring them into view.
   const fitRequest = useAppStore((state) => state.fitRequest);
+  const placing = useAppStore((state) => state.placing);
   const { fitView } = useReactFlow();
   useEffect(() => {
     if (!fitRequest) return;
@@ -52,7 +54,8 @@ export default function Editor() {
         <div
           className="reactflow-wrapper"
           tabIndex={0}
-          aria-label="Patch canvas. Right-click or tap empty space to add nodes."
+          data-placing={placing ? '' : undefined}
+          aria-label="Patch canvas. Drag nodes in from the left toolbar, double-click or right-click empty space, or press Tab on a selected node to add nodes."
         >
           <ReactFlow
             {...connectionHandlers}
@@ -65,11 +68,13 @@ export default function Editor() {
             edgeTypes={edgeTypes}
             colorMode={themeByName(theme).dark ? 'dark' : 'light'}
             panActivationKeyCode={null}
+            zoomOnDoubleClick={false}
             minZoom={0.2}
             fitView
             fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
           >
             <EditorToolbar onAddNode={onAddNode} />
+            <NodePalette />
           </ReactFlow>
         </div>
       )}

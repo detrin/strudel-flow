@@ -122,3 +122,19 @@ body,
     var(--border)
   );
 }
+
+/* Click-to-place from the node toolbar. */
+.reactflow-wrapper[data-placing] .react-flow__pane {
+  cursor: crosshair;
+}
+
+/* The Miro-style "+" beside a node: shown on hover, selection or focus. */
+.node-add-after {
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.react-flow__node:hover .node-add-after,
+.react-flow__node.selected .node-add-after,
+.node-add-after:focus-within {
+  opacity: 1;
+}

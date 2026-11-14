@@ -68,8 +68,12 @@ export function CodeEditor({
           EditorView.contentAttributes.of({ 'aria-label': label }),
           EditorView.updateListener.of((update) => {
             if (!update.docChanged) return;
-            reported.current = update.state.doc.toString();
-            latest.current.onChange(reported.current);
+            const text = update.state.doc.toString();
+            // `value` set from outside is not an edit; reporting it would
+            // re-apply that text later and undo canvas changes made since.
+            if (text === reported.current) return;
+            reported.current = text;
+            latest.current.onChange(text);
           }),
         ],
       }),
