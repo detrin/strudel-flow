@@ -342,3 +342,50 @@ describe('Pad from code', () => {
       expect(types(code)[0][0], code).toBe('notes-node');
   });
 });
+
+describe('switching off one part of a stack', () => {
+  const sources = (program: ParsedProgram) =>
+    flatten(program.lines[0].sink).filter((node) =>
+      isSource(nodeDefinitions[node.type]),
+    );
+  const lastLine = (program: ParsedProgram) =>
+    emit(program).trim().split('\n\n').at(-1)!;
+
+  it('ends that part with .hush(), and reads it back as off', () => {
+    const program = parsed('d: stack(s("bd").gain(0.5), s("hh*8"))');
+    const [kick] = sources(program).filter((n) => n.data.pattern === 'bd');
+    kick.data.disabled = true;
+    const code = lastLine(program);
+    expect(code).toBe('d: stack(s("bd").gain(0.5).hush(), s("hh*8"))');
+    const back = parsed(code);
+    expect(
+      sources(back).map((n) => [n.data.pattern, !!n.data.disabled]),
+    ).toEqual(
+      expect.arrayContaining([
+        ['bd', true],
+        ['hh*8', false],
+      ]),
+    );
+    expect(lastLine(back)).toBe(code);
+  });
+
+  it('keeps calls switched off inside the part', () => {
+    const code = 'd: stack(s("bd")/* .gain(2) */.lpf(500).hush(), s("hh"))';
+    expect(lastLine(parsed(code))).toBe(code);
+  });
+
+  it('comments out the whole line once every part is off', () => {
+    const program = parsed('d: stack(s("bd"), s("hh"))');
+    for (const node of sources(program)) node.data.disabled = true;
+    const code = lastLine(program);
+    expect(code).toBe('// d: stack(s("bd"), s("hh"))');
+    expect(sources(parsed(code)).every((n) => n.data.disabled)).toBe(true);
+  });
+
+  it('plays only the parts that are on', () => {
+    const played = haps('stack(s("bd").hush(), s("hh"))').map(
+      (hap) => (hap.value as { s: string }).s,
+    );
+    expect(new Set(played)).toEqual(new Set(['hh']));
+  });
+});

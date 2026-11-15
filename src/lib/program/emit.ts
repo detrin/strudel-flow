@@ -9,6 +9,8 @@ import type { Line, Program, ProgramNode } from './types';
  */
 type Call = { text: string; disabled: boolean };
 type Chain = { base: string; calls: Call[] };
+/** Ends a switched-off part of a stack. */
+export const HUSH = 'hush()';
 
 const inline = ({ base, calls }: Chain) =>
   base +
@@ -19,13 +21,31 @@ const inline = ({ base, calls }: Chain) =>
 /** A node switched off: its code is commented out (a source: its line). */
 export const isDisabled = (node: ProgramNode | undefined) =>
   Boolean(node?.data.disabled);
-/** The line's first node; when it is off, the whole line is. */
-const head = (sink: ProgramNode) => flatten(sink).at(-1);
+
+/**
+ * True when nothing reaches this node: its sources are all switched off.
+ * A line that is off is commented out; one part of a `stack(…)` that is
+ * off ends in `.hush()` (Strudel's silence), so the rest still plays.
+ */
+export function isOff(node: ProgramNode): boolean {
+  const definition = nodeDefinitions[node.type];
+  if (definition && isSource(definition))
+    return isDisabled(node) && node.inputs.every(isOff);
+  return node.inputs.length > 0 && node.inputs.every(isOff);
+}
 
 function chain(node: ProgramNode): Chain {
   const definition = nodeDefinitions[node.type];
   const own = definition?.generate(node.data, { id: node.id ?? '' }) ?? '';
-  const inputs = node.inputs.map(chain).filter((input) => input.base);
+  const off = node.inputs.length > 1 && !isOff(node);
+  const inputs = node.inputs
+    .map((input) => {
+      const part = chain(input);
+      return off && part.base && isOff(input)
+        ? { ...part, calls: [...part.calls, { text: HUSH, disabled: false }] }
+        : part;
+    })
+    .filter((input) => input.base);
   const stacked = (extra: string[] = []): Chain => {
     const parts = [...inputs.map(inline), ...extra];
     return parts.length === 1
@@ -73,8 +93,8 @@ export function emitLine(line: Line): string {
       disabled ? `\n  // .${text}` : `\n  .${text}`,
     )
     .join('')}`;
-  // Its first node off: the whole line is commented out, so it never plays.
-  const code = isDisabled(head(sink))
+  // All its sources off: the whole line is commented out, so it never plays.
+  const code = isOff(sink)
     ? body
         .split('\n')
         .map((text) => `// ${text}`)
@@ -112,7 +132,7 @@ export function emitProgram(program: Program): string {
  */
 export function playingLines(program: Pick<Program, 'lines'>) {
   const live = program.lines.filter(
-    (line) => !line.muted && !isDisabled(head(line.sink)) && emitLine(line),
+    (line) => !line.muted && !isOff(line.sink) && emitLine(line),
   );
   return live.some((line) => line.soloed)
     ? live.filter((line) => line.soloed)

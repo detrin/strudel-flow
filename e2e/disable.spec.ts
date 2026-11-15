@@ -36,3 +36,37 @@ test('disabling the first node switches off the whole line', async ({
   await expect(editor(page)).toContainText('kick: s("bd*4")');
   await expect(editor(page)).not.toContainText('// kick');
 });
+
+test('disabling one part of a stack silences just that part', async ({
+  page,
+}) => {
+  await typeCode(
+    page,
+    'drums: stack(s("bd*4").gain(0.5), s("hh*8").lpf(4000), s("~ cp"))',
+  );
+  const sound = (pattern: string) =>
+    nodeOfType(page, 'sound-node').filter({
+      has: page.locator(`input[value="${pattern}"]`),
+    });
+  await sound('bd*4').getByRole('button', { name: 'Disable Sound' }).click();
+  await expect(editor(page)).toContainText(
+    'drums: stack(s("bd*4").gain(0.5).hush(), s("hh*8").lpf(4000), s("~ cp"))',
+  );
+  // Its Level is dimmed with it; the hats' filter is not.
+  await expect(nodeOfType(page, 'level-node').locator('> div')).toHaveAttribute(
+    'data-disabled',
+    'true',
+  );
+  await expect(
+    nodeOfType(page, 'lpf-node').locator('> div'),
+  ).not.toHaveAttribute('data-disabled', 'true');
+
+  // All parts off: the line is commented out; one back on: it plays again.
+  await sound('hh*8').getByRole('button', { name: 'Disable Sound' }).click();
+  await sound('~ cp').getByRole('button', { name: 'Disable Sound' }).click();
+  await expect(editor(page)).toContainText('// drums: stack(');
+  await sound('~ cp').getByRole('button', { name: 'Enable Sound' }).click();
+  await expect(editor(page)).toContainText(
+    'drums: stack(s("bd*4").gain(0.5).hush(), s("hh*8").lpf(4000).hush(), s("~ cp"))',
+  );
+});

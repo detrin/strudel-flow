@@ -17,7 +17,7 @@ import {
 } from './syntax';
 import { labelOf } from '@/lib/lines';
 import { flatten } from './compile';
-import { LAYOUT } from './emit';
+import { HUSH, LAYOUT } from './emit';
 import { ANONYMOUS, type Line, type Program, type ProgramNode } from './types';
 
 /** An existing source node and the code it writes, for identity matching. */
@@ -241,8 +241,31 @@ function createParser(source: string, known: Known[], comments: Comment[]) {
     return null;
   };
 
-  const tree = (expression: Expression): ProgramNode => {
+  /** Marks every source feeding `node` switched off. */
+  const switchOff = (node: ProgramNode) => {
+    for (const member of flatten(node)) {
+      const definition = nodeDefinitions[member.type];
+      if (definition && isSource(definition)) member.data.disabled = true;
+    }
+    return node;
+  };
+
+  /** `part` is one part of a stack: `.hush()` at its end switches it off. */
+  const tree = (expression: Expression, part = false): ProgramNode => {
     const { base, calls } = decompose(source, expression);
+    const last = calls.at(-1);
+    if (part && last && `${last.name}()` === HUSH && !last.args.length) {
+      calls.pop();
+      return switchOff(build(expression, base, calls));
+    }
+    return build(expression, base, calls);
+  };
+
+  const build = (
+    expression: Expression,
+    base: Expression,
+    calls: (Call & { end: number })[],
+  ): ProgramNode => {
     const model = modelled(base, calls);
     // Commented-out calls between this line's calls are disabled nodes.
     const items: Item[] = [
@@ -279,7 +302,7 @@ function createParser(source: string, known: Known[], comments: Comment[]) {
       base.arguments.length > 0 &&
       base.arguments.every((arg) => arg.type !== 'SpreadElement')
     ) {
-      const inputs = base.arguments.map((arg) => tree(arg as Expression));
+      const inputs = base.arguments.map((arg) => tree(arg as Expression, true));
       return chainItems(inputs, after(base.end - 1));
     }
     // 3. A call an instrument models (`note("c e g")` is a Notes node).
@@ -464,7 +487,11 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
       layout && positionsOf(layout.text),
       block.line.soloed,
     );
-    flatten(parsed.sink).at(-1)!.data.disabled = true;
+    // Every source: the line is off when they all are.
+    for (const member of flatten(parsed.sink)) {
+      const definition = nodeDefinitions[member.type];
+      if (definition && isSource(definition)) member.data.disabled = true;
+    }
     program.lines.push(parsed);
     lineStarts.set(parsed, block.start);
   }

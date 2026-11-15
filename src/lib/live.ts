@@ -3,6 +3,7 @@ import type { Pattern } from '@strudel/web';
 import { useAppStore } from '@/store/app-store';
 import { programOf } from '@/lib/program';
 import { flatten } from '@/lib/program/compile';
+import { isOff } from '@/lib/program/emit';
 import { getSchedulerNow } from '@/lib/strudel-clock';
 import { lineNodes, regionsOf, setLineNodes } from '@/lib/lines';
 import { isolateListeners } from '@/lib/diagnostics';
@@ -55,11 +56,12 @@ const labelAt = (offset: number) =>
 function updateLineNodes() {
   const state = useAppStore.getState();
   const lines = programOf(state).lines;
+  // Nodes nothing reaches: a line, or a part of a stack, switched off.
   const off = new Set(
     lines
-      .map((line) => flatten(line.sink).reverse())
-      .filter((members) => members[0]?.data.disabled)
-      .flatMap((members) => members.map((node) => node.id!)),
+      .flatMap((line) => flatten(line.sink))
+      .filter((node) => node.id && isOff(node))
+      .map((node) => node.id!),
   );
   if (!sameSet(off, useLive.getState().off)) useLive.setState({ off });
   let anonymous = 0;
