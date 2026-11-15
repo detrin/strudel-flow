@@ -16,13 +16,14 @@ export function handle({ method, params = {} }: Request) {
 
 /**
  * The bridge hub the dev server runs (mcp/hub.mjs), on the page's own
- * origin, or null when the bridge is off. On by default in development;
- * `?bridge` turns it on in any build served with the hub (`vite preview`),
+ * origin, or null when the bridge is off. On by default in development and
+ * in the stable app (`pnpm stable` builds with VITE_BRIDGE=on); `?bridge`
+ * turns it on in any build served with the hub (`vite preview`),
  * `?bridge=off` turns it off.
  */
 export function bridgeUrl(
   href = window.location.href,
-  dev = import.meta.env.DEV,
+  dev = import.meta.env.DEV || import.meta.env.VITE_BRIDGE === 'on',
 ) {
   const url = new URL(href);
   const param = url.searchParams.get('bridge');

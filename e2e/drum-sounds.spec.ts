@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { editor, nodeOfType, openFresh, typeCode } from './helpers';
 
 test.setTimeout(120000);

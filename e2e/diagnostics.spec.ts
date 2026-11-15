@@ -1,5 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { editor, openFresh, typeCode } from './helpers';
+
+// These tests break things on purpose.
+test.use({ allowErrors: true });
 
 test('a failing store listener is logged and the code still follows the canvas', async ({
   page,
@@ -57,4 +60,34 @@ test('a playback error has details to read and copy', async ({ page }) => {
   await expect(
     alert.getByRole('button', { name: 'Copy details' }),
   ).toBeVisible();
+});
+
+test('errors in the tab are written to the log on disk', async ({ page }) => {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  await openFresh(page);
+  const marker = `log check ${Date.now()}`;
+  await page.evaluate(async (message) => {
+    const path = '/src/lib/diagnostics.ts';
+    const { report } = (await import(/* @vite-ignore */ path)) as {
+      report: (where: string, error: unknown) => void;
+    };
+    report('test', new Error(message));
+  }, marker);
+  const file = join(
+    process.env.STRUDELTON_HOME!,
+    'logs',
+    `${new Date().toISOString().slice(0, 10)}.jsonl`,
+  );
+  await expect
+    .poll(() => existsSync(file) && readFileSync(file, 'utf8').includes(marker))
+    .toBe(true);
+  const line = readFileSync(file, 'utf8')
+    .split('\n')
+    .find((row) => row.includes(marker))!;
+  expect(JSON.parse(line)).toMatchObject({
+    where: 'test',
+    message: marker,
+    page: expect.stringContaining('localhost'),
+  });
 });

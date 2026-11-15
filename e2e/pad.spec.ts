@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { editor, nodeOfType, openFresh, trackErrors } from './helpers';
 
 /** The default patch's Pad, cleared, with a helper to point at cells. */

@@ -11,22 +11,27 @@ import WebSocket from 'ws';
 import { z } from 'zod';
 import { libraryRoot } from './library-files.mjs';
 
-const APP_URL = process.env.STRUDELTON_URL ?? 'http://localhost:5173';
-const HUB_URL = `${APP_URL.replace(/^http/, 'ws').replace(/\/$/, '')}/__bridge?role=agent`;
+// The stable app (`pnpm stable`, :5174) first, then the dev server (:5173);
+// STRUDELTON_URL names one.
+const APP_URLS = process.env.STRUDELTON_URL
+  ? [process.env.STRUDELTON_URL]
+  : ['http://localhost:5174', 'http://localhost:5173'];
+const hubUrl = (app) =>
+  `${app.replace(/^http/, 'ws').replace(/\/$/, '')}/__bridge?role=agent`;
 const TIMEOUT_MS = 10_000;
 const CONNECT_MS = 1500;
 const NOT_RUNNING =
-  `Strudelton's dev server is not running at ${APP_URL}. ` +
-  'Run `pnpm dev` in the strudelton repo (or set STRUDELTON_URL), then open the app.';
+  `Strudelton is not running at ${APP_URLS.join(' or ')}. ` +
+  'Run `pnpm stable` (or `pnpm dev`) in the strudelton repo, or set STRUDELTON_URL, then open the app.';
 
 let hub;
 let nextId = 1;
 const pending = new Map();
 
-/** Connects to the hub (again, after it went away). */
-function connect() {
+/** Connects to the hub at `app` (again, after it went away). */
+function connect(app) {
   if (hub && hub.readyState <= WebSocket.OPEN) return;
-  const socket = new WebSocket(HUB_URL);
+  const socket = new WebSocket(hubUrl(app));
   hub = socket;
   socket.on('message', (data) => {
     let reply;
@@ -52,12 +57,17 @@ function connect() {
 }
 
 async function openHub() {
-  connect();
-  const deadline = Date.now() + CONNECT_MS;
-  while (hub?.readyState === WebSocket.CONNECTING && Date.now() < deadline)
-    await new Promise((done) => setTimeout(done, 50));
-  if (hub?.readyState !== WebSocket.OPEN) throw new Error(NOT_RUNNING);
-  return hub;
+  if (hub?.readyState === WebSocket.OPEN) return hub;
+  for (const app of APP_URLS) {
+    hub?.terminate();
+    hub = undefined;
+    connect(app);
+    const deadline = Date.now() + CONNECT_MS;
+    while (hub?.readyState === WebSocket.CONNECTING && Date.now() < deadline)
+      await new Promise((done) => setTimeout(done, 50));
+    if (hub?.readyState === WebSocket.OPEN) return hub;
+  }
+  throw new Error(NOT_RUNNING);
 }
 
 /** Sends one command to the newest open tab and waits for its answer. */
@@ -324,5 +334,6 @@ tool('delete_preset', 'Delete a preset from the Library.', {
   preset: z.string().describe('Its id, or its name.'),
 });
 
-connect();
+// Connect early, so the first tool call doesn't wait for it.
+void openHub().catch(() => {});
 await server.connect(new StdioServerTransport());

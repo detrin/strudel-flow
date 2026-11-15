@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { openFresh } from './helpers';
 
 const background = (page: import('@playwright/test').Page, selector: string) =>

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { editor, nodeOfType, openFresh, typeCode } from './helpers';
 
 test.beforeEach(async ({ page }) => openFresh(page));

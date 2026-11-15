@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { editor, nodeOfType, nodes, openFresh, typeCode } from './helpers';
 
 const ARP = `ARP: note("<e4 d#4 b3 e3 d#3 b2>".fast(32)).sound("[square, supersaw]")

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { openFresh, typeCode } from './helpers';
 
 /** The loudest sample a line's own analyser saw over `ms`. */

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { nodeOfType, openFresh, typeCode } from './helpers';
 
 const code = (page: Page) => page.locator('.cm-content');

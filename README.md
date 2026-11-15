@@ -47,6 +47,16 @@ the creators of React Flow).
 Open **Export → Community patches → Undertow** for a 64-bar acid techno
 track that uses every node.
 
+## Play
+
+```sh
+pnpm stable       # http://localhost:5174: main, built; re-run to update
+```
+
+The stable app is `main` built once, so nothing being edited reaches the
+tab you play in. Errors from any tab are logged to
+`~/.strudelton/logs/<date>.jsonl`.
+
 ## Develop
 
 ```sh

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('app loads the default patch and starts playing', async ({ page }) => {
   const errors: string[] = [];

@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
 import { bridgeHub, localFiles } from './mcp/dev-server.mjs';
 import { libraryFiles } from './mcp/library-files.mjs';
+import { errorLog } from './mcp/error-log.mjs';
 
 export default defineConfig(({ mode }) => ({
   plugins: [
@@ -16,6 +17,8 @@ export default defineConfig(({ mode }) => ({
     localFiles(loadEnv(mode, process.cwd(), '').STRUDELTON_LOCAL ?? ''),
     // Presets and sound tags in ~/.strudelton (or STRUDELTON_HOME).
     libraryFiles(),
+    // Errors from open tabs, in ~/.strudelton/logs/<date>.jsonl.
+    errorLog(),
   ],
   resolve: {
     alias: [

@@ -6,13 +6,29 @@ two views of one program. Fork of xyflow/strudel-flow (`origin` is the fork,
 
 ## Run and check
 
+- **Where the person plays: `pnpm stable`**, `main` built in its own git
+  worktree (`../strudelton-stable`) and served on :5174 with the bridge,
+  Library and /local/. It changes only when re-run, so edits in progress
+  never reach the tab they play in. Re-run it after pushing to `main`.
+- **Where you work: your own worktree** (`git worktree add
+../strudelton-<name> main`, its own `pnpm dev --port <n>`), never the
+  checkout another session or the stable app uses. Merge to `main` when
+  checked. The MCP tools reach :5174 first, then :5173
+  (`STRUDELTON_URL` picks one).
+- **Errors from every tab go to `~/.strudelton/logs/<date>.jsonl`** (JSON
+  lines: `where`, `message`, `stack`, `page`); read them before asking the
+  person what broke.
+
 - `pnpm dev`: the app at http://localhost:5173, plus the bridge hub at
   `/__bridge` (see Claude Code below). Vite restarts itself on config or
   `.env.local` changes.
 - `pnpm check`: format, lint (0 warnings), typecheck, knip, unit tests. The
   pre-commit hook runs it. Lint forbids non-component exports from `.tsx`
   files (react-refresh): put helpers in `.ts` modules.
-- `pnpm e2e`: Playwright (its own dev server on :5199). Specs use
+- `pnpm e2e`: Playwright (its own dev server on :5199). Specs import
+  `test`/`expect` from `e2e/fixtures.ts`, which fails a test on any page
+  error or `[strudelton]` report (opt out: `test.use({ allowErrors: true })`).
+  Specs use
   `openFresh` (bridge off, empty storage) and `typeCode`, which waits for the
   canvas to settle; use `settle(page)` after anything that adds nodes before
   clicking or dragging on the canvas. Run a suite twice before trusting it.

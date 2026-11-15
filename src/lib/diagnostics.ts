@@ -21,9 +21,43 @@ const entries: Entry[] = [];
 const listeners = new Set<() => void>();
 
 export function record(entry: Omit<Entry, 'at'>) {
-  entries.push({ at: new Date().toISOString(), ...entry });
+  const full = { at: new Date().toISOString(), ...entry };
+  entries.push(full);
   if (entries.length > LIMIT) entries.splice(0, entries.length - LIMIT);
   listeners.forEach((listener) => listener());
+  toDisk(full);
+}
+
+/**
+ * Entries also go to the server's log on disk (~/.strudelton/logs/), in
+ * small batches, so errors can be read without anyone describing them.
+ * Without a server that keeps logs (a static deploy) it stops trying.
+ */
+let unsent: Entry[] = [];
+let sending: ReturnType<typeof setTimeout> | undefined;
+let logging = typeof window !== 'undefined' && /^https?:/.test(location.href);
+function toDisk(entry: Entry) {
+  if (!logging) return;
+  unsent.push({
+    ...entry,
+    // What the log needs, kept small: stacks to their first lines.
+    stack: entry.stack?.split('\n').slice(0, 8).join('\n'),
+  });
+  sending ??= setTimeout(() => {
+    sending = undefined;
+    const batch = unsent;
+    unsent = [];
+    fetch('/__log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entries: batch, page: location.href }),
+      keepalive: true,
+    })
+      .then((response) => {
+        if (response.status === 404) logging = false;
+      })
+      .catch(() => {});
+  }, 500);
 }
 
 /** Records an error (and logs it to the console with its context). */

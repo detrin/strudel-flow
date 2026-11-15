@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator } from './fixtures';
 import { editor, nodeOfType, openFresh, typeCode } from './helpers';
 
 /** A node's canvas position, from React Flow's transform. */
