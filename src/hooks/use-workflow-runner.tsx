@@ -15,6 +15,7 @@ import { loadSamples } from '@/data/samples';
 import { collectPunchcards, tagPunchcards } from '@/lib/punchcards';
 import { setEvaluatedCode, startLive } from '@/lib/live';
 import { startMeters, tagAnalysers } from '@/lib/meters';
+import { prepareLaunch } from '@/lib/launch';
 
 const ready: Promise<StrudelSession> = initStrudel().then(
   (session: StrudelSession) => {
@@ -46,10 +47,13 @@ async function evaluateAudio(pattern: string) {
   // start later, or muted) would stay frozen at its start. Playing wakes it.
   await getAudioContext().resume();
   const code = tagAnalysers(tagPunchcards(pattern));
+  // While playing, an edit may wait for the next bar (launch quantization).
+  const launch = prepareLaunch(session.scheduler);
   await collectPunchcards(async () => {
     await evaluate(code);
     if (session.state.evalError) throw session.state.evalError;
   });
+  launch?.();
   setEvaluatedCode(code);
 }
 

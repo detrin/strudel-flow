@@ -3,7 +3,7 @@ import { useAppStore } from '@/store/app-store';
 import { setCode, startCodeSync } from '@/store/code-sync';
 import { programOf } from '@/lib/program';
 import { isAudible, playingLines } from '@/lib/program/emit';
-import { clearSolo, setSoloed } from './mixer';
+import { addLevel, clearSolo, setSoloed, stripsOf } from './mixer';
 
 const state = () => useAppStore.getState();
 const nodeOf = (type: string, index = 0) =>
@@ -54,5 +54,25 @@ describe('solo', () => {
     ]);
     setCode('_Skick: s("bd")');
     expect(isAudible(programOf(state()))).toBe(false);
+  });
+});
+
+describe('mixer strips', () => {
+  it("shows each line's gain and adds a Level where there is none", () => {
+    const strips = () => stripsOf(programOf(state()).lines);
+    expect(
+      strips().map(({ label, gain, levelId }) => [label, gain, !!levelId]),
+    ).toEqual([
+      ['kick', 1, true],
+      ['hats', 0.8, false],
+      ['bass', 0.8, false],
+    ]);
+    addLevel(strips()[1].nodeId);
+    expect(state().code).toContain('hats: s("hh*8")\n  .gain(0.8)');
+    expect(strips()[1].levelId).toBeTruthy();
+    setCode('$: s("bd").gain("<0.5 1>")');
+    expect(strips()[0].gain).toBe('"<0.5 1>"');
+    setCode('$: s("bd").gain(sine.range(0.2, 1))');
+    expect(strips()[0].gain).toBe('gain(sine.range(0.2, 1))');
   });
 });

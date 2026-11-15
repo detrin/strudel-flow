@@ -4,7 +4,7 @@
 //
 //   pnpm shot <song file> [--tidy] [--play SECONDS] [--hide-console]
 //             [--fit] [--size 1440x900] [--out shots/name.png]
-//             [--code PATH]
+//             [--code PATH] [--click 'Button name']…
 //
 // --code saves the console's code once the canvas settles: the song with
 // fresh `// @layout` comments (how the demo patches get theirs).
@@ -26,6 +26,7 @@ const { values, positionals } = parseArgs({
     size: { type: 'string', default: '1440x900' },
     out: { type: 'string' },
     code: { type: 'string' },
+    click: { type: 'string', multiple: true },
   },
 });
 const [file] = positionals;
@@ -65,6 +66,8 @@ try {
     await page.getByRole('button', { name: /^Play \(/ }).click();
     await page.waitForTimeout(Number(values.play) * 1000);
   }
+  for (const name of values.click ?? [])
+    await page.getByRole('button', { name, exact: true }).first().click();
   if (values['hide-console'])
     await page.getByRole('button', { name: 'Hide code console' }).click();
   if (values.fit) await page.getByRole('button', { name: 'Fit patch' }).click();

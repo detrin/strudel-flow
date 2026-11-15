@@ -1,6 +1,15 @@
 declare module '@strudel/web' {
   export type StrudelSession = {
-    scheduler: { now: () => number; cps?: number; pattern?: Pattern };
+    scheduler: {
+      now: () => number;
+      cps?: number;
+      pattern?: Pattern;
+      /** Whether the clock runs. */
+      started?: boolean;
+      /** The cycle up to which events are already scheduled. */
+      lastEnd?: number;
+      setPattern: (pattern: Pattern, autostart?: boolean) => Promise<void>;
+    };
     state: { evalError?: unknown };
   };
 
@@ -26,7 +35,19 @@ declare module '@strudel/web' {
     },
   ): { output: string };
 
+  /** One event: `whole` is its full span (absent for continuous ones). */
+  export type Hap = {
+    whole?: { begin: { valueOf(): number } };
+    part: { begin: { valueOf(): number } };
+    value: unknown;
+  };
+  /** Plays patterns at the same time. */
+  export function stack(...patterns: Pattern[]): Pattern;
+  export function pure(value: unknown): Pattern;
+
   export class Pattern {
+    filterHaps(test: (hap: Hap) => boolean): Pattern;
+    queryArc(begin: number, end: number): Hap[];
     analyze(id: string | number): Pattern;
     _scope(options?: { id?: string | number }): Pattern;
     _tscope(options?: { id?: string | number }): Pattern;

@@ -8,6 +8,7 @@ import deleteEdge from '@/components/edges/delete-edge';
 import { useAppStore } from '@/store/app-store';
 import { EditorToolbar } from './toolbar';
 import { NodePalette } from './node-palette';
+import { MixerPanel } from '@/components/mixer/mixer-panel';
 import { useUrlState } from '@/hooks/use-url-state';
 import { useWorkflowRunner } from '@/hooks/use-workflow-runner';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
@@ -98,6 +99,7 @@ export default function Editor() {
           >
             <EditorToolbar onAddNode={onAddNode} />
             <NodePalette />
+            <MixerPanel />
           </ReactFlow>
         </div>
       )}

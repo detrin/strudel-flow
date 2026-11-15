@@ -10,6 +10,9 @@ import { PlayPauseButton } from './play-pause-button';
 import { ZoomSlider } from './zoom-slider';
 import { PresetPopover } from './preset-popover';
 import { LibraryPopover } from '@/components/library/library-popover';
+import { LaunchSelect } from './launch-select';
+import { RecordButton } from './record-button';
+import { MixerButton } from '@/components/mixer/mixer-button';
 
 export function EditorToolbar({
   onAddNode,
@@ -46,6 +49,7 @@ export function EditorToolbar({
         className="m-0! mt-14! flex items-center gap-1.5 rounded-md border border-border/60 bg-card p-1 pr-2 sm:mt-2!"
       >
         <PlayPauseButton />
+        <RecordButton />
         <div className="flex items-baseline gap-1.5">
           <input
             type="number"
@@ -90,6 +94,7 @@ export function EditorToolbar({
             B/C
           </label>
         </div>
+        <LaunchSelect />
       </Panel>
 
       {error && (
@@ -127,6 +132,7 @@ export function EditorToolbar({
         >
           <Rows3 className="size-4" aria-hidden="true" />
         </ControlButton>
+        <MixerButton />
         <LibraryPopover />
         <PresetPopover />
         <AppearancePopover />
