@@ -205,6 +205,54 @@ function rowPositions(
   return { positions, bottom };
 }
 
+/**
+ * Positions for a line that merges parts (`stack(a, b, c).fx()`), laid out
+ * as a tree, the way layered graph layouts and a DAW's drum rack do: each
+ * part is a lane, top to bottom in code order, left-aligned; the node they
+ * merge into sits right of the longest lane, centred on the lanes, so the
+ * wires only fan into empty space and never cross other nodes. What
+ * follows the merge continues on its row.
+ */
+function treePositions(
+  sink: ProgramNode,
+  origin: XYPosition,
+  size: (id: string) => Size,
+) {
+  const positions = new Map<string, XYPosition>();
+  let bottom = origin.y;
+  /** Places `node` and what feeds it from (x, y); returns its extent. */
+  const place = (
+    node: ProgramNode,
+    x: number,
+    y: number,
+  ): { right: number; y: number } => {
+    const { width, height } = size(node.id!);
+    let at: XYPosition;
+    if (node.inputs.length === 0) {
+      at = { x, y };
+    } else if (node.inputs.length === 1) {
+      const input = place(node.inputs[0], x, y);
+      at = { x: input.right + GAP, y: input.y };
+    } else {
+      const lanes: { right: number; y: number }[] = [];
+      let next = y;
+      for (const input of node.inputs) {
+        lanes.push(place(input, x, next));
+        next = bottom + GAP;
+      }
+      at = {
+        x: Math.max(...lanes.map((lane) => lane.right)) + GAP,
+        y: Math.round((lanes[0].y + lanes.at(-1)!.y) / 2),
+      };
+    }
+    positions.set(node.id!, at);
+    bottom = Math.max(bottom, at.y + height);
+    return { right: at.x + width, y: at.y };
+  };
+  place(sink, origin.x, origin.y);
+  return { positions, bottom };
+}
+
 /** True when every node in the line has at most one input. */
 const isChain = (members: AppNode[], edges: Edge[]) =>
   members.every(
@@ -259,8 +307,9 @@ export function layout(
   lineNodes.forEach((members, index) => {
     const fresh = members.every((node) => !placed.has(node.id));
     const forced = members.some((node) => relayout.has(node.id));
-    if ((fresh || forced) && isChain(members, edges)) {
-      const groups = groupsOf(members);
+    const chain = isChain(members, edges);
+    const sink = lines[index].sink;
+    if ((fresh || forced) && (chain || flatten(sink).every((n) => n.id))) {
       const others = nodes.filter(
         (node) => placed.has(node.id) && !members.includes(node),
       );
@@ -282,8 +331,16 @@ export function layout(
         };
         oldBottom = bottom(members);
       }
-      const row = rowPositions(members, groups, origin, size);
-      members.forEach((node, i) => move(node, row.positions[i]));
+      let row: { bottom: number };
+      if (chain) {
+        const lane = rowPositions(members, groupsOf(members), origin, size);
+        members.forEach((node, i) => move(node, lane.positions[i]));
+        row = lane;
+      } else {
+        const tree = treePositions(sink, origin, (id) => size(byId.get(id)!));
+        for (const node of members) move(node, tree.positions.get(node.id)!);
+        row = tree;
+      }
       // Rows below move to keep the gap between lines.
       const shift = row.bottom - oldBottom;
       if (shift)

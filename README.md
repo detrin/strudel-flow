@@ -25,7 +25,9 @@ the creators of React Flow).
   spectrogram or loudness over time, for the line or the master mix.
 - **Miro-style canvas**: drag empty space to select (Shift or ⌘/Ctrl + click
   adds a node) and move the selection together; two-finger swipe or the
-  middle mouse button pans, pinch zooms.
+  middle mouse button pans, pinch zooms. **Auto-arrange** lays every track
+  out and aligns them left, or only the selected tracks; a `stack(…)` is
+  drawn as lanes merging into one column.
 - **Disable any node** with its power button: its call is commented out in
   the code; disabling a line's first node silences the line.
 - **Library** (folder icon): every Strudel sound, searchable by name and

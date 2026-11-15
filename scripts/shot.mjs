@@ -61,7 +61,7 @@ try {
   await page.keyboard.insertText(code);
   await page.waitForTimeout(1500);
   if (values.tidy)
-    await page.getByRole('button', { name: /Tidy all lines/ }).click();
+    await page.getByRole('button', { name: /Auto-arrange all tracks/ }).click();
   if (values.play) {
     await page.getByRole('button', { name: /^Play \(/ }).click();
     await page.waitForTimeout(Number(values.play) * 1000);

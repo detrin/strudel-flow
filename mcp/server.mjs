@@ -163,8 +163,13 @@ tool(
 );
 tool(
   'tidy',
-  'Tidy the canvas: each line in code order with order-free effects stacked. A line is only reordered when it provably sounds the same. Optionally only the line of one node.',
-  { node: z.string().optional().describe('A node id: tidy only its line.') },
+  "Auto-arrange the canvas (the app's Auto-arrange button): every line laid out as a track (order-free effects stacked; a stack(...) as lanes merging into one column), then all lines aligned left, top to bottom in code order. A line is only reordered when it provably sounds the same. With node: only that node's line, where it is.",
+  {
+    node: z
+      .string()
+      .optional()
+      .describe('A node id: arrange only its line, in place.'),
+  },
 );
 tool(
   'select_node',

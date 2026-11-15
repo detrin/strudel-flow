@@ -152,7 +152,7 @@ function WorkflowNode({
                 },
               },
               {
-                label: 'Tidy line',
+                label: 'Auto-arrange track',
                 icon: <Rows3 />,
                 onSelect: () => tidyLines(id),
               },

@@ -177,3 +177,26 @@ describe('Pad from code', () => {
     expect(again.nodes.find((n) => n.type === 'pad-node')!.id).toBe(found.id);
   });
 });
+
+describe('layout of a line that merges parts', () => {
+  it('gives each part a lane in code order and the merge its own column', () => {
+    const graph = typeCode(
+      'd: stack(s("bd").gain(1).lpf(500), s("hh"), s("cp").gain(0.5)).room(0.3)',
+    );
+    const at = (pattern: string) =>
+      graph.nodes.find((n) => n.data.pattern === pattern)!.position;
+    const [bd, hh, cp] = ['bd', 'hh', 'cp'].map(at);
+    // Lanes top to bottom in code order, all starting at the same x.
+    expect(bd.y).toBeLessThan(hh.y);
+    expect(hh.y).toBeLessThan(cp.y);
+    expect(new Set([bd.x, hh.x, cp.x]).size).toBe(1);
+    // The merge sits right of every lane, between the first and last.
+    const scope = find(graph, 'room-node')[0].position;
+    const rights = graph.nodes
+      .filter((n) => n.type !== 'room-node')
+      .map((n) => n.position.x);
+    expect(scope.x).toBeGreaterThan(Math.max(...rights));
+    expect(scope.y).toBeGreaterThan(bd.y);
+    expect(scope.y).toBeLessThan(cp.y);
+  });
+});

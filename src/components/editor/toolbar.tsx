@@ -1,7 +1,8 @@
 import { Panel } from '@xyflow/react';
-import { PanelLeftOpen, Plus, Rows3 } from 'lucide-react';
+import { AlignStartVertical, PanelLeftOpen, Plus } from 'lucide-react';
 import { tidyLines } from '@/lib/tidy';
 import type { MouseEventHandler } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { ControlButton } from './control-button';
 import { AppearancePopover } from './appearance-popover';
 import { AppInfoPopover } from './app-info-popover';
@@ -110,13 +111,7 @@ export function EditorToolbar({
         >
           <Plus className="size-4" aria-hidden="true" />
         </ControlButton>
-        <ControlButton
-          title="Tidy all lines (order-free nodes stacked, Arrange last)"
-          onClick={() => tidyLines()}
-          className="nokey nodrag nopan"
-        >
-          <Rows3 className="size-4" aria-hidden="true" />
-        </ControlButton>
+        <AutoArrangeButton />
         <MixerButton />
         <MidiButton />
         <LibraryPopover />
@@ -134,5 +129,29 @@ export function EditorToolbar({
         </Panel>
       )}
     </>
+  );
+}
+
+/**
+ * Auto-arrange: every track, lined up flush left (the default), or, while
+ * nodes are selected, just the tracks holding them, where they are.
+ */
+function AutoArrangeButton() {
+  const selected = useAppStore(
+    useShallow((state) =>
+      state.nodes.filter((node) => node.selected).map((node) => node.id),
+    ),
+  );
+  const title = selected.length
+    ? `Auto-arrange the selected tracks (${selected.length} node${selected.length === 1 ? '' : 's'} selected)`
+    : 'Auto-arrange all tracks, aligned left (select nodes to arrange just their tracks)';
+  return (
+    <ControlButton
+      title={title}
+      onClick={() => tidyLines(selected.length ? selected : undefined)}
+      className="nokey nodrag nopan"
+    >
+      <AlignStartVertical className="size-4" aria-hidden="true" />
+    </ControlButton>
   );
 }
