@@ -16,6 +16,8 @@ import { collectPunchcards, tagPunchcards } from '@/lib/punchcards';
 import { setEvaluatedCode, startLive } from '@/lib/live';
 import { startMeters, tagAnalysers } from '@/lib/meters';
 import { prepareLaunch } from '@/lib/launch';
+import { cutSound } from '@/lib/cut-sound';
+import { useRecorder } from '@/lib/recorder';
 
 const ready: Promise<StrudelSession> = initStrudel().then(
   (session: StrudelSession) => {
@@ -166,23 +168,51 @@ export function useWorkflowRunner() {
     if (compiled.error) setError(compiled.error);
   }, [compiled, setError]);
 
+  // Switching to or from a preview cuts what is still sounding (a held
+  // vocal, a tail), or the previews would layer. Not while recording: the
+  // recorder listens on the output the cut rebuilds.
+  const shown = useRef<string | null>(null);
+  const cutting = useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => {
+    const id = preview?.id ?? null;
+    if (id === shown.current) return;
+    shown.current = id;
+    if (useRecorder.getState().since === null) {
+      cutting.current = cutSound();
+    }
+  }, [preview]);
+
   useEffect(() => {
     // A preview plays instead of the song while it lasts.
     if (preview) {
+      let cancelled = false;
       const timer = window.setTimeout(
-        () => engine.current?.setPattern(preview.code),
+        () =>
+          void cutting.current.then(() => {
+            if (!cancelled) engine.current?.setPattern(preview.code);
+          }),
         40,
       );
-      return () => window.clearTimeout(timer);
+      return () => {
+        cancelled = true;
+        window.clearTimeout(timer);
+      };
     }
     if (!isPlaying || !compiled.audible || compiled.error) {
       engine.current?.setPattern(null);
       return;
     }
+    let cancelled = false;
     const timer = window.setTimeout(
-      () => engine.current?.setPattern(compiled.pattern),
+      () =>
+        void cutting.current.then(() => {
+          if (!cancelled) engine.current?.setPattern(compiled.pattern);
+        }),
       40,
     );
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [compiled, isPlaying, preview]);
 }

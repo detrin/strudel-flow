@@ -299,3 +299,67 @@ test('a preset plays on its own, stops, and the song comes back', async ({
     page.getByRole('button', { name: 'Pause (Space)' }),
   ).toBeVisible();
 });
+
+test('switching presets cuts what the last one left sounding', async ({
+  page,
+}) => {
+  await openFresh(page);
+  await typeCode(
+    page,
+    [
+      'setcpm(120/4)',
+      // Every note rings for 8 seconds after it ends.
+      'drone: note("c3").s("sawtooth").release(8).gain(0.5)',
+      'quiet: s("hh*4").gain(0)',
+    ].join('\n'),
+  );
+  const library = await openLibrary(page);
+  await library.getByRole('tab', { name: 'Presets' }).click();
+  for (const name of ['drone', 'quiet']) {
+    await library
+      .getByRole('button', { name: 'Save a line as a preset' })
+      .click();
+    await library.getByLabel('Line to save').selectOption(name);
+    await library.getByLabel('Preset name').fill(name);
+    await library.getByRole('button', { name: 'Save preset' }).click();
+  }
+
+  // The loudest sample on the master output since the last reset.
+  await page.evaluate(async () => {
+    const path = '/src/lib/meters.ts';
+    const { masterAnalyser } = (await import(/* @vite-ignore */ path)) as {
+      masterAnalyser: () => AnalyserNode | undefined;
+    };
+    const w = window as unknown as { peak: number };
+    w.peak = 0;
+    const loop = () => {
+      // Strudel rebuilds its output on a cut; follow it.
+      const analyser = masterAnalyser();
+      if (analyser) {
+        const data = new Float32Array(analyser.fftSize);
+        analyser.getFloatTimeDomainData(data);
+        for (const v of data) w.peak = Math.max(w.peak, Math.abs(v));
+      }
+      requestAnimationFrame(loop);
+    };
+    loop();
+  });
+  const peak = () =>
+    page.evaluate(() => (window as unknown as { peak: number }).peak);
+  const resetPeak = () =>
+    page.evaluate(() => ((window as unknown as { peak: number }).peak = 0));
+
+  await library
+    .getByRole('button', { name: 'Play drone', exact: true })
+    .click();
+  await expect.poll(peak, { timeout: 15000 }).toBeGreaterThan(0.05);
+  await page.waitForTimeout(2500);
+
+  await library
+    .getByRole('button', { name: 'Play quiet', exact: true })
+    .click();
+  await page.waitForTimeout(400);
+  await resetPeak();
+  await page.waitForTimeout(1000);
+  expect(await peak()).toBeLessThan(0.005);
+});

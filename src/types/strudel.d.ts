@@ -67,6 +67,7 @@ declare module '@strudel/web' {
     duration: number,
   ): Promise<void>;
   export function getSuperdoughAudioController(): unknown;
+  export function resetGlobalEffects(): void;
   export function drawTimeScope(
     analyser: AnalyserNode | undefined,
     options: {
