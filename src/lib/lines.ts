@@ -53,3 +53,19 @@ export const setLineNodes = (lines: Map<string, string[]>) => {
 /** The label of the line a node is part of (`$0` for the first `$:`). */
 export const lineLabelOf = (nodeId: string) =>
   [...lineNodes].find(([, ids]) => ids.includes(nodeId))?.[0];
+
+/**
+ * Node ids by part: in a line that merges parts (`stack(a, b).fx()`), the
+ * nodes of each part, keyed `<label>#<index>` in code order.
+ */
+export let partNodes = new Map<string, string[]>();
+export const setPartNodes = (parts: Map<string, string[]>) => {
+  partNodes = parts;
+};
+/**
+ * What a node hears, for meters and visuals: its part (`kick#0`) when it
+ * sits in one part of a stack, otherwise its line's label.
+ */
+export const sourceOf = (nodeId: string) =>
+  [...partNodes].find(([, ids]) => ids.includes(nodeId))?.[0] ??
+  lineLabelOf(nodeId);

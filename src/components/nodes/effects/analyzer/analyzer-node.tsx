@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import type { CustomControlsProps } from '../../define-node';
-import { lineLabelOf } from '@/lib/lines';
+import { sourceOf } from '@/lib/lines';
 import { analyserOf, historyOf, MASTER } from '@/lib/meters';
 import { canvasClass, useCanvas } from '../../visuals/use-canvas';
 import { drawHistory } from '../../visuals/history-draw';
@@ -68,7 +68,7 @@ export function AnalyzerNode({
 
   const ref = useCanvas(
     (ctx, width, height, colors) => {
-      const key = source === MASTER ? MASTER : lineLabelOf(id);
+      const key = source === MASTER ? MASTER : sourceOf(id);
       if (!key) return;
       if (mode === 'waveform') {
         drawWaveform(

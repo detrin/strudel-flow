@@ -6,6 +6,8 @@ import {
 } from '@strudel/web';
 import { getSchedulerCps, getSchedulerNow } from '@/lib/strudel-clock';
 import { regionsOf } from '@/lib/lines';
+import { parseScript } from '@/lib/program/syntax';
+import type { Expression, Statement } from 'acorn';
 
 /**
  * Measuring what plays, for the nodes that show it (Filter, Envelope,
@@ -21,22 +23,79 @@ const HISTORY_CYCLES = 16;
 /** Cycles of past notes kept (release tails, echoes, reverb). */
 const RECENT_CYCLES = 4;
 
-const idOf = (label: string) => `flow_${label.replace(/[^\w]/g, '_')}`;
-/** Line label → its analyser id. */
+const idOf = (key: string) => `flow_${key.replace(/[^\w]/g, '_')}`;
+/** Line label, or part key (`kick#0`), → its analyser id. */
 let lineIds = new Map<string, string>();
+/** A line that merges parts → its parts' keys, in code order. */
+let lineParts = new Map<string, string[]>();
+
+/**
+ * The parts of a line's `stack(a, b, …)`, when the line is one (followed
+ * by effects or not): their spans in `body`. Empty otherwise.
+ */
+function stackParts(body: string) {
+  let statements: Statement[];
+  try {
+    statements = parseScript(body).body as Statement[];
+  } catch {
+    return [];
+  }
+  const [statement] = statements;
+  if (
+    statement?.type !== 'LabeledStatement' ||
+    statement.body.type !== 'ExpressionStatement'
+  )
+    return [];
+  let base: Expression = statement.body.expression;
+  while (
+    base.type === 'CallExpression' &&
+    base.callee.type === 'MemberExpression'
+  )
+    base = base.callee.object as Expression;
+  if (
+    base.type !== 'CallExpression' ||
+    base.callee.type !== 'Identifier' ||
+    base.callee.name !== 'stack' ||
+    base.arguments.length < 2 ||
+    base.arguments.some((arg) => arg.type === 'SpreadElement')
+  )
+    return [];
+  return base.arguments.map((arg) => ({ start: arg.start, end: arg.end }));
+}
 
 /**
  * Adds `.analyze('flow_<label>')` to the end of every line of the code to
- * evaluate. A line that already analyses (a Scope node) keeps its own id.
+ * evaluate, so each line is measured on its own. A line that merges parts
+ * (`stack(a, b).fx()`) gets one per part instead (`flow_<label>_0`, …), so
+ * a filter in one part shows that part; the line is their sum. A line that
+ * already analyses (a Scope node) keeps its own id.
  */
 export function tagAnalysers(code: string) {
   const ids = new Map<string, string>();
+  const parts = new Map<string, string[]>();
   const insert: { at: number; text: string }[] = [];
   for (const region of regionsOf(code)) {
     const body = code.slice(region.start, region.end);
     const own = /\.analyze\(\s*["'`]([^"'`]+)["'`]/.exec(body)?.[1];
     if (own) {
       ids.set(region.label, own);
+      continue;
+    }
+    const spans = stackParts(body);
+    if (spans.length) {
+      const keys = spans.map((span, index) => {
+        const key = `${region.label}#${index}`;
+        const id = idOf(key);
+        ids.set(key, id);
+        // Single quotes: double-quoted strings are mini-notation in Strudel.
+        insert.push({ at: region.start + span.start, text: '(' });
+        insert.push({
+          at: region.start + span.end,
+          text: `).analyze('${id}')`,
+        });
+        return key;
+      });
+      parts.set(region.label, keys);
       continue;
     }
     // After the line's last code (disabled calls are comment lines).
@@ -51,22 +110,59 @@ export function tagAnalysers(code: string) {
     if (at < 0) continue;
     const id = idOf(region.label);
     ids.set(region.label, id);
-    // Single quotes: double-quoted strings are mini-notation in Strudel.
     insert.push({ at, text: `.analyze('${id}')` });
   }
   lineIds = ids;
+  lineParts = parts;
   let tagged = code;
-  for (const { at, text } of insert.sort((a, b) => b.at - a.at))
+  // Back to front; at one offset, the closing `)` before an opening `(`.
+  for (const { at, text } of insert
+    .map((item, order) => ({ ...item, order }))
+    .sort((a, b) => b.at - a.at || b.order - a.order))
     tagged = tagged.slice(0, at) + text + tagged.slice(at);
   return tagged;
 }
 
-/** The analyser measuring a line (by label), once it has played. */
-export const lineAnalyser = (label: string) => {
-  const id = lineIds.get(label);
+/** Each line's parts summed, for a line that merges parts. */
+const sums = new Map<
+  string,
+  { node: AnalyserNode; inputs: Set<AnalyserNode> }
+>();
+function summed(label: string, keys: string[]) {
+  const sources = keys.flatMap((key) => {
+    const id = lineIds.get(key);
+    const node = id ? (analysers[id] as AnalyserNode | undefined) : undefined;
+    return node ? [node] : [];
+  });
+  if (!sources.length) return undefined;
+  let sum = sums.get(label);
+  if (!sum || sum.node.context !== sources[0].context) {
+    const node = sources[0].context.createAnalyser();
+    node.fftSize = sources[0].fftSize;
+    node.smoothingTimeConstant = sources[0].smoothingTimeConstant;
+    sum = { node, inputs: new Set() };
+    sums.set(label, sum);
+  }
+  for (const source of sources)
+    if (!sum.inputs.has(source)) {
+      source.connect(sum.node);
+      sum.inputs.add(source);
+    }
+  return sum.node;
+}
+
+/**
+ * The analyser measuring a line (by label) or one part of it (`kick#0`),
+ * once it has played.
+ */
+export const lineAnalyser = (key: string) => {
+  const keys = lineParts.get(key);
+  if (keys) return summed(key, keys);
+  const id = lineIds.get(key);
   return id ? (analysers[id] as AnalyserNode | undefined) : undefined;
 };
-export const analyserIdOf = (label: string) => lineIds.get(label);
+
+export const analyserIdOf = (key: string) => lineIds.get(key);
 
 let master: AnalyserNode | undefined;
 let tapped: AudioNode | undefined;
@@ -152,7 +248,8 @@ export function startMeters(
       while (list.length && list[0].at < now - HISTORY_CYCLES) list.shift();
       levels.set(source, list);
     };
-    for (const label of lineIds.keys()) record(label, lineAnalyser(label));
+    for (const key of [...lineIds.keys(), ...lineParts.keys()])
+      record(key, lineAnalyser(key));
     record(MASTER, masterAnalyser());
 
     const pattern = getPattern() as unknown as Queryable | undefined;
@@ -175,15 +272,20 @@ export function startMeters(
     for (const hap of haps) {
       if (!hap.whole || (hap.hasOnset && !hap.hasOnset())) continue;
       const value = (hap.value ?? {}) as Record<string, unknown>;
-      const label = byId.get(String(value.analyze));
-      if (!label) continue;
-      const list = recent.get(label) ?? [];
-      list.push({
+      const key = byId.get(String(value.analyze));
+      if (!key) continue;
+      const played = {
         begin: Number(hap.whole.begin),
         end: Number(hap.whole.end),
         value,
-      });
-      recent.set(label, list);
+      };
+      // A part's notes are its line's too.
+      const line = key.includes('#') ? key.slice(0, key.indexOf('#')) : null;
+      for (const owner of line ? [key, line] : [key]) {
+        const list = recent.get(owner) ?? [];
+        list.push(played);
+        recent.set(owner, list);
+      }
     }
     until = now;
     for (const [label, list] of recent) {

@@ -1,5 +1,5 @@
 import type { VisualProps } from '../define-node';
-import { lineLabelOf } from '@/lib/lines';
+import { sourceOf } from '@/lib/lines';
 import { recentHaps, secondsPerCycle } from '@/lib/meters';
 import { getSchedulerNow } from '@/lib/strudel-clock';
 import { canvasClass, useCanvas } from './use-canvas';
@@ -14,7 +14,7 @@ const WINDOW = 4;
 export function RoomVisual({ id, values, isPlaying }: VisualProps) {
   const ref = useCanvas(
     (ctx, width, height, colors) => {
-      const label = lineLabelOf(id);
+      const label = sourceOf(id);
       const now = getSchedulerNow();
       const spc = secondsPerCycle();
       const hits =

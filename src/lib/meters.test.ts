@@ -29,4 +29,22 @@ describe('tagAnalysers', () => {
     expect(tagAnalysers(code)).toBe(code);
     expect(analyserIdOf('acid')).toBe('acid-scope');
   });
+
+  it('gives each part of a stack its own analyser instead of the line', () => {
+    const code =
+      'drums: stack(s("bd*4").hpf(100), s("hh*8").hpf(5000))\n  .room(0.2)';
+    expect(tagAnalysers(code)).toBe(
+      'drums: stack((s("bd*4").hpf(100)).analyze(\'flow_drums_0\'), ' +
+        '(s("hh*8").hpf(5000)).analyze(\'flow_drums_1\'))\n  .room(0.2)',
+    );
+    expect(analyserIdOf('drums#0')).toBe('flow_drums_0');
+    expect(analyserIdOf('drums#1')).toBe('flow_drums_1');
+    expect(analyserIdOf('drums')).toBeUndefined();
+  });
+
+  it('tags parts that are plain strings or expressions too', () => {
+    expect(tagAnalysers('d: stack("bd", s("hh"))')).toBe(
+      'd: stack(("bd").analyze(\'flow_d_0\'), (s("hh")).analyze(\'flow_d_1\'))',
+    );
+  });
 });

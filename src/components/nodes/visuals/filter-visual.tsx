@@ -1,5 +1,5 @@
 import type { VisualProps } from '../define-node';
-import { lineLabelOf } from '@/lib/lines';
+import { sourceOf } from '@/lib/lines';
 import { lineAnalyser, recentHaps, secondsPerCycle } from '@/lib/meters';
 import { getSchedulerNow } from '@/lib/strudel-clock';
 import { canvasClass, useCanvas } from './use-canvas';
@@ -32,7 +32,8 @@ function spectrum(analyser: AnalyserNode) {
 }
 
 /**
- * A filter, live: the line's spectrum, and over it the filter's response,
+ * A filter, live: the spectrum of what it is in (its part of a stack, or
+ * its line), and over it the filter's response,
  * whose cutoff follows each note (patterns, sliders, LFOs, the envelope).
  */
 function FilterVisual({
@@ -44,7 +45,7 @@ function FilterVisual({
   const keys = KEYS[kind];
   const ref = useCanvas(
     (ctx, width, height, colors) => {
-      const label = lineLabelOf(id);
+      const label = sourceOf(id);
       // Grid: 100 Hz, 1 kHz, 10 kHz.
       ctx.strokeStyle = colors.grid;
       ctx.fillStyle = colors.muted;
@@ -62,7 +63,7 @@ function FilterVisual({
       }
       ctx.globalAlpha = 1;
 
-      // The line's spectrum (dB), filled.
+      // The part's (or line's) spectrum (dB), filled.
       const analyser = isPlaying && label ? lineAnalyser(label) : undefined;
       if (analyser) {
         const data = spectrum(analyser);
@@ -160,7 +161,7 @@ function FilterVisual({
     <canvas
       ref={ref}
       role="img"
-      aria-label="Filter response over the line's spectrum"
+      aria-label="Filter response over the spectrum of what it filters"
       data-visual="filter"
       className={canvasClass}
     />

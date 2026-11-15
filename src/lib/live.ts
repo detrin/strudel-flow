@@ -5,7 +5,8 @@ import { programOf } from '@/lib/program';
 import { flatten } from '@/lib/program/compile';
 import { isOff } from '@/lib/program/emit';
 import { getSchedulerNow } from '@/lib/strudel-clock';
-import { lineNodes, regionsOf, setLineNodes } from '@/lib/lines';
+import { lineNodes, regionsOf, setLineNodes, setPartNodes } from '@/lib/lines';
+import type { ProgramNode } from '@/lib/program/types';
 import { isolateListeners } from '@/lib/diagnostics';
 
 export { lineLabelOf, regionsOf } from '@/lib/lines';
@@ -65,16 +66,34 @@ function updateLineNodes() {
   );
   if (!sameSet(off, useLive.getState().off)) useLive.setState({ off });
   let anonymous = 0;
+  const parts = new Map<string, string[]>();
   setLineNodes(
     new Map(
       programOf(state)
         .lines.filter((line) => !line.muted)
-        .map((line) => [
-          line.label === '$' ? `$${anonymous++}` : line.label,
-          flatten(line.sink).flatMap((node) => (node.id ? [node.id] : [])),
-        ]),
+        .map((line) => {
+          const label = line.label === '$' ? `$${anonymous++}` : line.label;
+          partsOf(line.sink).forEach((part, index) =>
+            parts.set(`${label}#${index}`, idsOf(part)),
+          );
+          return [label, idsOf(line.sink)];
+        }),
     ),
   );
+  setPartNodes(parts);
+}
+
+const idsOf = (node: ProgramNode) =>
+  flatten(node).flatMap((member) => (member.id ? [member.id] : []));
+
+/**
+ * The parts a line merges (`stack(a, b).fx()`), in code order: the inputs
+ * of the first node, from the end of the line, that has more than one.
+ */
+function partsOf(sink: ProgramNode): ProgramNode[] {
+  let node = sink;
+  while (node.inputs.length === 1) node = node.inputs[0];
+  return node.inputs.length > 1 ? node.inputs : [];
 }
 
 const sameRanges = (a: readonly CodeRange[], b: readonly CodeRange[]) =>
