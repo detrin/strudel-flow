@@ -45,6 +45,7 @@ export default function Editor() {
 
   // Nodes created from code may land off screen; bring them into view.
   const fitRequest = useAppStore((state) => state.fitRequest);
+  const focusRequest = useAppStore((state) => state.focusRequest);
   const placing = useAppStore((state) => state.placing);
   const { fitView } = useReactFlow();
   useEffect(() => {
@@ -54,6 +55,15 @@ export default function Editor() {
     );
     return () => cancelAnimationFrame(frame);
   }, [fitRequest, fitView]);
+  useEffect(() => {
+    if (!focusRequest) return;
+    fitView({
+      nodes: [{ id: focusRequest.id }],
+      padding: FIT_PADDING,
+      maxZoom: 1,
+      duration: 300,
+    });
+  }, [focusRequest, fitView]);
 
   return (
     <NodeContextMenu>

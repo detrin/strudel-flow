@@ -3,7 +3,7 @@ import { editor, nodeOfType, openFresh, typeCode } from './helpers';
 
 test.beforeEach(async ({ page }) => openFresh(page));
 
-test('Tidy puts Arrange first and stacks order-free effects', async ({
+test('Tidy orders the code, stacks order-free effects, Arrange last', async ({
   page,
 }) => {
   await typeCode(
@@ -21,8 +21,9 @@ test('Tidy puts Arrange first and stacks order-free effects', async ({
   const source = await box('sound-node');
   const filter = await box('lpf-node');
   const level = await box('level-node');
-  // The header heads the row; the filter and level share one column.
-  expect(header.x).toBeLessThan(source.x);
+  // In code order; the filter and level share one column.
+  expect(header.x).toBeGreaterThan(level.x);
+  expect(source.x).toBeLessThan(filter.x);
   expect(Math.round(level.x)).toBe(Math.round(filter.x));
   expect(level.y).toBeGreaterThan(filter.y);
   // The header is named after its line.

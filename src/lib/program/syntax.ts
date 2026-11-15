@@ -42,6 +42,11 @@ const ALIASES: Record<string, string> = {
   trans: 'transpose',
 };
 export const canonical = (name: string) => ALIASES[name] ?? name;
+/** A method's name and every alias Strudel accepts for it. */
+export const namesOf = (name: string) => [
+  name,
+  ...Object.keys(ALIASES).filter((alias) => ALIASES[alias] === name),
+];
 
 export function parseScript(code: string, onComment?: acornComment) {
   return parse(code, {

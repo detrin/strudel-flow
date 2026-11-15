@@ -27,8 +27,8 @@ describe('tidying lines', () => {
     );
     const at = (type: string) =>
       state().nodes.find((node) => node.type === type)!.position;
-    // Header first, then source, chain, and the stack.
-    expect(at('arrange-node').x).toBeLessThan(at('sound-node').x);
+    // In code order: source, chain, the stack, then the Arrange.
+    expect(at('arrange-node').x).toBeGreaterThan(at('level-node').x);
     expect(at('level-node').x).toBe(at('lpf-node').x);
     expect(at('level-node').y).toBeGreaterThan(at('lpf-node').y);
   });

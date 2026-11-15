@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useAppStore } from '@/store/app-store';
 import { startCodeSync } from '@/store/code-sync';
-import { bridgePort, handle } from './connect';
+import { bridgeUrl, handle } from './connect';
 
 const run = (method: string, params: Record<string, unknown> = {}) =>
   handle({ id: 1, method, params }) as Record<string, unknown>;
@@ -79,12 +79,15 @@ describe('bridge commands', () => {
   });
 });
 
-describe('bridgePort', () => {
-  it('is on in development and with ?bridge, off otherwise', () => {
-    expect(bridgePort('http://x/', true)).toBe(4331);
-    expect(bridgePort('http://x/', false)).toBeNull();
-    expect(bridgePort('http://x/?bridge', false)).toBe(4331);
-    expect(bridgePort('http://x/?bridge=5000', false)).toBe(5000);
-    expect(bridgePort('http://x/?bridge=off', true)).toBeNull();
+describe('bridgeUrl', () => {
+  it('reaches the hub on the page origin, on in development', () => {
+    expect(bridgeUrl('http://x:5173/', true)).toBe(
+      'ws://x:5173/__bridge?role=app',
+    );
+    expect(bridgeUrl('http://x/', false)).toBeNull();
+    expect(bridgeUrl('https://x/?bridge', false)).toBe(
+      'wss://x/__bridge?role=app',
+    );
+    expect(bridgeUrl('http://x/?bridge=off', true)).toBeNull();
   });
 });

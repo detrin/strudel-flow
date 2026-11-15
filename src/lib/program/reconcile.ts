@@ -155,9 +155,10 @@ export function reconcile(
 }
 
 /**
- * Positions for one line laid out as a track: its header (Arrange) first,
- * then the source and the chain left to right, with each run of `sound`
- * nodes stacked in one column like a channel strip.
+ * Positions for one line, in the order of its code: left to right, with
+ * each run of order-free nodes (voice, effects, visuals) stacked in one
+ * column like a channel strip. The Arrange ends the row, as `.mask` ends
+ * the line.
  */
 function rowPositions(
   members: AppNode[],
@@ -168,12 +169,6 @@ function rowPositions(
   const positions: XYPosition[] = [];
   let x = origin.x;
   let bottom = origin.y;
-  const header = groups.indexOf('header');
-  if (header >= 0) {
-    positions[header] = { ...origin };
-    x += size(members[header]).width + GAP;
-    bottom = origin.y + size(members[header]).height;
-  }
   let column: {
     x: number;
     next: number;
@@ -184,11 +179,12 @@ function rowPositions(
   const source = members.find((_, i) => groups[i] === 'source');
   const tallest = Math.max(MIN_STACK, source ? size(source).height : 0);
   members.forEach((node, index) => {
-    if (index === header) return;
     const { width, height } = size(node);
     // Voices, order-free effects and visuals each stack in a column.
     const stack =
-      groups[index] === 'shape' || groups[index] === 'source'
+      groups[index] === 'shape' ||
+      groups[index] === 'source' ||
+      groups[index] === 'header'
         ? null
         : groups[index];
     if (

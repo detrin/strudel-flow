@@ -52,9 +52,10 @@ code ←emit── Program ←compile (follows wires)── canvas
 Claude Code can read and change the open patch while you work — "make the
 hats swing", "drop the bass for 8 bars" — and you hear it immediately.
 
-1. `pnpm dev` and open http://localhost:5173. In development the app connects
-   to the bridge by itself (any build: add `?bridge`); the bottom-right badge
-   shows it.
+1. `pnpm dev` and open http://localhost:5173. The dev server runs a bridge
+   hub at `/__bridge`; every open tab connects to it by itself (`vite
+preview` builds too, with `?bridge`; `?bridge=off` opts out). The
+   bottom-right badge shows when a Claude session is attached.
 2. In this repo Claude Code picks up the server from `.mcp.json`. From any
    other project:
 
@@ -62,10 +63,30 @@ hats swing", "drop the bass for 8 bars" — and you hear it immediately.
    claude mcp add strudel-flow -- node /path/to/strudel-flow/mcp/server.mjs
    ```
 
-Tools: `get_patch`, `set_code`, `set_node`, `set_muted`, `set_tempo`,
-`play`, `stop`, `set_theme`, `list_node_types`. The bridge listens on
-`127.0.0.1:4331` (`STRUDEL_FLOW_PORT` to change; `?bridge=PORT` in the app)
-and only accepts pages served from this machine.
+   It connects to the hub at `STRUDEL_FLOW_URL` (default
+   `http://localhost:5173`). Any number of Claude sessions and tabs can be
+   open; commands go to the newest tab, and survive it reloading.
+
+Tools: `get_patch` (compact; `detail: "full"` for everything), `set_code`,
+`open_file` (a song from disk, read by the server: embedded samples never
+pass through the conversation), `new_patch`, `tidy`, `select_node`,
+`set_node`, `set_muted`, `set_tempo`, `play`, `stop`, `set_theme`,
+`list_node_types`. The hub only accepts pages served from this machine.
+
+## Local files
+
+Set `STRUDEL_FLOW_LOCAL` (e.g. in `.env.local`) to a folder, and the dev
+server serves it read-only at `/local/…`, with CORS, so songs can load their
+samples from disk: `samples({ vox: ['/local/songs/vox.mp3'] })`.
+
+## Tools for development
+
+- `pnpm shot <song> [--tidy] [--play SECONDS] [--hide-console] [--fit]
+[--size WxH] [--out PATH]`: a screenshot of the app with the song open,
+  from its own dev server and browser (default `shots/<song>.png`).
+- `pnpm survey <folder> [--json report.json]`: how much of a folder of songs
+  the canvas models with real nodes, and the raw code left (Code and Method
+  nodes) by method. Run it before and after adding a node.
 
 ## Patches
 

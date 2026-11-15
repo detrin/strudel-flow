@@ -1,11 +1,12 @@
 import { useAppStore } from '@/store/app-store';
 import { commands } from './commands';
 
-export const DEFAULT_BRIDGE_PORT = 4331;
 const RETRY_MS = 2000;
 
-/** Request from the MCP server, and the app's reply. */
+/** Request from an agent (through the hub), and the app's reply. */
 type Request = { id: number; method: string; params?: Record<string, unknown> };
+/** The hub tells the tab how many agents (Claude sessions) are attached. */
+type Notice = { type: 'agents'; count: number };
 
 export function handle({ method, params = {} }: Request) {
   const command = commands[method];
@@ -14,24 +15,26 @@ export function handle({ method, params = {} }: Request) {
 }
 
 /**
- * The port to reach the local MCP server on, or null when the bridge is
- * off. On by default in development; `?bridge` (or `?bridge=PORT`) turns it
- * on in any build.
+ * The bridge hub the dev server runs (mcp/hub.mjs), on the page's own
+ * origin, or null when the bridge is off. On by default in development;
+ * `?bridge` turns it on in any build served with the hub (`vite preview`),
+ * `?bridge=off` turns it off.
  */
-export function bridgePort(
+export function bridgeUrl(
   href = window.location.href,
   dev = import.meta.env.DEV,
 ) {
-  const param = new URL(href).searchParams.get('bridge');
-  if (param === 'off') return null;
-  if (param) return Number(param) || DEFAULT_BRIDGE_PORT;
-  return param === '' || dev ? DEFAULT_BRIDGE_PORT : null;
+  const url = new URL(href);
+  const param = url.searchParams.get('bridge');
+  if (param === 'off' || (param === null && !dev)) return null;
+  const scheme = url.protocol === 'https:' ? 'wss' : 'ws';
+  return `${scheme}://${url.host}/__bridge?role=app`;
 }
 
-/** Keeps a connection to the MCP server open; returns a stop function. */
+/** Keeps the tab connected to the hub; returns a stop function. */
 export function startBridge() {
-  const port = bridgePort();
-  if (port === null) return () => {};
+  const url = bridgeUrl();
+  if (url === null) return () => {};
   let socket: WebSocket | undefined;
   let retry: number | undefined;
   let stopped = false;
@@ -40,20 +43,25 @@ export function startBridge() {
 
   const open = () => {
     setStatus('connecting');
-    socket = new WebSocket(`ws://127.0.0.1:${port}`);
-    socket.onopen = () => setStatus('connected');
+    socket = new WebSocket(url);
     socket.onclose = () => {
       if (stopped) return;
       setStatus('connecting');
       retry = window.setTimeout(open, RETRY_MS);
     };
     socket.onmessage = (event) => {
-      let request: Request;
+      let message: Request | Notice;
       try {
-        request = JSON.parse(String(event.data));
+        message = JSON.parse(String(event.data));
       } catch {
         return;
       }
+      if ('type' in message) {
+        // "Agent connected" shows while a Claude session is attached.
+        setStatus(message.count > 0 ? 'connected' : 'connecting');
+        return;
+      }
+      const request = message;
       let reply: object;
       try {
         reply = { id: request.id, result: handle(request) ?? null };

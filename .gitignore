@@ -27,3 +27,6 @@ dist-ssr
 test-results
 playwright-report
 *.tmp.mjs
+
+# pnpm shot output
+shots/

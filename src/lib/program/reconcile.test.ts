@@ -47,12 +47,12 @@ describe('reconcile', () => {
     ).toContainEqual([time.id, filter.id]);
   });
 
-  it("puts a line's Arrange first, as its header", () => {
+  it('ends a row with its Arrange, as the code ends with .mask', () => {
     const graph = typeCode('$: s("bd*4").lpf(800).mask("<1!4 0!4>")');
     const [arrange] = find(graph, 'arrange-node');
-    const [kick] = find(graph, 'sound-node');
-    expect(arrange.position.x).toBeLessThan(kick.position.x);
-    expect(arrange.position.y).toBe(kick.position.y);
+    const [filter] = find(graph, 'lpf-node');
+    expect(arrange.position.x).toBeGreaterThan(filter.position.x);
+    expect(arrange.position.y).toBe(filter.position.y);
   });
 
   it('round-trips: the code it writes rebuilds the same canvas', () => {

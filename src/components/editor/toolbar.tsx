@@ -120,7 +120,7 @@ export function EditorToolbar({
           <Plus className="size-4" aria-hidden="true" />
         </ControlButton>
         <ControlButton
-          title="Tidy all lines (arrange first, order-free nodes stacked)"
+          title="Tidy all lines (order-free nodes stacked, Arrange last)"
           onClick={() => tidyLines()}
           className="nokey nodrag nopan"
         >

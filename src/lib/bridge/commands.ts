@@ -3,7 +3,9 @@ import { isSource } from '@/components/nodes/define-node';
 import { programOf } from '@/lib/program';
 import { flatten } from '@/lib/program/compile';
 import { useAppStore } from '@/store/app-store';
-import { setCode } from '@/store/code-sync';
+import { loadCode, setCode } from '@/store/code-sync';
+import { codeMeta } from '@/lib/community-patches';
+import { tidyLines } from '@/lib/tidy';
 import { themes } from '@/themes';
 
 /**
@@ -16,19 +18,31 @@ const state = () => useAppStore.getState();
 /** Node data the canvas uses for itself, not for sound. */
 const UI_KEYS = new Set(['title', 'icon', 'state', 'label']);
 
-function describeNode(id: string) {
+/** Big values (a pad's grid, a clip's notes) as a short summary. */
+function compactValue(value: unknown) {
+  if (Array.isArray(value)) return `[${value.length} items]`;
+  if (value && typeof value === 'object') return '{…}';
+  if (typeof value === 'string' && value.length > 200)
+    return `${value.slice(0, 200)}… (${value.length} chars)`;
+  return value;
+}
+
+function describeNode(id: string, compact = false) {
   const node = state().nodes.find((candidate) => candidate.id === id)!;
   const definition = nodeDefinitions[node.type];
   const values = Object.fromEntries(
-    Object.entries({ ...node.data, ...definition.getValues(node.data) }).filter(
-      ([key]) => !UI_KEYS.has(key),
-    ),
+    Object.entries({ ...node.data, ...definition.getValues(node.data) })
+      .filter(([key]) => !UI_KEYS.has(key))
+      .map(([key, value]) => [key, compact ? compactValue(value) : value]),
   );
   return { id, type: node.type, title: definition.title, values };
 }
 
-/** The patch as an agent sees it: its code, and its lines as node chains. */
-export function describe() {
+/**
+ * The patch as an agent sees it: its code, and its lines as node chains.
+ * `compact` summarises big values, so a song stays readable.
+ */
+export function describe(compact = false) {
   const current = state();
   const lines = programOf(current).lines.map((line) => ({
     label: line.label,
@@ -36,7 +50,7 @@ export function describe() {
     // Upstream first, like the code reads.
     nodes: flatten(line.sink)
       .reverse()
-      .map((node) => describeNode(node.id!)),
+      .map((node) => describeNode(node.id!, compact)),
   }));
   const inLines = new Set(lines.flatMap((line) => line.nodes.map((n) => n.id)));
   return {
@@ -50,7 +64,7 @@ export function describe() {
     lines,
     unconnectedNodes: current.nodes
       .filter((node) => !inLines.has(node.id))
-      .map((node) => describeNode(node.id)),
+      .map((node) => describeNode(node.id, compact)),
   };
 }
 
@@ -61,7 +75,43 @@ function requireString(params: Params, key: string) {
 }
 
 export const commands: Record<string, (params: Params) => unknown> = {
-  get_patch: () => describe(),
+  get_patch: (params) => describe(params.detail !== 'full'),
+
+  /** Opens code as a new patch (a song file, an empty patch). */
+  open_code: (params) => {
+    const code = requireString(params, 'code');
+    const meta = codeMeta(code);
+    const file = typeof params.name === 'string' ? params.name : '';
+    loadCode(code, {
+      name: meta.name ?? (file.split('/').pop() || 'Untitled patch'),
+      author: meta.author ?? '',
+      description: meta.description ?? '',
+    });
+    const { codeError } = state();
+    if (codeError) throw new Error(`The code did not parse: ${codeError}`);
+    return describe(true);
+  },
+
+  tidy: (params) => {
+    const node = typeof params.node === 'string' ? params.node : undefined;
+    const kept = tidyLines(node);
+    return { linesKeptInOrder: kept, ...describe(true) };
+  },
+
+  select_node: (params) => {
+    const id = requireString(params, 'id');
+    if (!state().nodes.some((node) => node.id === id))
+      throw new Error(`No node with id "${id}". Call get_patch for ids.`);
+    useAppStore.setState((current) => ({
+      nodes: current.nodes.map((node) =>
+        node.selected === (node.id === id)
+          ? node
+          : { ...node, selected: node.id === id },
+      ),
+      focusRequest: { id, at: Date.now() },
+    }));
+    return describeNode(id, true);
+  },
 
   set_code: (params) => {
     setCode(requireString(params, 'code'));

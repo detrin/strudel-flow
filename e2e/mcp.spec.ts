@@ -1,16 +1,22 @@
 import { expect, test } from '@playwright/test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { editor, nodeOfType, nodes, openFresh } from './helpers';
 
+// One hub serves every tab, and agents reach the newest: one test at a time.
+test.describe.configure({ mode: 'serial' });
+
 /** Claude Code's side: the MCP server over stdio, as .mcp.json starts it. */
-async function claude(port: number) {
+async function claude(appUrl: string) {
   const client = new Client({ name: 'e2e', version: '1.0.0' });
   await client.connect(
     new StdioClientTransport({
       command: 'node',
       args: ['mcp/server.mjs'],
-      env: { ...process.env, STRUDEL_FLOW_PORT: String(port) } as Record<
+      env: { ...process.env, STRUDEL_FLOW_URL: appUrl } as Record<
         string,
         string
       >,
@@ -26,15 +32,14 @@ async function claude(port: number) {
   return { client, call };
 }
 
-test('Claude Code edits the open patch over MCP', async ({ page }, info) => {
-  const port = 4400 + info.workerIndex;
-  const { client, call } = await claude(port);
+test('Claude Code edits the open patch over MCP', async ({ page, baseURL }) => {
+  const { client, call } = await claude(baseURL!);
   try {
-    // Before the app is open, tools say how to open it.
-    expect((await call('get_patch')).text).toMatch(/Run `pnpm dev`/);
+    // Before a tab is open, tools say how to open it.
+    expect((await call('get_patch')).text).toMatch(/not open/);
 
     await openFresh(page);
-    await page.goto(`/?bridge=${port}`);
+    await page.goto('/');
     await expect(page.getByText('Agent connected')).toBeVisible();
 
     const tools = await client.listTools();
@@ -73,7 +78,52 @@ test('Claude Code edits the open patch over MCP', async ({ page }, info) => {
     await expect(page.getByRole('button', { name: /Pause/ })).toBeVisible();
     await call('stop');
     await expect(page.getByRole('button', { name: /^Play \(/ })).toBeVisible();
+
+    // A song file opens from disk, named by its header.
+    const file = join(tmpdir(), `flow-${Date.now()}.strudel`);
+    writeFileSync(
+      file,
+      '// @name Disk song\n// @author me\nsetcpm(90/4)\nhat: s("hh*8").gain(0.4)\n',
+    );
+    const opened = JSON.parse((await call('open_file', { path: file })).text);
+    expect(opened.lines.map((line: { label: string }) => line.label)).toEqual([
+      'hat',
+    ]);
+    await expect(editor(page)).toContainText('hat: s("hh*8")');
+
+    // Claude points at a node: it is selected and its code highlighted.
+    const level = opened.lines[0].nodes[1];
+    await call('select_node', { id: level.id });
+    await expect(page.locator('.cm-node-focus')).toHaveText('gain(0.4)');
+    expect((await call('tidy')).error).toBeFalsy();
+
+    // get_patch is compact unless asked for everything.
+    await call('new_patch', { code: 'p: n("0 2").scale("C:major")' });
+    const compact = JSON.parse((await call('get_patch')).text);
+    expect(compact.lines[0].nodes[0].type).toBe('notes-node');
   } finally {
     await client.close();
+  }
+});
+
+test('a second Claude session and a reopened tab still reach the app', async ({
+  page,
+  baseURL,
+}) => {
+  const first = await claude(baseURL!);
+  const second = await claude(baseURL!);
+  try {
+    await openFresh(page);
+    await page.goto('/');
+    await expect(page.getByText('Agent connected')).toBeVisible();
+    await page.reload();
+    for (const session of [first, second]) {
+      const result = await session.call('set_code', { code: 'k: s("bd*4")' });
+      expect(result.error).toBeFalsy();
+    }
+    await expect(editor(page)).toContainText('k: s("bd*4")');
+  } finally {
+    await first.client.close();
+    await second.client.close();
   }
 });

@@ -17,7 +17,9 @@
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm knip && pnpm test",
     "prepare": "simple-git-hooks",
     "knip": "knip --no-progress",
-    "mcp": "node mcp/server.mjs"
+    "mcp": "node mcp/server.mjs",
+    "shot": "node scripts/shot.mjs",
+    "survey": "node scripts/survey.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.4",

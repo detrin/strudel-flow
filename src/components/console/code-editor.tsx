@@ -160,10 +160,29 @@ export function CodeEditor({
     const editor = view.current;
     if (!editor || value === reported.current) return;
     reported.current = value;
-    const head = Math.min(editor.state.selection.main.head, value.length);
+    // Replace only what differs, so folds, the cursor and the scroll
+    // position elsewhere in the code stay where they were.
+    const current = editor.state.doc.toString();
+    let start = 0;
+    while (
+      start < current.length &&
+      start < value.length &&
+      current[start] === value[start]
+    )
+      start++;
+    let end = 0;
+    while (
+      end < current.length - start &&
+      end < value.length - start &&
+      current[current.length - 1 - end] === value[value.length - 1 - end]
+    )
+      end++;
     editor.dispatch({
-      changes: { from: 0, to: editor.state.doc.length, insert: value },
-      selection: { anchor: head },
+      changes: {
+        from: start,
+        to: current.length - end,
+        insert: value.slice(start, value.length - end),
+      },
     });
   }, [value]);
 

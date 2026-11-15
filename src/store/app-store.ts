@@ -44,6 +44,8 @@ type AppState = {
   error: string | null;
   /** Node type waiting to be placed by a click on the canvas (toolbar). */
   placing: string | null;
+  /** A node to bring into view (an agent pointing at it). */
+  focusRequest?: { id: string; at: number };
 };
 
 /** The code console panel; remembered per browser. */
