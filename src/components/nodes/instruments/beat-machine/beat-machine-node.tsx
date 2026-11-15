@@ -4,7 +4,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DRUM_CATEGORIES } from '@/data/sounds';
+import { DRUM_CATEGORIES, DRUM_NAMES } from '@/data/sounds';
+import { drumProblem, useSoundNames } from '@/lib/library/sounds';
+import { useLineBank } from '@/components/nodes/shared/use-line-bank';
 import { CategorySelectItems } from '@/components/nodes/shared/category-select-items';
 import type { CustomControlsProps } from '../../define-node';
 import type { BeatMachineData } from './beat-machine';
@@ -22,7 +24,9 @@ function SequencerRow({
   onInstrumentChange,
   onModifierSelect,
   showModifiers,
+  problem,
 }: {
+  problem: (sound: string) => string | undefined;
   row: BeatMachineRow;
   rowIndex: number;
   onStepClick: (rowIndex: number, step: number) => void;
@@ -42,12 +46,23 @@ function SequencerRow({
       >
         <SelectTrigger
           aria-label={`Track ${rowIndex + 1} instrument`}
-          className="nodrag w-28 shrink-0 h-11! text-xs"
+          aria-invalid={Boolean(problem(row.instrument))}
+          title={
+            problem(row.instrument)
+              ? `${row.instrument} won't play: ${problem(row.instrument)}`
+              : undefined
+          }
+          className="nodrag w-28 shrink-0 h-11! text-xs aria-invalid:border-destructive aria-invalid:text-destructive"
         >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <CategorySelectItems categories={DRUM_CATEGORIES} />
+          <CategorySelectItems
+            categories={DRUM_CATEGORIES}
+            describe={(sound) => DRUM_NAMES[sound]}
+            problem={problem}
+            current={row.instrument}
+          />
         </SelectContent>
       </Select>
       <div className="flex gap-1">
@@ -98,9 +113,14 @@ function SequencerRow({
 }
 
 export function BeatMachineNode({
+  id,
   values: data,
   onChange,
 }: CustomControlsProps<BeatMachineData>) {
+  // Sounds the line's drum machine (or Strudel) doesn't have won't play.
+  const names = useSoundNames();
+  const bank = useLineBank(id);
+  const problem = (sound: string) => drumProblem(names, sound, bank);
   const modifiersEnabled =
     typeof data.modifiersEnabled === 'boolean' ? data.modifiersEnabled : false;
 
@@ -214,6 +234,7 @@ export function BeatMachineNode({
             onInstrumentChange={handleInstrumentChange}
             onModifierSelect={handleModifierSelect}
             showModifiers={modifiersEnabled}
+            problem={problem}
           />
         ))}
       </div>

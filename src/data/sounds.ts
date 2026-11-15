@@ -3,46 +3,72 @@ export interface SoundCategory {
   options: string[];
 }
 
+/**
+ * Drum sounds, by the names every drum machine bank uses (`bd`, `sd`, …), so
+ * they work with `.bank(...)` and without one (Strudel's default samples).
+ * Then real percussion samples Strudel loads, which work without a bank.
+ * Only names Strudel actually has; checked against its sound list.
+ */
 export const DRUM_CATEGORIES: SoundCategory[] = [
+  { label: 'Kick', options: ['bd'] },
+  { label: 'Snare', options: ['sd', 'rim'] },
+  { label: 'Clap', options: ['cp'] },
+  { label: 'Hats', options: ['hh', 'oh'] },
+  { label: 'Toms', options: ['lt', 'mt', 'ht'] },
+  { label: 'Cymbals', options: ['cr', 'rd'] },
+  { label: 'Percussion', options: ['cb', 'perc', 'sh', 'tb', 'misc'] },
   {
-    label: 'Kicks',
+    label: 'Percussion samples (no bank)',
     options: [
-      'bd',
-      'kicklinn',
-      'clubkick',
-      'hardkick',
-      'popkick',
-      'reverbkick',
+      'bassdrum1',
+      'bassdrum2',
+      'clap',
+      'hihat',
+      'tambourine',
+      'cowbell',
+      'clave',
+      'woodblock',
+      'cabasa',
+      'triangles',
+      'conga',
+      'bongo',
+      'cajon',
+      'darbuka',
+      'framedrum',
+      'slapstick',
+      'vibraslap',
+      'ratchet',
+      'guiro',
+      'agogo',
+      'belltree',
+      'sleighbells',
+      'fingercymbal',
+      'gong',
+      'timpani',
+      'oceandrum',
     ],
-  },
-  {
-    label: 'Snares',
-    options: [
-      'sd',
-      'dr_few',
-      'drum',
-      'drumtraks',
-      'electro1',
-      'hardcore',
-      'house',
-      'ifdrums',
-      'jungle',
-      'gretsch',
-    ],
-  },
-  {
-    label: 'Hi-Hats',
-    options: ['hh', 'linnhats', 'dr', 'dr2', 'dr55'],
-  },
-  {
-    label: 'Claps',
-    options: ['cp', 'realclaps'],
-  },
-  {
-    label: 'Percussion',
-    options: ['clak', 'click', 'stomp', 'tabla', 'tabla2', 'tablex'],
   },
 ];
+
+/** What the drum machine names stand for. */
+export const DRUM_NAMES: Record<string, string> = {
+  bd: 'kick',
+  sd: 'snare',
+  rim: 'rimshot',
+  cp: 'clap',
+  hh: 'closed hat',
+  oh: 'open hat',
+  lt: 'low tom',
+  mt: 'mid tom',
+  ht: 'high tom',
+  cr: 'crash',
+  rd: 'ride',
+  cb: 'cowbell',
+  perc: 'percussion',
+  sh: 'shaker',
+  tb: 'tambourine',
+  misc: 'misc',
+};
 
 const SOUND_OPTIONS = [
   'ab',

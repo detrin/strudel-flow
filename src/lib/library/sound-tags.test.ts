@@ -52,3 +52,23 @@ describe('sound kinds and tags', () => {
     expect(variantsOf({ type: 'synth' })).toBe(0);
   });
 });
+
+import { drumProblem } from './sounds';
+
+describe('whether a drum sound will play', () => {
+  const names = new Set(['bd', 'cp', 'rolandtr909_bd', 'rolandtr909_cp']);
+  it('checks the bank, or Strudel without one', () => {
+    expect(drumProblem(names, 'bd', 'RolandTR909')).toBeUndefined();
+    expect(drumProblem(names, 'cb', 'RolandTR909')).toBe('not in RolandTR909');
+    expect(drumProblem(names, 'clubkick', undefined)).toBe('not found');
+    expect(drumProblem(names, 'cp', undefined)).toBeUndefined();
+  });
+  it('leaves patterns, variants and unknown states alone', () => {
+    expect(drumProblem(names, 'bd:3', undefined)).toBeUndefined();
+    expect(drumProblem(names, 'bd*4', undefined)).toBeUndefined();
+    expect(
+      drumProblem(names, 'cb', '<RolandTR909 RolandTR808>'),
+    ).toBeUndefined();
+    expect(drumProblem(new Set(), 'anything', undefined)).toBeUndefined();
+  });
+});

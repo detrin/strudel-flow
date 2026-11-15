@@ -25,6 +25,51 @@ export function readSounds(): Sound[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** The names of every sound Strudel knows (lowercase), kept up to date. */
+export function useSoundNames() {
+  const [names, setNames] = useState(
+    () => new Set(Object.keys(soundMap.get())),
+  );
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const update = () => setNames(new Set(Object.keys(soundMap.get())));
+    const stop = soundMap.listen(() => {
+      clearTimeout(timer);
+      timer = setTimeout(update, 300);
+    });
+    update();
+    return () => {
+      clearTimeout(timer);
+      stop();
+    };
+  }, []);
+  return names;
+}
+
+/**
+ * Why a drum sound won't play, or undefined if it will: with a bank, the
+ * machine must have it (`RolandTR909_cb` doesn't exist); without, Strudel
+ * must have the name. Unknown while nothing has loaded yet.
+ */
+export function drumProblem(
+  names: Set<string>,
+  sound: string,
+  bank: string | undefined,
+) {
+  if (!names.size) return undefined;
+  // Only plain names can be checked ("bd", "bd:3"), not patterns ("bd*4").
+  const plain = /^([\w-]+)(?::\d+)?$/.exec(sound.trim())?.[1];
+  if (!plain) return undefined;
+  sound = plain;
+  // A bank written as a pattern ("<a b>", "[a, b]") can't be checked here.
+  if (bank && /^[\w-]+$/.test(bank))
+    return names.has(`${bank.toLowerCase()}_${sound.toLowerCase()}`)
+      ? undefined
+      : `not in ${bank}`;
+  if (bank) return undefined;
+  return names.has(sound.toLowerCase()) ? undefined : 'not found';
+}
+
 /** Every sound Strudel knows, updated as sample packs finish loading. */
 export function useSounds() {
   const [sounds, setSounds] = useState(readSounds);

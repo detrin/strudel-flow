@@ -6,14 +6,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DRUM_CATEGORIES } from '@/data/sounds';
+import { DRUM_CATEGORIES, DRUM_NAMES } from '@/data/sounds';
+import { drumProblem, useSoundNames } from '@/lib/library/sounds';
+import { useLineBank } from '@/components/nodes/shared/use-line-bank';
 import { CategorySelectItems } from '@/components/nodes/shared/category-select-items';
 
 export function DrumSoundsNode({
+  id,
   values: data,
   onChange,
 }: CustomControlsProps<SoundData>) {
   const sound = data.sound ?? '';
+  const names = useSoundNames();
+  const bank = useLineBank(id);
+  const problem = (name: string) => drumProblem(names, name, bank);
 
   const handleValueChange = (value: string) => {
     onChange({ sound: value });
@@ -43,7 +49,12 @@ export function DrumSoundsNode({
           <SelectValue placeholder="More sounds" />
         </SelectTrigger>
         <SelectContent>
-          <CategorySelectItems categories={DRUM_CATEGORIES} />
+          <CategorySelectItems
+            categories={DRUM_CATEGORIES}
+            describe={(name) => DRUM_NAMES[name]}
+            problem={problem}
+            current={sound}
+          />
         </SelectContent>
       </Select>
     </div>
