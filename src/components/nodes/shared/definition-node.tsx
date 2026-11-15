@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/app-store';
 import type { WorkflowNodeProps } from '../types';
 import type { NodeDefinition } from '../define-node';
 import { ParameterField } from './parameter-field';
+import { MidiLearn } from './midi-learn';
 import { isPatternValue } from '../define-node';
 
 const formatNumber = (value: number, unit = '') =>
@@ -60,29 +61,34 @@ export function createDefinitionComponent(definition: NodeDefinition) {
               <div className="grid grid-cols-3 justify-items-center gap-x-2 gap-y-4">
                 {knobs.map(([key, parameter]) =>
                   parameter.control === 'knob' ? (
-                    <ParameterKnob
+                    <MidiLearn
                       key={key}
+                      target={{ nodeId: id, param: key }}
                       label={parameter.label}
-                      value={
-                        isPatternValue(values[key])
-                          ? parameter.default
-                          : Number(values[key])
-                      }
-                      pattern={
-                        isPatternValue(values[key]) ? values[key] : undefined
-                      }
-                      onPattern={(code) =>
-                        updateParameter(key, code ?? parameter.default)
-                      }
-                      min={parameter.min}
-                      max={parameter.max}
-                      step={parameter.step}
-                      format={
-                        parameter.format ??
-                        ((value) => formatNumber(value, parameter.unit))
-                      }
-                      onChange={(value) => updateParameter(key, value)}
-                    />
+                    >
+                      <ParameterKnob
+                        label={parameter.label}
+                        value={
+                          isPatternValue(values[key])
+                            ? parameter.default
+                            : Number(values[key])
+                        }
+                        pattern={
+                          isPatternValue(values[key]) ? values[key] : undefined
+                        }
+                        onPattern={(code) =>
+                          updateParameter(key, code ?? parameter.default)
+                        }
+                        min={parameter.min}
+                        max={parameter.max}
+                        step={parameter.step}
+                        format={
+                          parameter.format ??
+                          ((value) => formatNumber(value, parameter.unit))
+                        }
+                        onChange={(value) => updateParameter(key, value)}
+                      />
+                    </MidiLearn>
                   ) : null,
                 )}
               </div>

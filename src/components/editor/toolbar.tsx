@@ -13,6 +13,7 @@ import { LibraryPopover } from '@/components/library/library-popover';
 import { LaunchSelect } from './launch-select';
 import { RecordButton } from './record-button';
 import { MixerButton } from '@/components/mixer/mixer-button';
+import { MidiButton } from './midi-button';
 
 export function EditorToolbar({
   onAddNode,
@@ -133,6 +134,7 @@ export function EditorToolbar({
           <Rows3 className="size-4" aria-hidden="true" />
         </ControlButton>
         <MixerButton />
+        <MidiButton />
         <LibraryPopover />
         <PresetPopover />
         <AppearancePopover />
