@@ -49,7 +49,7 @@ export function startBridge() {
       setStatus('connecting');
       retry = window.setTimeout(open, RETRY_MS);
     };
-    socket.onmessage = (event) => {
+    socket.onmessage = async (event) => {
       let message: Request | Notice;
       try {
         message = JSON.parse(String(event.data));
@@ -64,7 +64,8 @@ export function startBridge() {
       const request = message;
       let reply: object;
       try {
-        reply = { id: request.id, result: handle(request) ?? null };
+        // Some commands (recording) answer later.
+        reply = { id: request.id, result: (await handle(request)) ?? null };
       } catch (error) {
         reply = {
           id: request.id,

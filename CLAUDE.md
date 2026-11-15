@@ -32,8 +32,14 @@ hub from the page's origin. Commands go to the newest open tab; a request
 outlives a reload. Tools: `get_patch` (compact by default), `set_code`,
 `open_file` (reads the song server-side: use it for songs with embedded
 samples instead of pasting them), `new_patch`, `tidy`, `select_node`,
-`set_node`, `set_muted`, `set_solo`, `set_tempo`, `play`, `stop`, `set_theme`,
-`list_node_types`. App-side handlers: `src/lib/bridge/commands.ts`.
+`set_node`, `set_enabled`, `set_muted`, `set_solo`, `set_tempo`,
+`set_launch`, `play`, `stop`, `record_start`, `record_stop` (the tab sends
+the WAV as base64; the server writes it, default
+`~/.strudelton/recordings/`), `add_annotation`, `list_sounds`,
+`list_presets`, `insert_preset`, `preview_preset`, `save_preset`,
+`delete_preset`, `set_theme`, `list_node_types`, `get_diagnostics`.
+App-side handlers: `src/lib/bridge/commands.ts` (may be async). A new
+feature with an app action gets a tool here too.
 
 `STRUDELTON_LOCAL` in `.env.local` serves a folder read-only at `/local/`
 (here `../tidalcycles`), e.g. for samples.

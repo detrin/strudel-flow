@@ -84,8 +84,13 @@ preview` builds too, with `?bridge`; `?bridge=off` opts out). The
 Tools: `get_patch` (compact; `detail: "full"` for everything), `set_code`,
 `open_file` (a song from disk, read by the server: embedded samples never
 pass through the conversation), `new_patch`, `tidy`, `select_node`,
-`set_node`, `set_muted`, `set_tempo`, `play`, `stop`, `set_theme`,
-`list_node_types`. The hub only accepts pages served from this machine.
+`set_node`, `set_enabled` (a node's power button), `set_muted`, `set_solo`,
+`set_tempo`, `set_launch` (edits wait 0, 1 or 4 bars), `play`, `stop`,
+`record_start`/`record_stop` (a WAV saved on disk, by default in
+`~/.strudelton/recordings`), `add_annotation` (notes and frames),
+`list_sounds`, `list_presets`, `insert_preset`, `preview_preset`,
+`save_preset`, `delete_preset`, `set_theme`, `list_node_types`,
+`get_diagnostics`. The hub only accepts pages served from this machine.
 
 ## Library
 

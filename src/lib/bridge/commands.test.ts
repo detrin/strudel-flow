@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useAppStore } from '@/store/app-store';
 import { startCodeSync } from '@/store/code-sync';
+import { useLaunch } from '@/lib/launch';
+import { useLibrary } from '@/store/library-store';
 import { bridgeUrl, handle } from './connect';
 
 const run = (method: string, params: Record<string, unknown> = {}) =>
@@ -72,6 +74,65 @@ describe('bridge commands', () => {
     expect(types.find((t) => t.type === 'delay-node')?.methods).toContain(
       'delaytime',
     );
+  });
+
+  it('disables a node by commenting out its call', () => {
+    run('set_code', { code: 'kick: s("bd").lpf(800)' });
+    const patch = run('get_patch') as {
+      lines: { nodes: { id: string; type: string }[] }[];
+    };
+    const filter = patch.lines[0].nodes.find((n) => n.type === 'lpf-node')!;
+    run('set_enabled', { id: filter.id, enabled: false });
+    expect(useAppStore.getState().code).toMatch(/\/\/ \.lpf\(800\)|\/\* \.lpf/);
+    run('set_enabled', { id: filter.id, enabled: true });
+    expect(useAppStore.getState().code).toContain('.lpf(800)');
+    expect(useAppStore.getState().code).not.toMatch(/\/[/*] ?\.lpf/);
+  });
+
+  it('sets launch quantization to a known bar count', () => {
+    run('set_launch', { bars: 4 });
+    expect(useLaunch.getState().quantize).toBe(4);
+    expect(() => run('set_launch', { bars: 3 })).toThrow(/one of 0, 1, 4/);
+    run('set_launch', { bars: 0 });
+  });
+
+  it('adds notes and frames as comments', () => {
+    run('set_code', { code: 'kick: s("bd")' });
+    run('add_annotation', { kind: 'note', text: 'drop at 17', x: 10, y: 20 });
+    run('add_annotation', { kind: 'frame', text: 'drums' });
+    const { prelude } = useAppStore.getState();
+    expect(prelude).toContain('// @note 10,20 "drop at 17"');
+    expect(prelude).toMatch(/\/\/ @frame 0,-200,1200,700 "drums"/);
+    const patch = run('get_patch') as { annotations: { text: string }[] };
+    expect(patch.annotations.map((a) => a.text)).toEqual([
+      'drop at 17',
+      'drums',
+    ]);
+  });
+
+  it('saves a line as a preset, lists it and inserts it again', () => {
+    useLibrary.setState({ presets: [] });
+    run('set_code', { code: 'const n = "c2 e2"\nbass: note(n).s("sawtooth")' });
+    const saved = run('save_preset', { line: 'bass', name: 'Acid' }) as {
+      id: string;
+      needs: string[];
+    };
+    expect(saved.needs).toEqual(['const n = "c2 e2"']);
+    const listed = run('list_presets', { query: 'acid' }) as {
+      presets: { id: string }[];
+    };
+    expect(listed.presets.map((p) => p.id)).toEqual([saved.id]);
+    const inserted = run('insert_preset', { preset: 'acid' }) as {
+      label: string;
+    };
+    expect(inserted.label).toBe('bass2');
+    expect(useAppStore.getState().code).toContain('bass2: note(n)');
+    run('preview_preset', { preset: saved.id });
+    expect(useAppStore.getState().preview?.id).toBe(saved.id);
+    run('preview_preset', { stop: true });
+    expect(useAppStore.getState().preview).toBeNull();
+    run('delete_preset', { preset: saved.id });
+    expect(() => run('insert_preset', { preset: 'Acid' })).toThrow(/No preset/);
   });
 
   it('rejects unknown methods', () => {

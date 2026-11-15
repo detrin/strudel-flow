@@ -12,7 +12,8 @@ export type Sound = {
 /** Names Strudel registers for itself, not for playing. */
 const HIDDEN = /^(_|tri$|sqr$|sin$|saw$)/;
 
-function readSounds(): Sound[] {
+/** Every sound Strudel knows now. */
+export function readSounds(): Sound[] {
   return Object.entries(soundMap.get())
     .filter(([name]) => !HIDDEN.test(name))
     .map(([name, { data = {} }]) => ({

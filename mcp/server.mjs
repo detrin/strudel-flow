@@ -3,12 +3,13 @@
 // Strudelton. Claude Code talks to it over stdio; it reaches the app
 // through the bridge hub the dev server runs at /__bridge (mcp/hub.mjs), so
 // any number of Claude sessions and tabs can come and go.
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import WebSocket from 'ws';
 import { z } from 'zod';
+import { libraryRoot } from './library-files.mjs';
 
 const APP_URL = process.env.STRUDELTON_URL ?? 'http://localhost:5173';
 const HUB_URL = `${APP_URL.replace(/^http/, 'ws').replace(/\/$/, '')}/__bridge?role=agent`;
@@ -77,7 +78,7 @@ async function call(method, params = {}) {
 }
 
 const server = new McpServer(
-  { name: 'strudelton', version: '1.1.0' },
+  { name: 'strudelton', version: '1.2.0' },
   {
     instructions: [
       'Strudelton is a live music editor: Strudel (strudel.cc) code and a',
@@ -87,7 +88,12 @@ const server = new McpServer(
       '`_label:` mutes a line, `Slabel:` solos it. Each line becomes a chain of nodes.',
       'Start with get_patch. To open a song file use open_file (the file is',
       'read here, never pasted). Prefer set_code for musical changes (it keeps',
-      'surviving nodes where they are); use set_node for tweaking one value.',
+      'surviving nodes where they are); use set_node for tweaking one value',
+      'and set_enabled to switch a node off (its call is commented out).',
+      'The Library holds saved lines (presets: list_presets, insert_preset,',
+      'preview_preset, save_preset) and every sound (list_sounds).',
+      'Notes and frames on the canvas are `// @note x,y "text"` and',
+      '`// @frame x,y,w,h "text"` comments (add_annotation adds one).',
     ].join(' '),
   },
 );
@@ -217,6 +223,101 @@ tool(
       .describe('How many recent log entries (default 30).'),
   },
 );
+
+tool(
+  'set_enabled',
+  "Switch a node on or off, like its power button: a disabled node's call is commented out in the code; disabling a line's first node silences the line.",
+  { id: z.string(), enabled: z.boolean() },
+);
+tool(
+  'set_launch',
+  'Launch quantization: while playing, edits wait for the next bar (1), the next 4 bars (4), or play at once (0).',
+  { bars: z.union([z.literal(0), z.literal(1), z.literal(4)]) },
+);
+tool(
+  'record_start',
+  'Start recording the master output to WAV (call play too, or it records silence until something plays).',
+  {},
+);
+tool(
+  'record_stop',
+  'Stop recording and save the WAV on disk here. Returns the file path.',
+  {
+    path: z
+      .string()
+      .optional()
+      .describe(
+        'Where to save (absolute, or relative to the strudelton repo). Default: recordings/ in the Library folder (~/.strudelton).',
+      ),
+  },
+  async ({ path }) => {
+    const { name, bytes, base64 } = await call('record_stop');
+    const file = resolve(path ?? join(libraryRoot(), 'recordings', name));
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, Buffer.from(base64, 'base64'));
+    return { file, bytes };
+  },
+);
+tool(
+  'add_annotation',
+  'Add a sticky note or a frame (a labelled area, e.g. "drums") to the canvas. Positions are canvas coordinates, like node positions; it is saved as a comment in the code.',
+  {
+    kind: z.enum(['note', 'frame']),
+    text: z.string(),
+    x: z.number().optional(),
+    y: z.number().optional(),
+    width: z.number().optional().describe('Frames only.'),
+    height: z.number().optional().describe('Frames only.'),
+  },
+);
+tool(
+  'list_sounds',
+  'Search every sound Strudel knows (samples, drum machines, instruments, synths) by name and tags (guessed from names, plus the user\'s own). Use it to pick a sound for s("…").',
+  {
+    query: z.string().optional().describe('Words that must all match.'),
+    kind: z.enum(['drum machine', 'sample', 'instrument', 'synth']).optional(),
+    tags: z.array(z.string()).optional(),
+    limit: z.number().optional().describe('Default 50.'),
+  },
+);
+tool(
+  'list_presets',
+  'List the user\'s presets: saved lines (a bass line, a beat) with names and tags. Long code is shortened unless detail is "full".',
+  {
+    query: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    detail: z.enum(['compact', 'full']).optional(),
+  },
+);
+tool(
+  'insert_preset',
+  'Add a preset as a new line at the end of the song, with the declarations it needs. The label is made unique.',
+  {
+    preset: z.string().describe('Its id, or its name.'),
+    label: z.string().optional(),
+  },
+);
+tool(
+  'preview_preset',
+  'Play a preset on its own instead of the song (at its own tempo if tagged "N bpm"); stop: true ends the preview.',
+  {
+    preset: z.string().optional().describe('Its id, or its name.'),
+    stop: z.boolean().optional(),
+  },
+);
+tool(
+  'save_preset',
+  'Save a line of the song as a preset in the Library. Its Arrange masks are dropped unless keepArrangement; tags are suggested when not given.',
+  {
+    line: z.string().describe('The line label.'),
+    name: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    keepArrangement: z.boolean().optional(),
+  },
+);
+tool('delete_preset', 'Delete a preset from the Library.', {
+  preset: z.string().describe('Its id, or its name.'),
+});
 
 connect();
 await server.connect(new StdioServerTransport());
