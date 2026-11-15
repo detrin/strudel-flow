@@ -2,7 +2,7 @@
 
 A visual editor for Strudel where the code console and the node canvas are
 two views of one program. Fork of xyflow/strudel-flow (`origin` is the fork,
-`upstream` xyflow); work happens on feature branches.
+`upstream` xyflow). For now, work happens on `main` (no feature branches).
 
 ## Run and check
 
@@ -103,4 +103,6 @@ server's folder is a temp dir). Presets export and import as JSON. Export/share 
   crashes hot reloads into a blank page. Use `@/lib/lines` (line regions,
   `lineLabelOf`), which imports nothing; `meters.ts` gets the play state as
   an argument for the same reason.
-- Commit or push only when asked. Prose in docs and UI: short, plain.
+- For now, always commit finished work and push it to `main`
+  (`git push origin main`); no feature branches or pull requests.
+- Prose in docs and UI: short, plain.
