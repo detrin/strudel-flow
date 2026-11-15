@@ -15,6 +15,7 @@ import {
   valueOf,
   type Call,
 } from './syntax';
+import { labelOf } from '@/lib/lines';
 import { flatten } from './compile';
 import { LAYOUT } from './emit';
 import { ANONYMOUS, type Line, type Program, type ProgramNode } from './types';
@@ -387,16 +388,16 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
       statement.type === 'LabeledStatement' &&
       statement.body.type === 'ExpressionStatement'
     ) {
-      const name = statement.label.name;
-      const muted = name.startsWith('_');
+      const { label, muted, soloed } = labelOf(statement.label.name);
       // The `// @layout` comment right above the line is part of it.
       const layout = layoutAbove(statement.start);
       if (layout) lineRanges.push(layout);
       const parsed = line(
-        name.replace(/^_/, '') || ANONYMOUS,
+        label,
         muted,
         tree(statement.body.expression),
         layout && positionsOf(layout.text),
+        soloed,
       );
       program.lines.push(parsed);
       lineStarts.set(parsed, statement.start);
@@ -437,6 +438,7 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
       block.line.muted,
       block.line.sink,
       layout && positionsOf(layout.text),
+      block.line.soloed,
     );
     flatten(parsed.sink).at(-1)!.data.disabled = true;
     program.lines.push(parsed);
@@ -520,6 +522,7 @@ function line(
   muted: boolean,
   sink: ProgramNode,
   positions?: { x: number; y: number }[],
+  soloed = false,
 ): Line {
   const nodes = flatten(sink).reverse();
   // A layout for a different number of nodes is stale; lay out anew.
@@ -527,10 +530,12 @@ function line(
     nodes.forEach((node, index) => (node.position = positions[index]));
   for (const node of flatten(sink)) {
     node.data = { ...node.data, state: muted ? 'paused' : 'running' };
+    if (soloed) node.data.solo = true;
+    else delete node.data.solo;
     delete node.data.label;
   }
   if (label !== ANONYMOUS) sink.data.label = label;
-  return { label, muted, sink };
+  return { label, muted, soloed, sink };
 }
 
 /** The code each existing source node writes, for `parseProgram`. */

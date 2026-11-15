@@ -10,7 +10,7 @@ import { sameSound } from '@/lib/same-sound';
 
 /** A line's code without its label and layout comment. */
 const expressionOf = (line: Line) =>
-  emitLine({ ...line, muted: false })
+  emitLine({ ...line, muted: false, soloed: false })
     .split('\n')
     .filter((text) => !text.trimStart().startsWith('//'))
     .join('\n')

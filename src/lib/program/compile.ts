@@ -58,6 +58,7 @@ export function compileGraph(
         {
           label: label || ANONYMOUS,
           muted: sources.every((node) => node.data.state === 'paused'),
+          soloed: sources.every((node) => node.data.solo === true),
           sink: tree,
         },
       ];

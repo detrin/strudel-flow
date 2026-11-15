@@ -23,6 +23,7 @@ import { useAddAfter } from '@/components/editor/add-node-context';
 import { lineLabelOf, useLive } from '@/lib/live';
 import { tidyLines } from '@/lib/tidy';
 import { useLibrary } from '@/store/library-store';
+import { TrackButtons } from './track-buttons';
 
 function WorkflowNode({
   id,
@@ -104,6 +105,12 @@ function WorkflowNode({
             data.title
           )}
         </h3>
+        {isHeader && (
+          <TrackButtons
+            nodeId={id}
+            name={label.startsWith('$') ? 'line' : label}
+          />
+        )}
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"

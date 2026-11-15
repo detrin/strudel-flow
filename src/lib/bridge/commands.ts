@@ -6,6 +6,7 @@ import { useAppStore } from '@/store/app-store';
 import { loadCode, setCode } from '@/store/code-sync';
 import { codeMeta } from '@/lib/community-patches';
 import { tidyLines } from '@/lib/tidy';
+import { setSoloed } from '@/lib/mixer';
 import { themes } from '@/themes';
 
 /**
@@ -47,6 +48,7 @@ export function describe(compact = false) {
   const lines = programOf(current).lines.map((line) => ({
     label: line.label,
     muted: line.muted,
+    soloed: Boolean(line.soloed),
     // Upstream first, like the code reads.
     nodes: flatten(line.sink)
       .reverse()
@@ -152,6 +154,22 @@ export const commands: Record<string, (params: Params) => unknown> = {
     }
     state().setMuted(line.sink.id!, muted);
     return describe().lines.find((l) => l.label === label);
+  },
+
+  set_solo: (params) => {
+    const label = typeof params.line === 'string' ? params.line : undefined;
+    const lines = programOf(state()).lines;
+    const line = lines.find((l) => l.label === label);
+    if (!line)
+      throw new Error(
+        `No line "${label}". Lines: ${lines.map((l) => l.label).join(', ')}.`,
+      );
+    setSoloed(line.sink.id!, params.soloed !== false, params.add === true);
+    return describe().lines.map(({ label, muted, soloed }) => ({
+      label,
+      muted,
+      soloed,
+    }));
   },
 
   set_tempo: (params) => {

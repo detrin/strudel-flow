@@ -59,10 +59,15 @@ export function layoutComment(sink: ProgramNode) {
     : '';
 }
 
-export function emitLine({ label, muted, sink }: Line): string {
+/** The statement label: `_` mutes, `S` solos (Strudel's own syntax). */
+export const labelCode = ({ label, muted, soloed }: Line) =>
+  `${muted ? '_' : ''}${soloed ? 'S' : ''}${label}`;
+
+export function emitLine(line: Line): string {
+  const { sink } = line;
   const { base, calls } = chain(sink);
   if (!base) return '';
-  const name = muted ? `_${label}` : label;
+  const name = labelCode(line);
   const body = `${name}: ${base}${calls
     .map(({ text, disabled }) =>
       disabled ? `\n  // .${text}` : `\n  .${text}`,
@@ -101,8 +106,18 @@ export function emitProgram(program: Program): string {
   return [intro, head.join('\n'), ...body].filter(Boolean).join('\n\n') + '\n';
 }
 
-/** True when at least one line would make sound. */
-export const isAudible = (program: Program) =>
-  program.lines.some(
+/**
+ * The lines Strudel plays: not muted or switched off, and, while any line
+ * is soloed, only the soloed ones.
+ */
+export function playingLines(program: Pick<Program, 'lines'>) {
+  const live = program.lines.filter(
     (line) => !line.muted && !isDisabled(head(line.sink)) && emitLine(line),
   );
+  return live.some((line) => line.soloed)
+    ? live.filter((line) => line.soloed)
+    : live;
+}
+
+/** True when at least one line would make sound. */
+export const isAudible = (program: Program) => playingLines(program).length > 0;

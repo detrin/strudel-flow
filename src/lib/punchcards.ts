@@ -1,4 +1,5 @@
 import { Pattern } from '@strudel/web';
+import { labelOf } from '@/lib/lines';
 
 /**
  * Punchcards, as on strudel.cc: a line ending in `._punchcard()` (or
@@ -51,7 +52,7 @@ export function tagPunchcards(code: string) {
       const match = LABEL.exec(line);
       // Anonymous `$:` lines are `$0`, `$1`, … as Strudel names them.
       if (match) {
-        label = match[1].replace(/^_/, '');
+        label = labelOf(match[1]).label;
         if (label === '$') label = `$${anonymous++}`;
       } else if (/^[^\s.)/]/.test(line)) label = null;
       return label

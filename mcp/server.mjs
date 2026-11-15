@@ -84,7 +84,7 @@ const server = new McpServer(
       'node canvas that are two views of one patch. Changes apply to the open',
       'app immediately and are heard if it is playing.',
       'A patch is `setcpm(bpm/beatsPerCycle)` plus lines `label: expression`;',
-      '`_label:` mutes a line. Each line becomes a chain of nodes.',
+      '`_label:` mutes a line, `Slabel:` solos it. Each line becomes a chain of nodes.',
       'Start with get_patch. To open a song file use open_file (the file is',
       'read here, never pasted). Prefer set_code for musical changes (it keeps',
       'surviving nodes where they are); use set_node for tweaking one value.',
@@ -179,6 +179,15 @@ tool('set_muted', 'Mute or unmute a line by its label.', {
   line: z.string().describe('The line label, e.g. "kick" ("$" for unnamed).'),
   muted: z.boolean(),
 });
+tool(
+  'set_solo',
+  'Solo or un-solo a line by its label: while any line is soloed, only soloed lines play (Strudel writes it as an S before the label). A solo replaces other solos unless `add` is true.',
+  {
+    line: z.string().describe('The line label, e.g. "kick" ("$" for unnamed).'),
+    soloed: z.boolean(),
+    add: z.boolean().optional(),
+  },
+);
 tool('set_tempo', 'Set the tempo.', {
   bpm: z.number().positive().optional(),
   beatsPerCycle: z.number().int().positive().optional(),

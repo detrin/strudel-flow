@@ -64,6 +64,10 @@ test('Claude Code edits the open patch over MCP', async ({ page, baseURL }) => {
     ).toHaveAttribute('aria-valuenow', '1200');
     await call('set_muted', { line: 'kick', muted: true });
     await expect(editor(page)).toContainText('_kick:');
+    await call('set_solo', { line: 'bass', soloed: true });
+    await expect(editor(page)).toContainText('Sbass:');
+    await call('set_solo', { line: 'bass', soloed: false });
+    await expect(editor(page)).toContainText('bass: note(');
 
     // Mistakes come back as explanations, and the patch survives them.
     const bad = await call('set_code', { code: 'kick: s("bd"' });

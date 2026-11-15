@@ -7,6 +7,18 @@
 const LABEL = /^([A-Za-z_$][\w$]*)\s*:(?!:)/;
 
 /**
+ * A statement label as Strudel reads it: `_kick` is muted, and any label
+ * longer than one letter that starts with `S` is soloed (`Skick`, `S$`).
+ * `label` is the line's name without either mark.
+ */
+export function labelOf(name: string) {
+  const muted = name.startsWith('_');
+  const rest = name.replace(/^_/, '');
+  const soloed = rest.length > 1 && rest.startsWith('S');
+  return { label: (soloed ? rest.slice(1) : rest) || '$', muted, soloed };
+}
+
+/**
  * Each labelled line's span in some code: from its label to the next line
  * that starts at column 0 with something other than `.` or `)`. Anonymous
  * `$:` lines are numbered (`$0`, `$1`, …) the way Strudel names them.
@@ -19,7 +31,7 @@ export function regionsOf(code: string) {
     const match = LABEL.exec(line);
     const last = regions.at(-1);
     if (match) {
-      let label = match[1].replace(/^_/, '');
+      let { label } = labelOf(match[1]);
       if (label === '$') label = `$${anonymous++}`;
       if (last && last.end === -1) last.end = offset;
       regions.push({ label, start: offset, end: -1 });

@@ -13,8 +13,17 @@ export type ProgramNode = {
   position?: { x: number; y: number };
 };
 
-/** One `label: expression` statement; `sink` is its last node. */
-export type Line = { label: string; muted: boolean; sink: ProgramNode };
+/**
+ * One `label: expression` statement; `sink` is its last node. `_label:`
+ * mutes it; `Slabel:` solos it (Strudel's own syntax: while any line is
+ * soloed, only soloed lines play).
+ */
+export type Line = {
+  label: string;
+  muted: boolean;
+  soloed?: boolean;
+  sink: ProgramNode;
+};
 
 export type Program = {
   cpm: string;
