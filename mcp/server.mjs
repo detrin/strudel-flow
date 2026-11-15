@@ -207,5 +207,16 @@ tool(
   {},
 );
 
+tool(
+  'get_diagnostics',
+  "Why something isn't working in the open app: current problems (e.g. the code not following the canvas), the playback and code errors, what Strudel last played, and the recent error log with where each happened and its stack, plus the dev server's hot updates (files swapped into the tab).",
+  {
+    limit: z
+      .number()
+      .optional()
+      .describe('How many recent log entries (default 30).'),
+  },
+);
+
 connect();
 await server.connect(new StdioServerTransport());

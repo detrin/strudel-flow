@@ -1,3 +1,4 @@
+import { report } from '@/lib/diagnostics';
 import { Component, type ReactNode } from 'react';
 
 const RELOADED = 'strudelton:crash-reload';
@@ -19,7 +20,7 @@ export class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error) {
-    console.error('Strudelton crashed:', error);
+    report('crash', error);
     if (!import.meta.env.DEV) return;
     let last = 0;
     try {

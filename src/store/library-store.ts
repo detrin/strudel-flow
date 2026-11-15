@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Preset } from '@/lib/library/presets';
+import { isolateListeners } from '@/lib/diagnostics';
 
 /**
  * The Library: saved presets (tracks) and the tags people give sounds.
@@ -120,6 +121,8 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     set({ soundTags });
   },
 }));
+// One failing listener must not stop the others (see diagnostics).
+isolateListeners(useLibrary, 'library');
 
 /** True while loading from the folder: those changes are not saved back. */
 let loading = false;

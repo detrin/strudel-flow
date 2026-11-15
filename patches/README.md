@@ -21,7 +21,7 @@ Opening it builds the nodes from the code, like typing it in the console. See
 
 ## As graph JSON
 
-1. Make something in Strudelton. Open **Patches**, give it a name, and click **Export**.
+1. Make something in Strudelton. Open the export panel (share icon), give it a name, and click **Export**.
 2. Put the downloaded JSON file in this folder. Fill in the empty `author` (your GitHub handle) and `description` fields directly in the JSON.
 3. Run `pnpm dev`. Find your patch under **Patches → Community patches** and check that it loads and plays.
 4. Commit the JSON file to a branch in your fork, then [open a patch pull request](https://github.com/detrin/strudelton/compare?expand=1&template=patch.md). Choose your fork and branch, fill in the patch template, and use sounds you have permission to share.

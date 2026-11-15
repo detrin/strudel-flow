@@ -6,6 +6,7 @@ import { layout, reconcile } from '@/lib/program/reconcile';
 import { updateLayout, withoutLayout } from '@/lib/program/layout-comments';
 import { useAppStore } from './app-store';
 import { tidyLines } from '@/lib/tidy';
+import { report, setProblem } from '@/lib/diagnostics';
 
 type State = ReturnType<typeof useAppStore.getState>;
 
@@ -169,9 +170,24 @@ export function startCodeSync() {
       state.bpc !== previous.bpc ||
       state.prelude !== previous.prelude
     ) {
-      relayout(state);
-      checkLayout(useAppStore.getState());
-      sync(useAppStore.getState());
+      // An error here would leave the code silently behind the canvas from
+      // now on: catch it, say so, and keep trying on the next change.
+      try {
+        relayout(state);
+        checkLayout(useAppStore.getState());
+        sync(useAppStore.getState());
+        setProblem('code sync', null);
+      } catch (error) {
+        report('code sync', error, {
+          nodes: state.nodes.map((node) => `${node.id}:${node.type}`),
+        });
+        setProblem(
+          'code sync',
+          `The code isn't following the canvas: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
     }
   });
 }

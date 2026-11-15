@@ -127,6 +127,7 @@ export function useWorkflowRunner() {
   const cpm = useAppStore((state) => state.cpm);
   const bpc = useAppStore((state) => state.bpc);
   const isPlaying = useAppStore((state) => state.isPlaying);
+  const preview = useAppStore((state) => state.preview);
   const prelude = useAppStore((state) => state.prelude);
   const setError = useAppStore((state) => state.setError);
 
@@ -166,6 +167,14 @@ export function useWorkflowRunner() {
   }, [compiled, setError]);
 
   useEffect(() => {
+    // A preview plays instead of the song while it lasts.
+    if (preview) {
+      const timer = window.setTimeout(
+        () => engine.current?.setPattern(preview.code),
+        40,
+      );
+      return () => window.clearTimeout(timer);
+    }
     if (!isPlaying || !compiled.audible || compiled.error) {
       engine.current?.setPattern(null);
       return;
@@ -175,5 +184,5 @@ export function useWorkflowRunner() {
       40,
     );
     return () => window.clearTimeout(timer);
-  }, [compiled, isPlaying]);
+  }, [compiled, isPlaying, preview]);
 }

@@ -1,5 +1,13 @@
 import { useRef, useState } from 'react';
-import { Download, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import {
+  Download,
+  Pencil,
+  Play,
+  Plus,
+  Square,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   lineLabels,
@@ -13,6 +21,8 @@ import { addLine, currentCode } from '@/lib/library/insert';
 import { tagsOfSound } from '@/lib/library/sounds';
 import { downloadText } from '@/lib/project-state';
 import { useLibrary } from '@/store/library-store';
+import { useAppStore } from '@/store/app-store';
+import { togglePreview } from '@/lib/library/preview';
 import { TagFilter, TagInput, chip } from './tag-input';
 
 /** Tags people commonly sort tracks by. */
@@ -126,6 +136,22 @@ function SaveForm({ onDone }: { onDone: (text: string) => void }) {
   );
 }
 
+/**
+ * The tags to show beside a preset's name: not those that are a whole part
+ * of it ("Bass · Next to U · bassline (136)" already says bass, next to u
+ * and 136 bpm). All tags still count for search and filters.
+ */
+function tagsBesideName(preset: Preset) {
+  const name = preset.name.toLowerCase();
+  const parts = new Set(
+    name.split(' · ').map((part) => part.replace(/\s*\(\d+\)$/, '').trim()),
+  );
+  return preset.tags.filter((tag) => {
+    const bpm = /^(\d+) bpm$/.exec(tag);
+    return bpm ? !name.endsWith(`(${bpm[1]})`) : !parts.has(tag);
+  });
+}
+
 function PresetRow({
   preset,
   onStatus,
@@ -137,17 +163,34 @@ function PresetRow({
   const deletePreset = useLibrary((state) => state.deletePreset);
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const shownTags = tagsBesideName(preset);
+  const playing = useAppStore((state) => state.preview?.id === preset.id);
   return (
     <li className="py-2" data-preset={preset.name}>
       <div className="flex items-start gap-1">
+        <Button
+          size="icon"
+          variant="ghost"
+          className={`size-8 shrink-0 ${playing ? 'text-primary' : ''}`}
+          aria-label={playing ? `Stop ${preset.name}` : `Play ${preset.name}`}
+          aria-pressed={playing}
+          title={playing ? 'Stop' : 'Listen on its own'}
+          onClick={() => togglePreview(preset)}
+        >
+          {playing ? (
+            <Square className="size-3.5 fill-current" />
+          ) : (
+            <Play className="size-3.5" />
+          )}
+        </Button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{preset.name}</p>
+          <p className="text-sm leading-snug font-medium">{preset.name}</p>
           <p className="truncate font-mono text-[10px] text-muted-foreground">
             {preset.body.split('\n')[0]}
           </p>
-          {preset.tags.length > 0 && (
+          {shownTags.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1">
-              {preset.tags.map((tag) => (
+              {shownTags.map((tag) => (
                 <span
                   key={tag}
                   className={`${chip} h-5 border-border text-[10px]`}

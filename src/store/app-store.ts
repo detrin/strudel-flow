@@ -16,6 +16,7 @@ import { programOf } from '@/lib/program';
 import { flatten } from '@/lib/program/compile';
 import { DEFAULT_THEME } from '@/themes';
 import { applyTheme } from '@/themes/ui';
+import { isolateListeners } from '@/lib/diagnostics';
 
 type AppState = {
   name: string;
@@ -41,6 +42,11 @@ type AppState = {
   /** Connection to a local MCP server (Claude Code), see lib/bridge. */
   bridge: 'off' | 'connecting' | 'connected';
   isPlaying: boolean;
+  /**
+   * Something played instead of the song for a moment (a preset from the
+   * Library); the song comes back when it ends.
+   */
+  preview: { id: string; code: string } | null;
   error: string | null;
   /** Node type waiting to be placed by a click on the canvas (toolbar). */
   placing: string | null;
@@ -108,6 +114,7 @@ export const useAppStore = create<AppStore>()(
     console: savedConsole(),
     bridge: 'off',
     isPlaying: false,
+    preview: null,
     error: null,
     placing: null,
     setPlacing: (placing) => set({ placing }),
@@ -123,8 +130,13 @@ export const useAppStore = create<AppStore>()(
     setCpm: (cpm) => set({ cpm }),
     setBpc: (bpc) => set({ bpc }),
     toggle: () =>
-      set((state) => ({ isPlaying: !state.isPlaying, error: null })),
-    setError: (error) => set({ error, ...(error ? { isPlaying: false } : {}) }),
+      set((state) => ({
+        isPlaying: !state.isPlaying,
+        preview: null,
+        error: null,
+      })),
+    setError: (error) =>
+      set({ error, ...(error ? { isPlaying: false, preview: null } : {}) }),
 
     onNodesChange: (changes) => {
       set({ nodes: applyNodeChanges(changes, get().nodes) });
@@ -197,6 +209,8 @@ export const useAppStore = create<AppStore>()(
       })),
   })),
 );
+// One failing listener must not stop the others (see diagnostics).
+isolateListeners(useAppStore, 'app store');
 
 const unsubscribeTheme = useAppStore.subscribe(
   (state) => state.theme,

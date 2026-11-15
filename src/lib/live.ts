@@ -5,6 +5,7 @@ import { programOf } from '@/lib/program';
 import { flatten } from '@/lib/program/compile';
 import { getSchedulerNow } from '@/lib/strudel-clock';
 import { lineNodes, regionsOf, setLineNodes } from '@/lib/lines';
+import { isolateListeners } from '@/lib/diagnostics';
 
 export { lineLabelOf, regionsOf } from '@/lib/lines';
 
@@ -30,6 +31,8 @@ export const useLive = create<Live>(() => ({
   nodes: new Set(),
   off: new Set(),
 }));
+// One failing listener must not stop the others (see diagnostics).
+isolateListeners(useLive, 'live');
 
 let evaluated = '';
 /** The code Strudel last evaluated; ranges point into it. */

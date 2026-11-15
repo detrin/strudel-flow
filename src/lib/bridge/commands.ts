@@ -8,6 +8,8 @@ import { codeMeta } from '@/lib/community-patches';
 import { tidyLines } from '@/lib/tidy';
 import { setSoloed } from '@/lib/mixer';
 import { themes } from '@/themes';
+import { currentProblems, diagnostics } from '@/lib/diagnostics';
+import { evaluatedCode } from '@/lib/live';
 
 /**
  * What an external agent (Claude Code over MCP) can do to the open patch.
@@ -183,7 +185,11 @@ export const commands: Record<string, (params: Params) => unknown> = {
   },
 
   set_playing: (params) => {
-    useAppStore.setState({ isPlaying: params.playing !== false, error: null });
+    useAppStore.setState({
+      isPlaying: params.playing !== false,
+      preview: null,
+      error: null,
+    });
     return { playing: state().isPlaying };
   },
 
@@ -195,6 +201,22 @@ export const commands: Record<string, (params: Params) => unknown> = {
       );
     state().setTheme(name);
     return { theme: name };
+  },
+
+  get_diagnostics: (params) => {
+    const s = state();
+    const limit = typeof params.limit === 'number' ? params.limit : 30;
+    return {
+      problems: currentProblems(),
+      playbackError: s.error,
+      codeError: s.codeError,
+      playing: s.isPlaying,
+      preview: s.preview?.id ?? null,
+      nodes: s.nodes.length,
+      // What Strudel last played (head), to compare with the code.
+      evaluated: evaluatedCode().slice(0, 2000),
+      log: diagnostics().slice(-limit),
+    };
   },
 
   list_node_types: () =>

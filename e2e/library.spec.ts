@@ -240,3 +240,62 @@ test('tags combine: only tags of the current results, counted in them', async ({
   expect(await total()).toBe(other.count);
   expect(await total()).toBeGreaterThan(0);
 });
+
+test('a preset plays on its own, stops, and the song comes back', async ({
+  page,
+}) => {
+  await openFresh(page);
+  await typeCode(
+    page,
+    'setcpm(120/4)\nkick: s("bd*4")\nhat: s("hh*8").gain(0.4)',
+  );
+  // Save the hats as a preset.
+  const library = await openLibrary(page);
+  await library.getByRole('tab', { name: 'Presets' }).click();
+  await library
+    .getByRole('button', { name: 'Save a line as a preset' })
+    .click();
+  await library.getByLabel('Line to save').selectOption('hat');
+  await library.getByLabel('Preset name').fill('Hats');
+  await library.getByRole('button', { name: 'Save preset' }).click();
+  await page.keyboard.press('Escape');
+
+  /** The code Strudel was last given. */
+  const playing = () =>
+    page.evaluate(async () => {
+      const path = '/src/lib/live.ts';
+      const { evaluatedCode } = (await import(/* @vite-ignore */ path)) as {
+        evaluatedCode: () => string;
+      };
+      return evaluatedCode();
+    });
+
+  await page.getByRole('button', { name: 'Play (Space)' }).click();
+  await expect.poll(playing).toContain('kick:');
+
+  // The preset plays instead of the song.
+  const reopened = await openLibrary(page);
+  await reopened.getByRole('tab', { name: 'Presets' }).click();
+  await reopened.getByRole('button', { name: 'Play Hats' }).click();
+  await expect(
+    reopened.getByRole('button', { name: 'Stop Hats' }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(playing).toMatch(/^setcpm\(120\/4\)\nhat: s\("hh\*8"\)/);
+  expect(await playing()).not.toContain('kick:');
+
+  // Stopping brings the song back.
+  await reopened.getByRole('button', { name: 'Stop Hats' }).click();
+  await expect(
+    reopened.getByRole('button', { name: 'Play Hats' }),
+  ).toBeVisible();
+  await expect.poll(playing).toContain('kick:');
+
+  // Closing the Library while a preset plays stops it too.
+  await reopened.getByRole('button', { name: 'Play Hats' }).click();
+  await expect.poll(playing).not.toContain('kick:');
+  await page.keyboard.press('Escape');
+  await expect.poll(playing).toContain('kick:');
+  await expect(
+    page.getByRole('button', { name: 'Pause (Space)' }),
+  ).toBeVisible();
+});

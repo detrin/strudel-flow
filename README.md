@@ -1,10 +1,11 @@
 # Strudelton
 
-A visual editor for [Strudel](https://strudel.cc) patterns where **code and
-nodes are two views of the same program**. Type Strudel code in the console on
+A visual editor for [Strudel](https://strudel.cc) live coding where **code and
+nodes are two views of the same song**. Type Strudel code in the console on
 the left and the canvas on the right builds and wires the nodes; turn a knob,
-wire a node or mute a line and the code is rewritten. Forked from
-[xyflow/strudel-flow](https://github.com/xyflow/strudel-flow).
+wire a node or mute a line and the code is rewritten. Started as a fork of
+[xyflow/strudel-flow](https://github.com/xyflow/strudel-flow) (Strudel Flow by
+the creators of React Flow).
 
 - **Code console** (optional, Ctrl+B): CodeMirror with strudel.cc's
   highlighting and keys (Ctrl+Enter play, Ctrl+. stop). Invalid code keeps
@@ -13,19 +14,32 @@ wire a node or mute a line and the code is rewritten. Forked from
   are placed next to their neighbours; edited nodes keep their place. Code
   the nodes don't model is never lost — it becomes a Code or Method node.
 - **Every node a song needs**: drum-machine banks, filters with Strudel's
-  filter envelope, high-pass, delay, reverb, LFOs (Modulate), and Arrange
-  for song structure (which bars a line plays).
+  filter envelope, high-pass, delay, reverb, LFOs (Modulate), piano-roll
+  Pad and Notes, and Arrange for song structure (which bars a line plays,
+  with a playhead showing where the song is).
+- **See what plays**: the playing notes light up in the code and the canvas.
+  While a song plays, every line is measured: Filter draws the line's
+  spectrum under the filter's exact response, Envelope runs a dot per note
+  along its shape, Level shows a meter and the last 8 bars, Delay, Space and
+  Modulate animate too, and the Analyzer node (`._spectrum()`) shows a
+  spectrogram or loudness over time, for the line or the master mix.
+- **Disable any node** with its power button: its call is commented out in
+  the code; disabling a line's first node silences the line.
+- **Library** (folder icon): every Strudel sound, searchable by name and
+  tags, with a preview; and presets, saved lines (a bass line, a beat, a
+  vocal chop) with names and tags, to listen to on their own and insert into
+  any song. See [Library](#library).
 - **strudel.cc's themes** (all 41, Strudel and Blue Screen included) for the
   editor and the whole UI, and strudel.cc's sample library.
 - **The code is a complete save**: a `// @layout x,y …` comment above each
   line keeps where its nodes sit (upstream first). Dragging a node updates
-  just that comment; **Patches → Save .strudel** saves the file, **Open**
-  restores code and canvas exactly. A layout that no longer fits its line
+  just that comment; **Export (share icon) → Save .strudel** saves the file,
+  **Open** restores code and canvas exactly. A layout that no longer fits its line
   is ignored and rewritten.
 - Knobs show exactly what plays: values the code leaves out are Strudel's own
   defaults (pinned by tests against Strudel's source).
 
-Open **Patches → Community patches → Undertow** for a 64-bar acid techno
+Open **Export → Community patches → Undertow** for a 64-bar acid techno
 track that uses every node.
 
 ## Develop
@@ -40,7 +54,7 @@ pnpm e2e          # Playwright end-to-end tests (local only)
 Commits run `pnpm check`'s gates in a pre-commit hook; CI runs them (plus a
 build) on every push to `main`. End-to-end tests run locally only.
 
-How it works, and the plan this fork follows: [docs/PLAN.md](docs/PLAN.md).
+How it works, and the plan it follows: [docs/PLAN.md](docs/PLAN.md).
 
 ```
 code ─parse→ Program ─reconcile + layout→ canvas
@@ -72,6 +86,33 @@ Tools: `get_patch` (compact; `detail: "full"` for everything), `set_code`,
 pass through the conversation), `new_patch`, `tidy`, `select_node`,
 `set_node`, `set_muted`, `set_tempo`, `play`, `stop`, `set_theme`,
 `list_node_types`. The hub only accepts pages served from this machine.
+
+## Library
+
+**Samples**: every sound Strudel has loaded. Search by name or tag (every
+word must match: "808 kick"), filter by kind (drum machines, samples,
+instruments, synths) and by tags, which combine. Tags come from the names
+(drum abbreviations, General MIDI instruments, drum machine banks; Strudel
+has no genre data) plus your own. ▶ plays a sound, + adds it as a new line.
+
+**Presets**: save a line from a node's menu (Save line as preset) or the
+Presets tab, with a name and tags. A preset carries what the line uses: its
+`const`s, registered functions and the song's sample packs; the line's own
+arrangement is left out unless you keep it. ▶ plays a preset on its own (at
+its own tempo when tagged, e.g. "136 bpm"), then the song comes back;
+Insert adds it as a new line with a free name.
+
+With the dev server, the Library lives in **`~/.strudelton`**, one file per
+preset, so it survives clearing the browser and can go in git:
+
+```
+~/.strudelton/
+  presets/acid-bass.json   one file per preset, named after it
+  sound-tags.json          your tags on samples
+```
+
+`STRUDELTON_HOME` moves it. Without a dev server (a deployed site), the
+Library is kept in the browser; presets export and import as JSON either way.
 
 ## Local files
 

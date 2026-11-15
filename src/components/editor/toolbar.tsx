@@ -1,5 +1,5 @@
 import { Panel } from '@xyflow/react';
-import { PanelLeftOpen, Plus, Rows3, X } from 'lucide-react';
+import { PanelLeftOpen, Plus, Rows3 } from 'lucide-react';
 import { tidyLines } from '@/lib/tidy';
 import type { MouseEventHandler } from 'react';
 import { ControlButton } from './control-button';
@@ -7,13 +7,14 @@ import { AppearancePopover } from './appearance-popover';
 import { AppInfoPopover } from './app-info-popover';
 import { useAppStore } from '@/store/app-store';
 import { PlayPauseButton } from './play-pause-button';
-import { ZoomSlider } from './zoom-slider';
-import { PresetPopover } from './preset-popover';
-import { LibraryPopover } from '@/components/library/library-popover';
+import { ErrorPanel } from './error-panel';
 import { LaunchSelect } from './launch-select';
 import { RecordButton } from './record-button';
 import { MixerButton } from '@/components/mixer/mixer-button';
 import { MidiButton } from './midi-button';
+import { ZoomSlider } from './zoom-slider';
+import { PresetPopover } from './preset-popover';
+import { LibraryPopover } from '@/components/library/library-popover';
 
 export function EditorToolbar({
   onAddNode,
@@ -24,8 +25,6 @@ export function EditorToolbar({
   const setCpm = useAppStore((state) => state.setCpm);
   const bpc = useAppStore((state) => state.bpc);
   const setBpc = useAppStore((state) => state.setBpc);
-  const error = useAppStore((state) => state.error);
-  const setError = useAppStore((state) => state.setError);
   const consoleOpen = useAppStore((state) => state.console.open);
   const bridge = useAppStore((state) => state.bridge);
   const setConsole = useAppStore((state) => state.setConsole);
@@ -98,22 +97,7 @@ export function EditorToolbar({
         <LaunchSelect />
       </Panel>
 
-      {error && (
-        <Panel
-          position="top-center"
-          style={{ transform: 'translateX(-50%)' }}
-          className="m-0! mt-24! flex max-w-[min(420px,90vw)] sm:mt-12! items-start gap-3 rounded-md border border-destructive/40 bg-card p-3 text-xs"
-          role="alert"
-        >
-          <span>Couldn’t play this patch. {error}</span>
-          <button
-            aria-label="Dismiss playback error"
-            onClick={() => setError(null)}
-          >
-            <X className="size-4" />
-          </button>
-        </Panel>
-      )}
+      <ErrorPanel />
       <ZoomSlider position="bottom-left" />
       <Panel
         position="top-right"

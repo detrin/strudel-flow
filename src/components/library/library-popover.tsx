@@ -8,6 +8,7 @@ import {
 import { ControlButton } from '@/components/editor/control-button';
 import { useLibrary, type LibraryTab } from '@/store/library-store';
 import { cn } from '@/lib/utils';
+import { stopPreview } from '@/lib/library/preview';
 import { SamplesTab } from './samples-tab';
 import { PresetsTab } from './presets-tab';
 
@@ -28,6 +29,8 @@ export function LibraryPopover() {
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
+        // A preset playing on its own ends with the Library.
+        if (!next) stopPreview();
         if (next) setStatus('');
       }}
     >
