@@ -1,5 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
-import { editor, nodeOfType, nodes, openFresh, trackErrors } from './helpers';
+import {
+  addFromPlus,
+  editor,
+  nodeOfType,
+  nodes,
+  openFresh,
+  trackErrors,
+} from './helpers';
 
 async function openUndertow(page: Page) {
   await page.getByRole('button', { name: /^Export, share/ }).click();
@@ -42,10 +49,7 @@ test('a whole song: open, play, mix, rewire, undo, share', async ({
 
   // Rewire: a new Level node wired after the kick's last node joins its line.
   const before = await nodeOfType(page, 'level-node').count();
-  await page.getByRole('button', { name: 'Add node' }).click();
-  await page.getByRole('menuitem', { name: 'Effects' }).focus();
-  await page.getByRole('menuitem', { name: 'Add Level' }).focus();
-  await page.keyboard.press('Enter');
+  await addFromPlus(page, 'level');
   await expect(nodeOfType(page, 'level-node')).toHaveCount(before + 1);
   const added = nodeOfType(page, 'level-node').last();
   const kickArrange = nodeOfType(page, 'arrange-node').first();

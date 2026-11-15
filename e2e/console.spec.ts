@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
+  addFromPlus,
   editor,
   nodeOfType,
   nodes,
@@ -44,11 +45,7 @@ test('editing on the canvas rewrites the code', async ({ page }) => {
 test('adding a node from the menu adds its code', async ({ page }) => {
   await typeCode(page, 'kick: s("bd*4")');
   await expect(nodes(page)).toHaveCount(1);
-  await page.getByRole('button', { name: 'Add node' }).click();
-  // Wedge-shaped menu items: pick them with the keyboard.
-  await page.getByRole('menuitem', { name: 'Instruments' }).focus();
-  await page.getByRole('menuitem', { name: 'Add Code' }).focus();
-  await page.keyboard.press('Enter');
+  await addFromPlus(page, 'code');
   await expect(nodes(page)).toHaveCount(2);
   await expect(editor(page)).toContainText('$: (n("<[0,2,4,6] [5,7,9,11]>")');
 });

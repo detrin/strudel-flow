@@ -101,7 +101,7 @@ export default function Editor() {
 
   return (
     <NodeContextMenu>
-      {(connectionHandlers, onAddNode) => (
+      {(connectionHandlers) => (
         <div
           className="reactflow-wrapper"
           tabIndex={0}
@@ -138,7 +138,7 @@ export default function Editor() {
             fitView
             fitViewOptions={{ padding: FIT_PADDING, maxZoom: 1 }}
           >
-            <EditorToolbar onAddNode={onAddNode} />
+            <EditorToolbar />
             <NodePalette />
             <MixerPanel />
           </ReactFlow>

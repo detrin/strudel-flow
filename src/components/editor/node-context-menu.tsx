@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  type ReactElement,
-  type MouseEventHandler,
-} from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 import {
   addEdge,
   reconnectEdge,
@@ -55,10 +50,7 @@ const isTyping = (target: EventTarget | null) =>
 export function NodeContextMenu({
   children,
 }: {
-  children: (
-    handlers: ConnectionHandlers,
-    onAddNode: MouseEventHandler<HTMLButtonElement>,
-  ) => ReactElement;
+  children: (handlers: ConnectionHandlers) => ReactElement;
 }) {
   const menuRef = useRef<RadialMenuHandle>(null);
   const pending = useRef<PendingConnection | null>(null);
@@ -186,16 +178,6 @@ export function NodeContextMenu({
   }, []);
 
   const position = useRef({ x: 0, y: 0 });
-  const openFromToolbar: MouseEventHandler<HTMLButtonElement> = (event) => {
-    const toolbar = event.currentTarget.parentElement?.getBoundingClientRect();
-    if (!toolbar) return;
-    const size = getMenuSize(window.innerWidth, window.innerHeight);
-    menuRef.current?.openAt({
-      x: toolbar.left - 24 - size / 2,
-      y: toolbar.bottom + 12 + size / 2,
-    });
-  };
-
   const addNode = (type: AppNodeType) => {
     const origin = pending.current;
     pending.current = null;
@@ -262,7 +244,7 @@ export function NodeContextMenu({
           isPane(target) && !useAppStore.getState().placing
         }
         menuRef={menuRef}
-        trigger={children(handlers, openFromToolbar)}
+        trigger={children(handlers)}
         onPositionChange={(point, fromHandle) => {
           position.current = point;
           if (!fromHandle) pending.current = null;

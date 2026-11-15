@@ -3,12 +3,10 @@ import { Panel, useReactFlow } from '@xyflow/react';
 import { Frame, MousePointer2, StickyNote } from 'lucide-react';
 import { addAnnotation, FRAME_SIZE } from '@/lib/annotations';
 import { radialMenuItems } from '@/data/radial-menu';
-import { iconMapping } from '@/data/icon-mapping';
 import { nodeDefinitions } from '@/components/nodes/registry';
 import { useAppStore } from '@/store/app-store';
-import { cn } from '@/lib/utils';
 import { ControlButton } from './control-button';
-import { NODE_DRAG_TYPE } from './add-node-context';
+import { AddMenu } from './add-menu';
 
 /**
  * Miro-style creation toolbar on the left: pick a category, then drag a
@@ -109,59 +107,13 @@ export function NodePalette() {
           </ControlButton>
 
           {open && (
-            <div
-              role="menu"
-              aria-label={open.label}
-              className="nokey nodrag nopan absolute top-1/2 left-full ml-2 max-h-[calc(100vh-24px)] w-64 -translate-y-1/2 overflow-y-auto rounded-md border border-border/60 bg-card p-1.5 shadow-md"
-            >
-              <p className="px-2 pt-1 pb-2 text-[10px] font-semibold tracking-[.16em] text-muted-foreground uppercase">
-                {open.label}
-              </p>
-              {open.sections.map((section) => (
-                <div
-                  key={section.title ?? ''}
-                  role="group"
-                  aria-label={section.title}
-                >
-                  {section.title && (
-                    <p className="px-2 pt-2 pb-1 text-[10px] text-muted-foreground/80">
-                      {section.title}
-                    </p>
-                  )}
-                  <div className="grid grid-cols-3 gap-0.5">
-                    {section.items.map((node) => {
-                      const NodeIcon = iconMapping[node.icon];
-                      return (
-                        <button
-                          key={node.id}
-                          type="button"
-                          role="menuitem"
-                          draggable
-                          title={`Drag onto the canvas, or click then click where it goes`}
-                          aria-label={`Place ${node.title}`}
-                          onDragStart={(event) => {
-                            event.dataTransfer.setData(NODE_DRAG_TYPE, node.id);
-                            event.dataTransfer.effectAllowed = 'copy';
-                          }}
-                          onDragEnd={() => setCategory(null)}
-                          onClick={() => {
-                            setPlacing(node.id);
-                            setCategory(null);
-                          }}
-                          className={cn(
-                            'flex cursor-grab flex-col items-center gap-1 rounded-md px-1 py-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring active:cursor-grabbing',
-                            placing === node.id &&
-                              'bg-primary text-primary-foreground',
-                          )}
-                        >
-                          <NodeIcon className="size-4" aria-hidden="true" />
-                          {node.title}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+            <div className="absolute top-1/2 left-full ml-2 -translate-y-1/2">
+              <AddMenu
+                key={open.category}
+                label={open.label}
+                sections={open.sections}
+                onDone={() => setCategory(null)}
+              />
             </div>
           )}
         </div>

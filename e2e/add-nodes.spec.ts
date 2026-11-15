@@ -97,3 +97,42 @@ test('double-clicking empty canvas opens the add menu', async ({ page }) => {
   await pickFromMenu(page, 'Instruments', 'Code');
   await expect(nodes(page)).toHaveCount(3);
 });
+
+test('type to search the menu; Enter picks the first match', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'Effects' }).click();
+  const search = page.getByLabel('Search effects');
+  await expect(search).toBeFocused();
+  await search.fill('pitch');
+  // Narrowed to the matches, under their groups.
+  await expect(page.getByRole('menuitem')).toHaveText(['Pitch', 'Pitch Env']);
+  await search.fill('space');
+  // A group's name finds its nodes too.
+  await expect(
+    page.getByRole('menuitem', { name: 'Place Delay' }),
+  ).toBeVisible();
+  await search.fill('del');
+  await search.press('Enter');
+  await expect(page.getByRole('status')).toContainText('place Delay');
+  await page
+    .locator('.react-flow__pane')
+    .click({ position: await empty(page) });
+  await expect(nodeOfType(page, 'delay-node')).toHaveCount(1);
+});
+
+test('the toolbar + searches every node', async ({ page }) => {
+  await page.getByRole('button', { name: 'Add node' }).click();
+  const menu = page.getByRole('menu', { name: 'Add' });
+  // Instruments, sounds and effects, under their groups.
+  for (const group of ['Instruments', 'Sounds', 'Effects · Space'])
+    await expect(menu.getByRole('group', { name: group })).toBeVisible();
+  await page.getByLabel('Search add').fill('beats');
+  await expect(menu.getByRole('menuitem')).toHaveText(['Beats']);
+  await page.keyboard.press('Enter');
+  await expect(menu).toBeHidden();
+  await page
+    .locator('.react-flow__pane')
+    .click({ position: await empty(page) });
+  await expect(nodeOfType(page, 'beat-machine-node')).toHaveCount(1);
+});

@@ -53,3 +53,30 @@ export async function openFresh(page: Page) {
   await page.goto('/?bridge=off&library=browser');
   await expect(nodes(page).first()).toBeVisible();
 }
+
+/**
+ * A spot of empty canvas (relative to the pane): low on it, clear of
+ * nodes, wires and panels; searched for when the canvas is full.
+ */
+export async function emptySpot(page: Page) {
+  const box = (await page.locator('.react-flow__pane').boundingBox())!;
+  const found = await page.evaluate((pane) => {
+    for (let y = pane.height - 110; y > 80; y -= 37)
+      for (let x = pane.width / 2; x > 60; x -= 53) {
+        const hit = document.elementFromPoint(pane.x + x, pane.y + y);
+        if (hit?.classList.contains('react-flow__pane')) return { x, y };
+      }
+    return null;
+  }, box);
+  return found ?? { x: box.width / 2, y: box.height - 110 };
+}
+
+/** The toolbar's +: search every node, pick the first match, place it. */
+export async function addFromPlus(page: Page, search: string) {
+  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByLabel('Search add').fill(search);
+  await page.keyboard.press('Enter');
+  await page
+    .locator('.react-flow__pane')
+    .click({ position: await emptySpot(page) });
+}

@@ -1,7 +1,7 @@
 import { Panel } from '@xyflow/react';
 import { AlignStartVertical, PanelLeftOpen, Plus } from 'lucide-react';
 import { tidyLines } from '@/lib/tidy';
-import type { MouseEventHandler } from 'react';
+import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ControlButton } from './control-button';
 import { AppearancePopover } from './appearance-popover';
@@ -16,12 +16,15 @@ import { MidiButton } from './midi-button';
 import { ZoomSlider } from './zoom-slider';
 import { PresetPopover } from './preset-popover';
 import { LibraryPopover } from '@/components/library/library-popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { radialMenuItems } from '@/data/radial-menu';
+import { AddMenu } from './add-menu';
 
-export function EditorToolbar({
-  onAddNode,
-}: {
-  onAddNode: MouseEventHandler<HTMLButtonElement>;
-}) {
+export function EditorToolbar() {
   const cpm = useAppStore((state) => state.cpm);
   const setCpm = useAppStore((state) => state.setCpm);
   const bpc = useAppStore((state) => state.bpc);
@@ -104,13 +107,7 @@ export function EditorToolbar({
         position="top-right"
         className="m-2! flex gap-1 rounded-md border border-border/60 bg-card p-1"
       >
-        <ControlButton
-          title="Add node"
-          onClick={onAddNode}
-          className="nokey nodrag nopan rounded-full"
-        >
-          <Plus className="size-4" aria-hidden="true" />
-        </ControlButton>
+        <AddAnythingButton />
         <AutoArrangeButton />
         <MixerButton />
         <MidiButton />
@@ -153,5 +150,44 @@ function AutoArrangeButton() {
     >
       <AlignStartVertical className="size-4" aria-hidden="true" />
     </ControlButton>
+  );
+}
+
+/** Every node, by category and group, for the + button's menu. */
+const EVERYTHING = radialMenuItems.flatMap((category) =>
+  category.sections.map((section) => ({
+    title: section.title
+      ? `${category.label} · ${section.title}`
+      : category.label,
+    items: section.items,
+  })),
+);
+
+/** +: any node, searchable; pick one, then click where it goes. */
+function AddAnythingButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <ControlButton
+          title="Add node (search every node)"
+          aria-label="Add node"
+          className="nokey nodrag nopan rounded-full"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+        </ControlButton>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="w-auto border-0 bg-transparent p-0 shadow-none"
+      >
+        <AddMenu
+          label="Add"
+          sections={EVERYTHING}
+          className="max-h-[calc(100vh-72px)]"
+          onDone={() => setOpen(false)}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
