@@ -3,8 +3,9 @@ import { AnalyzerNode, type AnalyzerData } from './analyzer-node';
 
 /**
  * A closer look at what plays: a spectrogram (frequency over time) or the
- * loudness over the last bars, of its line or of the whole mix. Writes
- * strudel.cc's `._spectrum()`; the mode and source are view settings.
+ * loudness over the last bars, or the waveform, of its line or of the
+ * whole mix. Writes strudel.cc's `._spectrum()` or `._scope()` (with its
+ * options, if any); the view and source are settings of the node.
  */
 export default defineNode({
   id: 'analyzer-node',
@@ -13,11 +14,19 @@ export default defineNode({
   icon: 'AudioLines',
   order: 2,
   parameters: {},
-  defaults: { mode: 'spectrogram', source: 'line' } as AnalyzerData,
+  defaults: { inline: '_spectrum', source: 'line' } as AnalyzerData,
   component: AnalyzerNode,
-  methods: ['_spectrum'],
+  methods: ['_spectrum', '_scope'],
   ordered: true,
-  parse: (calls) =>
-    calls.length === 1 && calls[0].args.length === 0 ? {} : null,
-  generate: () => '_spectrum()',
+  parse: (calls) => {
+    if (calls.length !== 1) return null;
+    const [{ name, args }] = calls;
+    const inline = name as AnalyzerData['inline'];
+    if (!args.length) return { inline, options: '' };
+    return args.length === 1 && typeof args[0] === 'object'
+      ? { inline, options: args[0].code }
+      : null;
+  },
+  generate: ({ inline, options }) =>
+    `${inline ?? '_spectrum'}(${options ?? ''})`,
 });

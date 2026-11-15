@@ -17,7 +17,9 @@ two views of one program. Fork of xyflow/strudel-flow (`origin` is the fork,
   canvas to settle; use `settle(page)` after anything that adds nodes before
   clicking or dragging on the canvas. Run a suite twice before trusting it.
 - `pnpm shot <song> [--tidy] [--play S] [--hide-console] [--fit]`: screenshot
-  in `shots/` (gitignored). Use it instead of throwaway specs.
+  in `shots/` (gitignored). Use it instead of throwaway specs. `--code PATH`
+  saves the console's code with fresh `@layout` comments (strip the old
+  ones first to lay a demo out anew).
 - `pnpm survey <folder>`: share of nodes that are raw code (Code/Method) over
   a folder of songs, and which methods remain. `../tidalcycles/dj_dave` is
   the reference corpus; re-run it when adding or changing nodes.
@@ -51,7 +53,9 @@ it reads back), `methods`, `ordered`, `parseSource` for instruments. The
 parser claims runs of calls for the node that reads and writes them back
 faithfully; anything else becomes a Method (effects) or Code (sources) node.
 Knobs may hold a pattern or expression instead of a number (its code, e.g.
-`"<400 800>"`, `slider(…)`); `isPatternValue` tells them apart.
+`"<400 800>"`, `slider(…)`); `isPatternValue` tells them apart. Text
+parameters hold a string, or code after `=` like a spreadsheet
+(`=pick(beats, b)` writes `pick(beats, b)`; `textCode`/`textValue`).
 
 Other pieces: `lib/live.ts` (what sounds now: code highlight, glowing
 nodes), `lib/punchcards.ts` + `lib/punchcard-draw.ts`, `lib/tidy.ts` and

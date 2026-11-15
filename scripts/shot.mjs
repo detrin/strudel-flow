@@ -4,10 +4,13 @@
 //
 //   pnpm shot <song file> [--tidy] [--play SECONDS] [--hide-console]
 //             [--fit] [--size 1440x900] [--out shots/name.png]
+//             [--code PATH]
 //
+// --code saves the console's code once the canvas settles: the song with
+// fresh `// @layout` comments (how the demo patches get theirs).
 // It starts its own dev server and browser, opens the song (as typed into
 // the code console), and saves a PNG; the path is printed.
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { chromium } from '@playwright/test';
@@ -22,6 +25,7 @@ const { values, positionals } = parseArgs({
     fit: { type: 'boolean' },
     size: { type: 'string', default: '1440x900' },
     out: { type: 'string' },
+    code: { type: 'string' },
   },
 });
 const [file] = positionals;
@@ -65,6 +69,16 @@ try {
     await page.getByRole('button', { name: 'Hide code console' }).click();
   if (values.fit) await page.getByRole('button', { name: 'Fit patch' }).click();
   await page.waitForTimeout(500);
+  if (values.code) {
+    const written = await page.evaluate(() => {
+      const content = document.querySelector('.cm-content');
+      const view = content?.cmView?.view ?? content?.cmTile?.view;
+      return view?.state.doc.toString();
+    });
+    if (!written) throw new Error('Could not read the code console');
+    writeFileSync(resolve(values.code), written);
+    console.log(resolve(values.code));
+  }
   mkdirSync(dirname(out), { recursive: true });
   await page.screenshot({ path: out });
   console.log(out);

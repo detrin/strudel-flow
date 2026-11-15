@@ -31,12 +31,12 @@ describe('parseProgram', () => {
   });
 
   it('keeps unknown methods as Method nodes, merging neighbours', () => {
-    const program = parsed('$: n("0 2").jux(rev).swing(4).fast(2)');
+    const program = parsed('$: n("0 2").iter(4).swing(4).fast(2)');
     const [method] = flatten(program.lines[0].sink).filter(
       (node) => node.type === 'method-node',
     );
-    expect(method.data.calls).toBe('jux(rev).swing(4)');
-    expect(types('$: n("0 2").jux(rev).swing(4).fast(2)')).toEqual([
+    expect(method.data.calls).toBe('iter(4).swing(4)');
+    expect(types('$: n("0 2").iter(4).swing(4).fast(2)')).toEqual([
       ['notes-node', 'method-node', 'time-node'],
     ]);
   });
@@ -174,6 +174,14 @@ const corpus = [
   '$: s("bd*4").lpf(sine.range(200, 2000).slow(4)).lpq(12)',
   '$: note("c2*8").s("saw").lpf(400).gain(perlin.range(0.6, 0.9))',
   '$: s("hh*16").mask("<1!3 0>").pan(saw.range(0, 1).slow(2))',
+  '$: s("bd*4").slow(2).fast("<1 2>")',
+  '$: note("c2").s("saw").shape(0.9).coarse("[8 8 [3 4] [6 7]]/4")',
+  '$: s("hh*8").jux(rev).juxBy(0.5, press)',
+  '$: s("bd*4").struct("x!7 ~ x!3 ~").segment(16)',
+  '$: s("bd:4").penv(12).pcurve(2).pdec(1).duck("2").duckattack(0.12)',
+  '$: s("breaks165").fit().slice(16, "0 1 <12 4> 3")',
+  '$: s("breaks165").slice(8, irand(8).segment(8)).scrub("0.799 0.298")',
+  '$: note("c e g").s("sine").fm(4).fmh(2).fmdecay(0.1).velocity(0.5)',
 ];
 
 describe('round trips', () => {
@@ -219,6 +227,46 @@ describe('round trips', () => {
       );
     expect(summary(reread.lines)).toEqual(summary(program.lines));
     expect(emit(reread)).toBe(code);
+  });
+});
+
+describe('nodes for what songs write', () => {
+  it.each([
+    ['$: s("bd").slow(2)', ['time-node']],
+    ['$: s("bd").fast("<1 2>").slow(4)', ['time-node']],
+    ['$: s("bd").shape(0.9).coarse(4).crush(8)', ['distortion-node']],
+    ['$: s("bd").fm(2).fmh(1.5)', ['texture-node']],
+    ['$: s("bd").jux(rev)', ['stereo-node']],
+    ['$: s("bd").juxBy(0.5, iter(4))', ['stereo-node']],
+    ['$: s("bd").struct(pick(beats, beat))', ['rhythm-node']],
+    ['$: s("bd").seg(8)', ['rhythm-node']],
+    ['$: s("bd").penv(12).pcurve(2).pdec(1)', ['pitch-envelope-node']],
+    ['$: s("bd").duck(2).duckattack(0.12).duckdepth(0.7)', ['sidechain-node']],
+    ['$: s("bd").duckorbit("2:3")', ['sidechain-node']],
+    ['$: s("x").fit().slice(16, "0 1 2")', ['slice-node']],
+    ['$: s("x").slice(64, "[0|8]*8".add(8))', ['slice-node']],
+    ['$: s("x").striate("<2 8>").scrub(irand(16).div(16))', ['slice-node']],
+    ['$: s("bd")._punchcard({width: 1400})', ['punchcard-node']],
+    ['$: s("bd")._scope({height: 60})', ['analyzer-node']],
+    ['$: s("bd").velocity(0.4)', ['level-node']],
+  ])('%s', (code, effects) => {
+    expect(types(code)).toEqual([['sound-node', ...effects]]);
+    // Writes every call back (controls may come in another order) and
+    // reads its own code back unchanged.
+    const once = emit(parsed(code));
+    const calls = (text: string) =>
+      text
+        .replace(/^.*?s\("[^"]*"\)/s, '')
+        .replace(/\s+/g, '')
+        .split(/\.(?=[a-zA-Z_]+\()/)
+        .filter(Boolean)
+        .sort();
+    const canonical = code
+      .replace('seg(', 'segment(')
+      .replace('duckorbit(', 'duck(')
+      .replace('pdec(', 'pdecay(');
+    expect(calls(once)).toEqual(calls(canonical));
+    expect(emit(parsed(once))).toBe(once);
   });
 });
 

@@ -1,6 +1,6 @@
 import { createElement, type ComponentType, type ReactNode } from 'react';
 import type { iconMapping } from '@/data/icon-mapping';
-import type { Call } from '@/lib/program/syntax';
+import type { Call, Value } from '@/lib/program/syntax';
 
 type Common = {
   label: string;
@@ -166,8 +166,47 @@ function parameterValues<P extends Parameters>(
   ) as ParameterValues<P>;
 }
 
+/**
+ * A text value that starts with `=` is code, as in a spreadsheet:
+ * `=pick(Structures, beat)` writes `pick(Structures, beat)`, while
+ * `x*4` writes the string `"x*4"`.
+ */
+export const isCodeText = (value: unknown): value is string =>
+  typeof value === 'string' && value.startsWith('=');
+
+/** A text value as code: a string literal, or the code after `=`. */
+export const textCode = (value: string) =>
+  isCodeText(value) ? value.slice(1) : JSON.stringify(value);
+
+/** A text argument as a value: the string, or `=` and its code. */
+export const textValue = (arg: Value) =>
+  typeof arg === 'string'
+    ? arg
+    : typeof arg === 'object'
+      ? `=${arg.code}`
+      : `=${arg}`;
+
 const literal = (value: string | number) =>
-  typeof value === 'number' ? String(value) : JSON.stringify(value);
+  typeof value === 'number' ? String(value) : textCode(value);
+
+/**
+ * A knob argument as a value: its number, or, when it is a pattern, the
+ * code of the argument (`"<1 2>"`, `sine.range(1, 4)`).
+ */
+export function knobValue(arg: Value): number | string {
+  const value =
+    typeof arg === 'number'
+      ? arg
+      : typeof arg === 'string' && arg.trim()
+        ? Number(arg)
+        : NaN;
+  if (Number.isFinite(value)) return value;
+  return typeof arg === 'string'
+    ? JSON.stringify(arg)
+    : typeof arg === 'object'
+      ? arg.code
+      : String(arg);
+}
 
 /**
  * The default code for parameter nodes: one call per parameter whose value
@@ -208,25 +247,11 @@ export function parseParameters(parameters: Parameters, calls: Call[]) {
     if (!entry || args.length !== 1) return null;
     const [key, parameter] = entry;
     const [arg] = args;
-    if (parameter.control === 'knob') {
-      const value =
-        typeof arg === 'number'
-          ? arg
-          : typeof arg === 'string' && arg.trim()
-            ? Number(arg)
-            : NaN;
-      // Not a plain number: keep the argument's code as a pattern value.
-      values[key] = Number.isFinite(value)
-        ? value
-        : typeof arg === 'string'
-          ? JSON.stringify(arg)
-          : typeof arg === 'object'
-            ? arg.code
-            : String(arg);
-    } else {
-      if (typeof arg !== 'string') return null;
+    if (parameter.control === 'knob') values[key] = knobValue(arg);
+    else if (parameter.control === 'text') values[key] = textValue(arg);
+    else {
       if (
-        parameter.control === 'select' &&
+        typeof arg !== 'string' ||
         !parameter.options.some((option) => option.value === arg)
       )
         return null;

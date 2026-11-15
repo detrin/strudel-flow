@@ -1,4 +1,9 @@
-import { defineNode, knob } from '../define-node';
+import { defineNode, knob, knobValue } from '../define-node';
+
+/**
+ * Speed and direction: `fast(2)`, `slow(4)` (each also a pattern, like
+ * `"<1 2>"`), `rev()` or `palindrome()`, and `late(0.01)` to nudge.
+ */
 export default defineNode({
   id: 'time-node',
   title: 'Time',
@@ -17,17 +22,20 @@ export default defineNode({
       ],
     },
     rate: knob('fast', 1, [0.125, 8, 0.125], { unit: '×' }),
+    slow: knob('slow', 1, [0.125, 32, 0.125], { unit: '×' }),
     lateOffset: knob('late', 0, [0, 1, 0.01]),
   },
-  methods: ['fast', 'rev', 'palindrome', 'late'],
+  methods: ['fast', 'slow', 'rev', 'palindrome', 'late'],
   ordered: true,
   parse: (calls) => {
-    const values = { rate: 1, direction: 'forward', lateOffset: 0 };
+    const values: Record<string, string | number> = {};
     for (const { name, args } of calls) {
       const [arg] = args;
-      if (name === 'fast' && typeof arg === 'number') values.rate = arg;
-      else if (name === 'late' && typeof arg === 'number')
-        values.lateOffset = arg;
+      if (args.length === 1 && name === 'fast') values.rate = knobValue(arg);
+      else if (args.length === 1 && name === 'slow')
+        values.slow = knobValue(arg);
+      else if (args.length === 1 && name === 'late')
+        values.lateOffset = knobValue(arg);
       else if (name === 'rev' && !args.length) values.direction = 'reverse';
       else if (name === 'palindrome' && !args.length)
         values.direction = 'pingpong';
@@ -35,9 +43,10 @@ export default defineNode({
     }
     return values;
   },
-  generate: ({ rate, direction, lateOffset }) => {
+  generate: ({ rate, slow, direction, lateOffset }) => {
     const calls = [];
     if (rate !== 1) calls.push(`fast(${rate})`);
+    if (slow !== 1) calls.push(`slow(${slow})`);
     if (direction === 'reverse') calls.push('rev()');
     if (direction === 'pingpong') calls.push('palindrome()');
     if (lateOffset !== 0) calls.push(`late(${lateOffset})`);

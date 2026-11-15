@@ -32,6 +32,7 @@ it('surveys the songs', () => {
   const types = new Map<string, number>();
   const methods = new Map<string, number>();
   const sources = new Map<string, number>();
+  const examples = new Map<string, Set<string>>();
   const failed: string[] = [];
   let lines = 0;
   for (const file of files) {
@@ -52,8 +53,12 @@ it('surveys the songs', () => {
         if (node.type === 'method-node')
           for (const [, name] of String(node.data.calls).matchAll(
             /(?:^|\.)\s*([A-Za-z_$][\w$]*)\(/g,
-          ))
+          )) {
             count(methods, name);
+            const seen = examples.get(name) ?? new Set();
+            if (seen.size < 8) seen.add(String(node.data.calls));
+            examples.set(name, seen);
+          }
         if (node.type === 'custom-node')
           count(
             sources,
@@ -75,6 +80,9 @@ it('surveys the songs', () => {
     rawPercent: Math.round((1000 * raw) / Math.max(total, 1)) / 10,
     byType: Object.fromEntries([...types].sort((a, b) => b[1] - a[1])),
     rawMethods: Object.fromEntries([...methods].sort((a, b) => b[1] - a[1])),
+    rawExamples: Object.fromEntries(
+      [...examples].map(([name, seen]) => [name, [...seen]]),
+    ),
     codeSources: Object.fromEntries([...sources].sort((a, b) => b[1] - a[1])),
   };
   if (out) writeFileSync(out, JSON.stringify(report, null, 2));

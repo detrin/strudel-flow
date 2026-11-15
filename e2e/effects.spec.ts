@@ -58,3 +58,32 @@ test('an LFO becomes a Modulate node you can reshape', async ({ page }) => {
     '.lpf(perlin.range(300, 5000).slow(8))',
   );
 });
+
+test('songs’ sidechain, pitch drop, stereo and dirt become nodes', async ({
+  page,
+}) => {
+  await typeCode(
+    page,
+    [
+      'kick: s("bd*4").penv(12).pdec(0.1).duck(2).duckdepth(0.7)',
+      'bass: note("c2*8").s("saw").shape(0.8).coarse(4).jux(rev).slow(2).orbit(2)',
+    ].join('\n'),
+  );
+  for (const type of [
+    'pitch-envelope-node',
+    'sidechain-node',
+    'distortion-node',
+    'stereo-node',
+    'time-node',
+  ])
+    await expect(nodeOfType(page, type)).toHaveCount(1);
+  const sidechain = nodeOfType(page, 'sidechain-node');
+  await sidechain.getByRole('slider', { name: 'depth' }).focus();
+  await page.keyboard.press('ArrowUp');
+  await expect(editor(page)).toContainText('.duck(2).duckdepth(0.71)');
+  await nodeOfType(page, 'time-node')
+    .getByRole('slider', { name: 'slow' })
+    .focus();
+  await page.keyboard.press('ArrowUp');
+  await expect(editor(page)).toContainText('.slow(2.125)');
+});

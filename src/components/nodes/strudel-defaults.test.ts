@@ -28,6 +28,14 @@ const STRUDEL = {
   fm: 0,
   lpenv: 0,
   hpenv: 0,
+  shape: 0,
+  velocity: 1,
+  fmh: 1,
+  penv: 1,
+  pcurve: 0,
+  duckdepth: 1,
+  duckattack: 0.1,
+  duckonset: 0,
 } as Record<string, number>;
 
 const parameters = Object.values(nodeDefinitions).flatMap((definition) =>

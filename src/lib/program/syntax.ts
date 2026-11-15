@@ -40,6 +40,16 @@ const ALIASES: Record<string, string> = {
   det: 'detune',
   legato: 'clip',
   trans: 'transpose',
+  seg: 'segment',
+  juxby: 'juxBy',
+  duckorbit: 'duck',
+  duckons: 'duckonset',
+  patt: 'pattack',
+  pdec: 'pdecay',
+  prel: 'prelease',
+  fmi: 'fm',
+  fmdec: 'fmdecay',
+  vel: 'velocity',
 };
 export const canonical = (name: string) => ALIASES[name] ?? name;
 /** A method's name and every alias Strudel accepts for it. */

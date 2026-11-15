@@ -8,9 +8,46 @@ import { hz, hzAt, logPosition } from '../../visuals/math';
 import { cn } from '@/lib/utils';
 
 export type AnalyzerData = {
-  mode?: 'spectrogram' | 'loudness';
+  mode?: 'spectrogram' | 'loudness' | 'waveform';
   source?: 'line' | 'master';
+  /** strudel.cc's inline view the code writes, and its options. */
+  inline?: '_spectrum' | '_scope';
+  options?: string;
 };
+
+const LABELS = {
+  spectrogram: 'Spectrogram',
+  loudness: 'Loudness over time',
+  waveform: 'Waveform',
+};
+
+/** One frame of the waveform, centred, scaled to the height. */
+function drawWaveform(
+  ctx: CanvasRenderingContext2D,
+  analyser: AnalyserNode | undefined,
+  width: number,
+  height: number,
+  color: string,
+) {
+  ctx.clearRect(0, 0, width, height);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  if (!analyser) {
+    ctx.moveTo(0, height / 2);
+    ctx.lineTo(width, height / 2);
+  } else {
+    const data = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(data);
+    for (let i = 0; i < data.length; i++) {
+      const x = (i / (data.length - 1)) * width;
+      const y = height / 2 - data[i] * (height / 2) * 0.9;
+      if (i) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+    }
+  }
+  ctx.stroke();
+}
 
 const select =
   'h-7 cursor-pointer rounded-md border border-border bg-background/60 px-1.5 text-[11px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring';
@@ -22,7 +59,9 @@ export function AnalyzerNode({
   onChange,
   isPlaying,
 }: CustomControlsProps<AnalyzerData>) {
-  const mode = values.mode ?? 'spectrogram';
+  // Without a choice, show what the code's inline view shows.
+  const mode =
+    values.mode ?? (values.inline === '_scope' ? 'waveform' : 'spectrogram');
   const source = values.source ?? 'line';
   const waterfall = useRef<HTMLCanvasElement | null>(null);
   const bins = useRef<Float32Array | null>(null);
@@ -31,6 +70,16 @@ export function AnalyzerNode({
     (ctx, width, height, colors) => {
       const key = source === MASTER ? MASTER : lineLabelOf(id);
       if (!key) return;
+      if (mode === 'waveform') {
+        drawWaveform(
+          ctx,
+          isPlaying ? analyserOf(key) : undefined,
+          width,
+          height,
+          colors.primary,
+        );
+        return;
+      }
       if (mode === 'loudness') {
         drawHistory(
           ctx,
@@ -109,6 +158,7 @@ export function AnalyzerNode({
         >
           <option value="spectrogram">Spectrogram</option>
           <option value="loudness">Loudness over time</option>
+          <option value="waveform">Waveform</option>
         </select>
         <select
           aria-label="Analyzer source"
@@ -125,7 +175,7 @@ export function AnalyzerNode({
       <canvas
         ref={ref}
         role="img"
-        aria-label={`${mode === 'loudness' ? 'Loudness over time' : 'Spectrogram'} of ${source === 'master' ? 'the master mix' : 'this line'}`}
+        aria-label={`${LABELS[mode]} of ${source === 'master' ? 'the master mix' : 'this line'}`}
         data-visual="analyzer"
         className={cn(canvasClass, 'h-32')}
       />

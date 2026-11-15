@@ -1,7 +1,11 @@
 import { defineNode } from '../../define-node';
 import { PunchcardNode } from './punchcard-node';
 
-export type PunchcardData = { kind?: '_punchcard' | '_pianoroll' };
+export type PunchcardData = {
+  kind?: '_punchcard' | '_pianoroll';
+  /** strudel.cc's options for the inline view: `{width: 1400}`. */
+  options?: string;
+};
 
 /**
  * Shows what its line plays as a punchcard, on the canvas and under the
@@ -18,9 +22,14 @@ export default defineNode({
   component: PunchcardNode,
   methods: ['_punchcard', '_pianoroll'],
   ordered: true,
-  parse: (calls) =>
-    calls.length === 1 && calls[0].args.length === 0
-      ? { kind: calls[0].name as PunchcardData['kind'] }
-      : null,
-  generate: ({ kind }) => `${kind ?? '_punchcard'}()`,
+  parse: (calls) => {
+    if (calls.length !== 1) return null;
+    const [{ name, args }] = calls;
+    const kind = name as PunchcardData['kind'];
+    if (!args.length) return { kind, options: '' };
+    return args.length === 1 && typeof args[0] === 'object'
+      ? { kind, options: args[0].code }
+      : null;
+  },
+  generate: ({ kind, options }) => `${kind ?? '_punchcard'}(${options ?? ''})`,
 });

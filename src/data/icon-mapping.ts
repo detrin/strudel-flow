@@ -24,6 +24,10 @@ import {
   Disc3,
   Scissors,
   ArrowUpDown,
+  Flame,
+  Headphones,
+  ChevronsDown,
+  TrendingDown,
 } from 'lucide-react';
 
 export const iconMapping = {
@@ -52,4 +56,8 @@ export const iconMapping = {
   Disc3,
   Scissors,
   ArrowUpDown,
+  Flame,
+  Headphones,
+  ChevronsDown,
+  TrendingDown,
 };
