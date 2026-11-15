@@ -19,20 +19,34 @@ import { prepareLaunch } from '@/lib/launch';
 import { cutSound } from '@/lib/cut-sound';
 import { useRecorder } from '@/lib/recorder';
 
-const ready: Promise<StrudelSession> = initStrudel().then(
-  (session: StrudelSession) => {
-    setSchedulerNow(
-      () => session.scheduler.now(),
-      () => session.scheduler.cps ?? 0,
-    );
-    startLive(() => session.scheduler.pattern);
-    startMeters(
-      () => session.scheduler.pattern,
-      () => useAppStore.getState().isPlaying,
-    );
-    return session;
-  },
-);
+/**
+ * Strudel, started once per tab. A hot update re-runs this module (when it
+ * or anything it imports changes); starting Strudel again would leave the
+ * old player running, still audible, with nothing able to stop it. The
+ * live view and meters re-attach to it instead, replacing the old ones.
+ */
+const shared = globalThis as {
+  __strudeltonStrudel?: Promise<StrudelSession>;
+  __strudeltonWatchers?: () => void;
+};
+const ready: Promise<StrudelSession> = (shared.__strudeltonStrudel ??=
+  initStrudel()).then((session: StrudelSession) => {
+  shared.__strudeltonWatchers?.();
+  setSchedulerNow(
+    () => session.scheduler.now(),
+    () => session.scheduler.cps ?? 0,
+  );
+  const stopLive = startLive(() => session.scheduler.pattern);
+  const stopMeters = startMeters(
+    () => session.scheduler.pattern,
+    () => useAppStore.getState().isPlaying,
+  );
+  shared.__strudeltonWatchers = () => {
+    stopLive();
+    stopMeters();
+  };
+  return session;
+});
 void ready.catch((error: unknown) => {
   useAppStore
     .getState()
