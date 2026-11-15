@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Panel } from '@xyflow/react';
-import { MousePointer2 } from 'lucide-react';
+import { Panel, useReactFlow } from '@xyflow/react';
+import { Frame, MousePointer2, StickyNote } from 'lucide-react';
+import { addAnnotation, FRAME_SIZE } from '@/lib/annotations';
 import { radialMenuItems } from '@/data/radial-menu';
 import { iconMapping } from '@/data/icon-mapping';
 import { nodeDefinitions } from '@/components/nodes/registry';
@@ -19,6 +20,25 @@ export function NodePalette() {
   const setPlacing = useAppStore((state) => state.setPlacing);
   const panel = useRef<HTMLDivElement>(null);
   const open = radialMenuItems.find((item) => item.category === category);
+  const { screenToFlowPosition } = useReactFlow();
+  /** A note or frame in the middle of the view. */
+  const addAt = (kind: 'note' | 'frame') => {
+    const center = screenToFlowPosition({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    });
+    addAnnotation(
+      kind === 'note'
+        ? { kind, x: center.x - 100, y: center.y - 50, text: '' }
+        : {
+            kind,
+            x: center.x - FRAME_SIZE.width / 2,
+            y: center.y - FRAME_SIZE.height / 2,
+            ...FRAME_SIZE,
+            text: 'Frame',
+          },
+    );
+  };
 
   useEffect(() => {
     if (!category) return;
@@ -72,6 +92,21 @@ export function NodePalette() {
               <Icon className="size-4" aria-hidden="true" />
             </ControlButton>
           ))}
+          <div className="mx-1.5 h-px bg-border" />
+          <ControlButton
+            title="Add a note"
+            onClick={() => addAt('note')}
+            className="nokey nodrag nopan"
+          >
+            <StickyNote className="size-4" aria-hidden="true" />
+          </ControlButton>
+          <ControlButton
+            title="Add a frame"
+            onClick={() => addAt('frame')}
+            className="nokey nodrag nopan"
+          >
+            <Frame className="size-4" aria-hidden="true" />
+          </ControlButton>
 
           {open && (
             <div

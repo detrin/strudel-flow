@@ -1,6 +1,6 @@
 import { NodeContextMenu } from './node-context-menu';
 import { ReactFlow, useReactFlow } from '@xyflow/react';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { nodeTypes } from '@/components/nodes/registry';
@@ -9,6 +9,15 @@ import { useAppStore } from '@/store/app-store';
 import { EditorToolbar } from './toolbar';
 import { NodePalette } from './node-palette';
 import { MixerPanel } from '@/components/mixer/mixer-panel';
+import { NoteAnnotation } from '@/components/annotations/note-annotation';
+import { FrameAnnotation } from '@/components/annotations/frame-annotation';
+import {
+  isAnnotationId,
+  onAnnotationChanges,
+  useAnnotations,
+} from '@/lib/annotations';
+import type { AppNode } from '@/components/nodes/types';
+import type { NodeChange } from '@xyflow/react';
 import { useUrlState } from '@/hooks/use-url-state';
 import { useWorkflowRunner } from '@/hooks/use-workflow-runner';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
@@ -17,6 +26,11 @@ import { startCodeSync } from '@/store/code-sync';
 import { startBridge } from '@/lib/bridge/connect';
 
 const edgeTypes = { default: deleteEdge };
+const allNodeTypes = {
+  ...nodeTypes,
+  'note-annotation': NoteAnnotation,
+  'frame-annotation': FrameAnnotation,
+};
 /** Room for the panels on the canvas edges, so they never cover nodes. */
 const FIT_PADDING = {
   top: '72px',
@@ -41,6 +55,23 @@ export default function Editor() {
         onConnect: state.onConnect,
       })),
     );
+  // Notes and frames (comments in the code) sit on the canvas too.
+  const annotations = useAnnotations((state) => state.nodes);
+  const allNodes = useMemo(
+    () => [...annotations, ...nodes] as AppNode[],
+    [annotations, nodes],
+  );
+  const onAllNodesChange = useCallback(
+    (changes: NodeChange<AppNode>[]) => {
+      const mine = (change: NodeChange<AppNode>) =>
+        'id' in change && isAnnotationId(change.id);
+      const own = changes.filter(mine);
+      if (own.length) onAnnotationChanges(own as NodeChange[]);
+      const rest = changes.filter((change) => !mine(change));
+      if (rest.length) onNodesChange(rest);
+    },
+    [onNodesChange],
+  );
   useEffect(startCodeSync, []);
   useEffect(startBridge, []);
 
@@ -77,12 +108,12 @@ export default function Editor() {
         >
           <ReactFlow
             {...connectionHandlers}
-            nodes={nodes}
+            nodes={allNodes}
             edges={edges}
-            onNodesChange={onNodesChange}
+            onNodesChange={onAllNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            nodeTypes={nodeTypes}
+            nodeTypes={allNodeTypes}
             edgeTypes={edgeTypes}
             colorMode={themeByName(theme).dark ? 'dark' : 'light'}
             panActivationKeyCode={null}

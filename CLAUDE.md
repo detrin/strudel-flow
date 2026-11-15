@@ -60,7 +60,12 @@ parameters hold a string, or code after `=` like a spreadsheet
 Other pieces: `lib/live.ts` (what sounds now: code highlight, glowing
 nodes), `lib/punchcards.ts` + `lib/punchcard-draw.ts`, `lib/tidy.ts` and
 `lib/same-sound.ts` (reorder only when Strudel plays identical events),
-`lib/node-location.ts` (canvas node → its code), `shared/piano-roll.tsx`
+`lib/node-location.ts` (canvas node → its code), `lib/mixer.ts` (solo as
+Strudel's `Slabel:`, mixer strips), `lib/launch.ts` (edits wait for the next
+bar: old and new patterns spliced at the boundary), `lib/recorder.ts`
+(master → WAV), `lib/midi.ts` (MIDI learn, mappings in localStorage),
+`lib/annotations.ts` (notes and frames: `// @note`/`// @frame` comments in
+the prelude, drawn as canvas nodes outside the graph), `shared/piano-roll.tsx`
 (Pad and Notes), `strudel-scope.ts` (strudel.cc's `slider`, inline visuals).
 
 ## Library (folder icon)
