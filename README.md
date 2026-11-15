@@ -23,6 +23,9 @@ the creators of React Flow).
   along its shape, Level shows a meter and the last 8 bars, Delay, Space and
   Modulate animate too, and the Analyzer node (`._spectrum()`) shows a
   spectrogram or loudness over time, for the line or the master mix.
+- **Miro-style canvas**: drag empty space to select (Shift or ⌘/Ctrl + click
+  adds a node) and move the selection together; two-finger swipe or the
+  middle mouse button pans, pinch zooms.
 - **Disable any node** with its power button: its call is commented out in
   the code; disabling a line's first node silences the line.
 - **Library** (folder icon): every Strudel sound, searchable by name and

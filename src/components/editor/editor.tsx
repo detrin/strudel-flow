@@ -1,5 +1,5 @@
 import { NodeContextMenu } from './node-context-menu';
-import { ReactFlow, useReactFlow } from '@xyflow/react';
+import { ReactFlow, SelectionMode, useReactFlow } from '@xyflow/react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -31,6 +31,8 @@ const allNodeTypes = {
   'note-annotation': NoteAnnotation,
   'frame-annotation': FrameAnnotation,
 };
+/** Shift, ⌘ or Ctrl + click adds a node to the selection, as in Miro. */
+const MULTI_SELECT_KEYS = ['Shift', 'Meta', 'Control'];
 /** Room for the panels on the canvas edges, so they never cover nodes. */
 const FIT_PADDING = {
   top: '72px',
@@ -118,7 +120,15 @@ export default function Editor() {
             colorMode={themeByName(theme).dark ? 'dark' : 'light'}
             panActivationKeyCode={null}
             zoomOnDoubleClick={false}
-            // Like Miro: two-finger swipe pans, pinch (or Ctrl/⌘ + wheel) zooms.
+            // Like Miro: dragging empty space draws a selection box (anything
+            // it touches is selected, and moves together); Shift or ⌘/Ctrl +
+            // click adds or removes a node. Two-finger swipe or the middle
+            // mouse button pans, pinch (or Ctrl/⌘ + wheel) zooms. (Space is
+            // play/stop, so it can't pan.)
+            selectionOnDrag
+            selectionMode={SelectionMode.Partial}
+            panOnDrag={[1]}
+            multiSelectionKeyCode={MULTI_SELECT_KEYS}
             panOnScroll
             // 1:1 with the fingers (React Flow's default is half speed).
             panOnScrollSpeed={1}
