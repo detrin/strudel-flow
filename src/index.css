@@ -152,3 +152,9 @@ body,
     0 0 14px -2px var(--primary);
   transition: box-shadow 40ms;
 }
+
+/* A disabled node (its code commented out), or one in a disabled line. */
+.react-flow__node > div[data-disabled] {
+  opacity: 0.45;
+  filter: grayscale(0.9);
+}

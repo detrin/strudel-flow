@@ -90,11 +90,20 @@ export type NodeDefinition = {
    * or null. The node must write that call back exactly.
    */
   parseSource?: (call: Call) => Record<string, unknown> | null;
+  /** A live picture of what the node does, under its controls. */
+  visual?: ComponentType<VisualProps>;
   renderControls?: (
     data: Record<string, unknown>,
     update: (data: Record<string, unknown>) => void,
     context: ControlsContext,
   ) => ReactNode;
+};
+
+/** What a node's visual gets: its id (for its line) and its values. */
+export type VisualProps = {
+  id: string;
+  values: Record<string, unknown>;
+  isPlaying: boolean;
 };
 
 export const isSource = (definition: Pick<NodeDefinition, 'category'>) =>
@@ -251,6 +260,7 @@ export function defineNode<
   parse?: (calls: Call[]) => Partial<D & ParameterValues<P>> | null;
   parseSource?: (call: Call) => Partial<D & ParameterValues<P>> | null;
   component?: ComponentType<NodeControlsProps<P, D>>;
+  visual?: ComponentType<VisualProps>;
 }): NodeDefinition {
   const {
     parameters,

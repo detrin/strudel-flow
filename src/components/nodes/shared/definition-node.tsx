@@ -49,6 +49,13 @@ export function createDefinitionComponent(definition: NodeDefinition) {
                 )}
               </div>
             )}
+            {definition.visual && (
+              <definition.visual
+                id={id}
+                values={values}
+                isPlaying={isPlaying && data.state !== 'paused'}
+              />
+            )}
             {knobs.length > 0 && (
               <div className="grid grid-cols-3 justify-items-center gap-x-2 gap-y-4">
                 {knobs.map(([key, parameter]) =>

@@ -14,6 +14,12 @@ test.beforeEach(async ({ page }) => {
   await expect(nodes(page)).toHaveCount(2);
 });
 
+/** A spot of empty canvas: low on the pane, clear of nodes and the hint. */
+const empty = async (page: Page) => {
+  const box = (await page.locator('.react-flow__pane').boundingBox())!;
+  return { x: box.width / 2, y: box.height - 110 };
+};
+
 const pickFromMenu = async (page: Page, category: string, title: string) => {
   await page.getByRole('menuitem', { name: category }).focus();
   await page.getByRole('menuitem', { name: `Add ${title}` }).focus();
@@ -58,7 +64,7 @@ test('click a node in the left toolbar, then click the canvas', async ({
   await expect(page.getByRole('status')).toContainText('Click the canvas');
   await page
     .locator('.react-flow__pane')
-    .click({ position: { x: 600, y: 650 } });
+    .click({ position: await empty(page) });
   await expect(nodes(page)).toHaveCount(3);
   await expect(nodeOfType(page, 'beat-machine-node')).toHaveCount(1);
   await expect(page.getByText('Click the canvas to place')).toBeHidden();
@@ -70,7 +76,7 @@ test('Escape cancels placing', async ({ page }) => {
   await page.keyboard.press('Escape');
   await page
     .locator('.react-flow__pane')
-    .click({ position: { x: 600, y: 650 } });
+    .click({ position: await empty(page) });
   await expect(nodes(page)).toHaveCount(2);
 });
 
@@ -87,7 +93,7 @@ test('drag a node from the left toolbar onto the canvas', async ({ page }) => {
 test('double-clicking empty canvas opens the add menu', async ({ page }) => {
   await page
     .locator('.react-flow__pane')
-    .dblclick({ position: { x: 600, y: 650 } });
+    .dblclick({ position: await empty(page) });
   await pickFromMenu(page, 'Instruments', 'Code');
   await expect(nodes(page)).toHaveCount(3);
 });

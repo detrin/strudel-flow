@@ -14,7 +14,7 @@ export const GAP = 60;
 /** Space between nodes stacked in one column. */
 const STACK_GAP = 24;
 /** A stack may always grow this tall before it wraps into a new column. */
-const MIN_STACK = 520;
+const MIN_STACK = 760;
 const DEFAULT_SIZE: Size = { width: 300, height: 220 };
 
 /** Upstream first, the order nodes appear in a line of code. */

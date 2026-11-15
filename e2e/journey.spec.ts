@@ -6,7 +6,7 @@ async function openUndertow(page: Page) {
   await page.getByText('Community patches').click();
   await page.getByRole('button', { name: /Load Undertow/ }).click();
   await page.keyboard.press('Escape');
-  await expect(nodes(page)).toHaveCount(56);
+  await expect(nodes(page)).toHaveCount(57);
 }
 /** The Sound node playing the mini-notation `pattern`. */
 const soundNode = (page: Page, pattern: string) =>
@@ -34,11 +34,11 @@ test('a whole song: open, play, mix, rewire, undo, share', async ({
   await page.waitForTimeout(1000);
   await expect(page.getByRole('alert')).toHaveCount(0);
 
-  // Mix: mute the hats line from its source node.
+  // Mix: switch the hats line off from its source node.
   await soundNode(page, '[~ hh]*4')
-    .getByRole('button', { name: 'Mute instrument' })
+    .getByRole('button', { name: 'Disable Sound' })
     .click();
-  await expect(editor(page)).toContainText('_hats: s("[~ hh]*4")');
+  await expect(editor(page)).toContainText('// hats: s("[~ hh]*4")');
 
   // Rewire: a new Level node wired after the kick's last node joins its line.
   const before = await nodeOfType(page, 'level-node').count();
@@ -82,7 +82,7 @@ test('a whole song: open, play, mix, rewire, undo, share', async ({
   const code = (await editor(page).textContent()) ?? '';
   const elsewhere = await context.newPage();
   await elsewhere.goto(link);
-  await expect(nodes(elsewhere)).toHaveCount(57);
+  await expect(nodes(elsewhere)).toHaveCount(58);
   await expect(editor(elsewhere)).toHaveText(code);
   errors.expectNone();
 });

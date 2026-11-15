@@ -1,4 +1,5 @@
 import { defineNode, knob } from '../define-node';
+import { HighpassVisual, LowpassVisual } from '../visuals/filter-visual';
 import {
   ADSR_KEYS,
   adsrCalls,
@@ -44,6 +45,7 @@ export function defineFilter(options: {
     category: 'Audio Effects',
     icon: 'Filter',
     parameters,
+    visual: prefix === 'lp' ? LowpassVisual : HighpassVisual,
     parse: (calls) => {
       // Without a cutoff Strudel has no filter, so nothing to default to.
       if (!calls.some((call) => call.name === `${prefix}f`)) return null;

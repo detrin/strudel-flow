@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { Code2, Plus, Rows3, Trash2, Volume2, VolumeX } from 'lucide-react';
+import {
+  Code2,
+  Plus,
+  Power,
+  PowerOff,
+  Rows3,
+  Trash2,
+  VolumeX,
+} from 'lucide-react';
 import { Position } from '@xyflow/react';
 import { WorkflowNodeData, AppNodeType } from '@/components/nodes/registry';
 import { nodeDefinitions } from '@/components/nodes/registry';
@@ -37,11 +45,17 @@ function WorkflowNode({
   const label = type === 'arrange-node' ? lineLabelOf(id) : undefined;
   const isHeader = label !== undefined;
   const isPaused = data.state === 'paused';
+  const updateNodeData = useAppStore((state) => state.updateNodeData);
+  const disabled = Boolean(data.disabled);
+  const isSource = isInstrument;
+  // The line's first node is off: the whole line is commented out.
+  const lineOff = useLive((state) => state.off.has(id));
 
   return (
     <BaseNode
       data-muted={isPaused || undefined}
       data-sounding={sounding || undefined}
+      data-disabled={disabled || lineOff || undefined}
       className={
         isPaused ? 'border-amber-500/70 ring-1 ring-amber-500/25' : undefined
       }
@@ -89,24 +103,29 @@ function WorkflowNode({
           )}
         </h3>
         <div className="flex items-center gap-1">
-          {(isInstrument || isHeader) && (
-            <Button
-              variant="ghost"
-              aria-label={isPaused ? 'Unmute instrument' : 'Mute instrument'}
-              onClick={() => setMuted(id, !isPaused)}
-              className={cn(
-                'nodrag size-7 rounded-md p-1 text-muted-foreground',
-                isPaused &&
-                  'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-              )}
-            >
-              {isPaused ? (
-                <VolumeX className="size-3.5" />
-              ) : (
-                <Volume2 className="size-3.5" />
-              )}
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            aria-label={`${disabled ? 'Enable' : 'Disable'} ${data.title}`}
+            aria-pressed={disabled}
+            title={
+              disabled
+                ? 'Enable: its code is uncommented'
+                : isSource
+                  ? 'Disable the whole line: its code is commented out'
+                  : 'Disable: its code is commented out'
+            }
+            onClick={() => updateNodeData(id, { disabled: !disabled })}
+            className={cn(
+              'nodrag size-7 rounded-md p-1 text-muted-foreground',
+              disabled && 'bg-destructive/15 text-destructive',
+            )}
+          >
+            {disabled ? (
+              <PowerOff className="size-3.5" />
+            ) : (
+              <Power className="size-3.5" />
+            )}
+          </Button>
           <NodeMenu
             id={id}
             items={[

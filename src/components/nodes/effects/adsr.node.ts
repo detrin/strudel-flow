@@ -5,6 +5,7 @@ import {
   parseEnvelope,
   type Adsr,
 } from './envelope';
+import { EnvelopeVisual } from '../visuals/envelope-visual';
 
 /** Strudel's amplitude envelope when none of it is set. */
 const UNSET: Adsr = [0.001, 0.001, 1, 0.01];
@@ -18,6 +19,7 @@ export default defineNode({
   icon: 'Activity',
   order: 13,
   parameters,
+  visual: EnvelopeVisual,
   parse: (calls) => parseEnvelope(parameters, calls, UNSET),
   generate: (values) => adsrCalls('', values).join('.'),
 });

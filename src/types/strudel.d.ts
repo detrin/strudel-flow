@@ -1,6 +1,6 @@
 declare module '@strudel/web' {
   export type StrudelSession = {
-    scheduler: { now: () => number; pattern?: Pattern };
+    scheduler: { now: () => number; cps?: number; pattern?: Pattern };
     state: { evalError?: unknown };
   };
 
@@ -33,6 +33,8 @@ declare module '@strudel/web' {
   }
 
   export const analysers: Record<string, AnalyserNode | undefined>;
+  export function getAudioContext(): AudioContext;
+  export function getSuperdoughAudioController(): unknown;
   export function drawTimeScope(
     analyser: AnalyserNode | undefined,
     options: {

@@ -1,4 +1,5 @@
 import { defineNode, knob } from '../define-node';
+import { ModulateVisual } from '../visuals/modulate-visual';
 
 export const WAVES = [
   'sine',
@@ -37,6 +38,7 @@ export default defineNode({
   category: 'Audio Effects',
   icon: 'AudioWaveform',
   order: 14,
+  visual: ModulateVisual,
   parameters: {
     target: {
       control: 'select',

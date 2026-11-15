@@ -29,7 +29,7 @@ const VOICE_TYPES = new Set([
   'drum-sounds-node',
 ]);
 /** Draws the pattern; never changes what plays. */
-const VISUAL_TYPES = new Set(['punchcard-node', 'scope-node']);
+const VISUAL_TYPES = new Set(['punchcard-node', 'scope-node', 'analyzer-node']);
 
 type Member = { type: string; data: Record<string, unknown> };
 

@@ -3,11 +3,24 @@ import { nodeDefinitions } from '@/components/nodes/registry';
 import { flatten } from './compile';
 import type { Line, Program, ProgramNode } from './types';
 
-/** An expression split into its base and the calls chained onto it. */
-type Chain = { base: string; calls: string[] };
+/**
+ * An expression split into its base and the calls chained onto it. A
+ * disabled node's calls stay in the code, commented out.
+ */
+type Call = { text: string; disabled: boolean };
+type Chain = { base: string; calls: Call[] };
 
 const inline = ({ base, calls }: Chain) =>
-  base + calls.map((call) => `.${call}`).join('');
+  base +
+  calls
+    .map(({ text, disabled }) => (disabled ? `/* .${text} */` : `.${text}`))
+    .join('');
+
+/** A node switched off: its code is commented out (a source: its line). */
+export const isDisabled = (node: ProgramNode | undefined) =>
+  Boolean(node?.data.disabled);
+/** The line's first node; when it is off, the whole line is. */
+const head = (sink: ProgramNode) => flatten(sink).at(-1);
 
 function chain(node: ProgramNode): Chain {
   const definition = nodeDefinitions[node.type];
@@ -24,7 +37,10 @@ function chain(node: ProgramNode): Chain {
   }
   const input = stacked();
   if (!input.base || !own) return input;
-  return { base: input.base, calls: [...input.calls, own] };
+  return {
+    base: input.base,
+    calls: [...input.calls, { text: own, disabled: isDisabled(node) }],
+  };
 }
 
 /**
@@ -47,8 +63,19 @@ export function emitLine({ label, muted, sink }: Line): string {
   const { base, calls } = chain(sink);
   if (!base) return '';
   const name = muted ? `_${label}` : label;
-  const body = `${name}: ${base}${calls.map((call) => `\n  .${call}`).join('')}`;
-  return layoutComment(sink) + body;
+  const body = `${name}: ${base}${calls
+    .map(({ text, disabled }) =>
+      disabled ? `\n  // .${text}` : `\n  .${text}`,
+    )
+    .join('')}`;
+  // Its first node off: the whole line is commented out, so it never plays.
+  const code = isDisabled(head(sink))
+    ? body
+        .split('\n')
+        .map((text) => `// ${text}`)
+        .join('\n')
+    : body;
+  return layoutComment(sink) + code;
 }
 
 /** Program → Strudel code. */
@@ -76,4 +103,6 @@ export function emitProgram(program: Program): string {
 
 /** True when at least one line would make sound. */
 export const isAudible = (program: Program) =>
-  program.lines.some((line) => !line.muted && emitLine(line));
+  program.lines.some(
+    (line) => !line.muted && !isDisabled(head(line.sink)) && emitLine(line),
+  );

@@ -8,11 +8,16 @@ import { setSchedulerNow } from '@/lib/strudel-clock';
 import { loadSamples } from '@/data/samples';
 import { collectPunchcards, tagPunchcards } from '@/lib/punchcards';
 import { setEvaluatedCode, startLive } from '@/lib/live';
+import { startMeters, tagAnalysers } from '@/lib/meters';
 
 const ready: Promise<StrudelSession> = initStrudel().then(
   (session: StrudelSession) => {
-    setSchedulerNow(() => session.scheduler.now());
+    setSchedulerNow(
+      () => session.scheduler.now(),
+      () => session.scheduler.cps ?? 0,
+    );
     startLive(() => session.scheduler.pattern);
+    startMeters(() => session.scheduler.pattern);
     return session;
   },
 );
@@ -27,7 +32,7 @@ void loadSamples();
 
 async function evaluateAudio(pattern: string) {
   const session = await ready;
-  const code = tagPunchcards(pattern);
+  const code = tagAnalysers(tagPunchcards(pattern));
   await collectPunchcards(async () => {
     await evaluate(code);
     if (session.state.evalError) throw session.state.evalError;

@@ -62,10 +62,8 @@ export function ArrangeNode({
       <div
         role="group"
         aria-label="Bars"
-        className={cn(
-          'grid gap-1',
-          bars.length > 64 ? 'grid-cols-16' : 'grid-cols-8',
-        )}
+        // Same size at any length; long songs scroll (12 rows show).
+        className="nodrag nowheel grid max-h-[22rem] grid-cols-8 gap-1 overflow-y-auto"
       >
         {[...bars].map((bit, index) => (
           <button
@@ -76,7 +74,7 @@ export function ArrangeNode({
             onClick={() => toggle(index)}
             className={cn(
               'nodrag rounded-sm border border-border text-[9px] transition-colors',
-              bars.length > 64 ? 'h-4 text-[0px]' : 'h-7',
+              'h-7 shrink-0',
               bit === '1'
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-accent',

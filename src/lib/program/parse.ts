@@ -9,6 +9,7 @@ import { nodeDefinitions } from '@/components/nodes/registry';
 import {
   decompose,
   methodNames,
+  parseExpression,
   parseScript,
   slice,
   valueOf,
@@ -130,7 +131,64 @@ function chainEffects(inputs: ProgramNode[], calls: Call[]): ProgramNode {
     : { type: MIX, data: {}, inputs: current };
 }
 
-function createParser(source: string, known: Known[]) {
+type Comment = { start: number; end: number; text: string };
+
+/**
+ * The calls of a commented-out node: `// .lpf(800).lpq(4)` (or a block
+ * comment) holding only method calls. Null for any other comment.
+ */
+function commentCalls(text: string): Call[] | null {
+  const body = text.startsWith('/*')
+    ? text.slice(2, -2)
+    : text.replace(/^\/\//, '');
+  const code = body.trim();
+  if (!/^\.\s*[A-Za-z_$]/.test(code)) return null;
+  const snippet = `_${code}`;
+  const expression = parseExpression(snippet);
+  if (!expression) return null;
+  const { base, calls } = decompose(`(${snippet}\n)`, expression);
+  return base.type === 'Identifier' && base.name === '_' && calls.length
+    ? calls
+    : null;
+}
+
+/** A line's calls in code order, with commented-out ones as disabled runs. */
+type Item = { at: number } & (
+  { call: Call & { end: number } } | { disabled: Call[] }
+);
+
+/**
+ * Chains effect nodes onto `inputs` from `items`: enabled calls as usual,
+ * each commented-out run as its own nodes, marked disabled.
+ */
+function chainItems(inputs: ProgramNode[], items: Item[]): ProgramNode {
+  let current = inputs;
+  let run: Call[] = [];
+  const flush = () => {
+    if (run.length) current = [chainEffects(current, run)];
+    run = [];
+  };
+  for (const item of items) {
+    if ('call' in item) {
+      run.push(item.call);
+      continue;
+    }
+    flush();
+    const before = new Set(current);
+    const node = chainEffects(current, item.disabled);
+    for (
+      let at: ProgramNode | undefined = node;
+      at && !before.has(at);
+      at = at.inputs[0]
+    )
+      at.data.disabled = true;
+    current = [node];
+  }
+  flush();
+  return current.length === 1 ? current[0] : chainEffects(current, []);
+}
+
+function createParser(source: string, known: Known[], comments: Comment[]) {
   const unmatched = known.map((node) => ({
     ...node,
     text: normalize(node.text),
@@ -166,6 +224,16 @@ function createParser(source: string, known: Known[]) {
   const tree = (expression: Expression): ProgramNode => {
     const { base, calls } = decompose(source, expression);
     const model = modelled(base);
+    // Commented-out calls between this line's calls are disabled nodes.
+    const items: Item[] = [
+      ...calls.map((call) => ({ at: call.end, call })),
+      ...comments.flatMap((comment) => {
+        if (comment.start < base.end || comment.end > expression.end) return [];
+        const disabled = commentCalls(comment.text);
+        return disabled ? [{ at: comment.start, disabled }] : [];
+      }),
+    ].sort((a, b) => a.at - b.at);
+    const after = (offset: number) => items.filter((item) => item.at > offset);
     // 1. An existing source node that writes exactly this code keeps its id
     //    (a Code node only while no instrument models its code).
     for (let used = calls.length; used >= 0; used--) {
@@ -177,9 +245,8 @@ function createParser(source: string, known: Known[]) {
       if (match) {
         const { id, type, data } = match;
         const node = { id, type, data: { ...data }, inputs: [] };
-        return calls.length > used
-          ? chainEffects([node], calls.slice(used))
-          : node;
+        const rest = after(end);
+        return rest.length ? chainItems([node], rest) : node;
       }
     }
     // 2. stack(a, b) fans several chains into the first call (or a Mix).
@@ -191,10 +258,10 @@ function createParser(source: string, known: Known[]) {
       base.arguments.every((arg) => arg.type !== 'SpreadElement')
     ) {
       const inputs = base.arguments.map((arg) => tree(arg as Expression));
-      return chainEffects(inputs, calls);
+      return chainItems(inputs, after(base.end - 1));
     }
     // 3. A call an instrument models (`note("c e g")` is a Notes node).
-    if (model) return calls.length ? chainEffects([model], calls) : model;
+    if (model) return items.length ? chainItems([model], items) : model;
     // 4. Anything else is a Code node holding the base expression.
     const inner =
       base.type === 'ParenthesizedExpression' ? base.expression : base;
@@ -203,7 +270,7 @@ function createParser(source: string, known: Known[]) {
       data: { customPattern: slice(source, inner) },
       inputs: [],
     };
-    return calls.length ? chainEffects([node], calls) : node;
+    return items.length ? chainItems([node], items) : node;
   };
 
   return tree;
@@ -294,10 +361,19 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
     };
   }
 
-  const tree = createParser(source, known);
+  const tree = createParser(source, known, comments);
   const program: ParsedProgram = { prelude: '', lines: [] };
   const prelude: { start: number; text: string }[] = [];
   const lineRanges: { start: number; end: number }[] = [];
+  /** Where each line starts, to keep disabled lines in their place. */
+  const lineStarts = new Map<Line, number>();
+  const layoutAbove = (start: number) =>
+    comments.findLast(
+      (comment) =>
+        comment.end <= start &&
+        !source.slice(comment.end, start).trim() &&
+        comment.text.includes(LAYOUT),
+    );
   let lastBare: { statement: Statement; index: number } | undefined;
 
   const constants = new Map<string, number>();
@@ -314,21 +390,16 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
       const name = statement.label.name;
       const muted = name.startsWith('_');
       // The `// @layout` comment right above the line is part of it.
-      const layout = comments.findLast(
-        (comment) =>
-          comment.end <= statement.start &&
-          !source.slice(comment.end, statement.start).trim() &&
-          comment.text.includes(LAYOUT),
-      );
+      const layout = layoutAbove(statement.start);
       if (layout) lineRanges.push(layout);
-      program.lines.push(
-        line(
-          name.replace(/^_/, '') || ANONYMOUS,
-          muted,
-          tree(statement.body.expression),
-          layout && positionsOf(layout.text),
-        ),
+      const parsed = line(
+        name.replace(/^_/, '') || ANONYMOUS,
+        muted,
+        tree(statement.body.expression),
+        layout && positionsOf(layout.text),
       );
+      program.lines.push(parsed);
+      lineStarts.set(parsed, statement.start);
       // A comment on the same line as the statement belongs to it.
       const lineEnd = source.indexOf('\n', statement.end);
       lineRanges.push({
@@ -356,6 +427,25 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
       program.lines.push(line(ANONYMOUS, false, tree(statement.expression)));
   }
 
+  // Commented-out lines are disabled lines, in their place among the others.
+  for (const block of disabledLines(source)) {
+    const layout = layoutAbove(block.start);
+    if (layout) lineRanges.push(layout);
+    lineRanges.push(block);
+    const parsed = line(
+      block.line.label,
+      block.line.muted,
+      block.line.sink,
+      layout && positionsOf(layout.text),
+    );
+    flatten(parsed.sink).at(-1)!.data.disabled = true;
+    program.lines.push(parsed);
+    lineStarts.set(parsed, block.start);
+  }
+  program.lines.sort(
+    (a, b) => (lineStarts.get(a) ?? 0) - (lineStarts.get(b) ?? 0),
+  );
+
   for (const comment of comments)
     if (
       !lineRanges.some(
@@ -368,6 +458,49 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
     .map((part) => part.text)
     .join('\n');
   return { ok: true, program };
+}
+
+const COMMENT_LINE = /^(\s*)\/\/ ?(.*)$/;
+const LABELLED = /^_?[A-Za-z_$][\w$]*\s*:/;
+
+/**
+ * Lines commented out whole (`// kick: s("bd")`, `//   .gain(1)` …): their
+ * code, parsed, when it is exactly one line whose source is a call. Prose
+ * comments (`// HATS: closed hats`) do not parse, so they stay comments.
+ */
+function disabledLines(source: string) {
+  const found: { start: number; end: number; line: Line }[] = [];
+  const rows = source.split('\n');
+  const offsets: number[] = [];
+  rows.reduce((at, row) => (offsets.push(at), at + row.length + 1), 0);
+  for (let i = 0; i < rows.length; i++) {
+    const head = COMMENT_LINE.exec(rows[i]);
+    if (!head || !LABELLED.test(head[2])) continue;
+    const body = [head[2]];
+    let last = i;
+    for (let j = i + 1; j < rows.length; j++) {
+      const next = COMMENT_LINE.exec(rows[j]);
+      // Continuations are indented, or start with `.` or an inner comment.
+      if (!next || !/^(\s|\.|\/\/)/.test(next[2])) break;
+      body.push(next[2]);
+      last = j;
+    }
+    const result = parseProgram(body.join('\n'));
+    if (!result.ok || result.program.lines.length !== 1) continue;
+    if (result.program.prelude.trim()) continue;
+    const [parsed] = result.program.lines;
+    const first = flatten(parsed.sink).at(-1);
+    // `todo: fix` is valid code but no music: the source must be a call.
+    if (first?.type === CODE && !/\(/.test(String(first.data.customPattern)))
+      continue;
+    found.push({
+      start: offsets[i],
+      end: offsets[last] + rows[last].length,
+      line: parsed,
+    });
+    i = last;
+  }
+  return found;
 }
 
 /** `// @layout 0,0 320,0` → positions, or undefined if malformed. */

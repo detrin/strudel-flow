@@ -18,9 +18,15 @@ type Live = {
   ranges: readonly CodeRange[];
   /** Node ids of the lines that have a sound playing. */
   nodes: ReadonlySet<string>;
+  /** Node ids of lines switched off (their first node disabled). */
+  off: ReadonlySet<string>;
 };
 
-export const useLive = create<Live>(() => ({ ranges: [], nodes: new Set() }));
+export const useLive = create<Live>(() => ({
+  ranges: [],
+  nodes: new Set(),
+  off: new Set(),
+}));
 
 let evaluated = '';
 /** The code Strudel last evaluated; ranges point into it. */
@@ -76,6 +82,14 @@ export const lineLabelOf = (nodeId: string) =>
   [...lineNodes].find(([, ids]) => ids.includes(nodeId))?.[0];
 function updateLineNodes() {
   const state = useAppStore.getState();
+  const lines = programOf(state).lines;
+  const off = new Set(
+    lines
+      .map((line) => flatten(line.sink).reverse())
+      .filter((members) => members[0]?.data.disabled)
+      .flatMap((members) => members.map((node) => node.id!)),
+  );
+  if (!sameSet(off, useLive.getState().off)) useLive.setState({ off });
   let anonymous = 0;
   lineNodes = new Map(
     programOf(state)

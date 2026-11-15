@@ -34,8 +34,8 @@ test('typing code builds wired nodes on the canvas', async ({ page }) => {
 test('editing on the canvas rewrites the code', async ({ page }) => {
   await typeCode(page, 'kick: s("bd*4").gain(1.1)');
   await expect(nodes(page)).toHaveCount(2);
-  await page.getByRole('button', { name: 'Mute instrument' }).click();
-  await expect(editor(page)).toContainText('_kick: s("bd*4")');
+  await page.getByRole('button', { name: 'Disable Sound' }).click();
+  await expect(editor(page)).toContainText('// kick: s("bd*4")');
   const tempo = page.getByLabel('Tempo in beats per minute');
   await tempo.fill('90');
   await expect(editor(page)).toContainText('setcpm(90/4)');
