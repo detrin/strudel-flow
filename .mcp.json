@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "strudel-flow": {
+    "strudelton": {
       "command": "node",
       "args": ["mcp/server.mjs"]
     }

@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
 import { bridgeHub, localFiles } from './mcp/dev-server.mjs';
+import { libraryFiles } from './mcp/library-files.mjs';
 
 export default defineConfig(({ mode }) => ({
   plugins: [
@@ -11,8 +12,10 @@ export default defineConfig(({ mode }) => ({
     tailwindcss(),
     // Claude Code's MCP servers reach the open app through this hub.
     bridgeHub(),
-    // STRUDEL_FLOW_LOCAL (e.g. in .env.local): a folder served at /local/.
-    localFiles(loadEnv(mode, process.cwd(), '').STRUDEL_FLOW_LOCAL ?? ''),
+    // STRUDELTON_LOCAL (e.g. in .env.local): a folder served at /local/.
+    localFiles(loadEnv(mode, process.cwd(), '').STRUDELTON_LOCAL ?? ''),
+    // Presets and sound tags in ~/.strudelton (or STRUDELTON_HOME).
+    libraryFiles(),
   ],
   resolve: {
     alias: [

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getSchedulerNow } from '@/lib/strudel-clock';
 import { LayoutList, Minus, Plus } from 'lucide-react';
 import { typedValue } from '@/lib/typed-value';
 import type { CustomControlsProps } from '../../define-node';
@@ -6,11 +7,42 @@ import { DEFAULT_BARS, MAX_BARS, type ArrangeData } from './arrange';
 import { cn } from '@/lib/utils';
 
 /** A row of bars to switch on and off: the song's structure for one line. */
+/** The bar the song is in (counting from 0), while playing. */
+function useCurrentBar(isPlaying: boolean) {
+  const [bar, setBar] = useState<number>();
+  useEffect(() => {
+    if (!isPlaying) {
+      setBar(undefined);
+      return;
+    }
+    const tick = () => setBar(Math.max(0, Math.floor(getSchedulerNow())));
+    tick();
+    const timer = setInterval(tick, 100);
+    return () => clearInterval(timer);
+  }, [isPlaying]);
+  return bar;
+}
+
+/** What the line does now: plays, or is silent until its next bar on. */
+function nowText(bars: string, at: number) {
+  if (bars[at] === '1') return `Bar ${at + 1} · plays`;
+  for (let step = 1; step < bars.length; step++) {
+    const next = (at + step) % bars.length;
+    if (bars[next] === '1')
+      return `Bar ${at + 1} · silent here, plays from bar ${next + 1}`;
+  }
+  return `Bar ${at + 1} · silent in every bar`;
+}
+
 export function ArrangeNode({
   values,
   onChange,
+  isPlaying,
 }: CustomControlsProps<ArrangeData>) {
   const bars = values.bars || DEFAULT_BARS;
+  const song = useCurrentBar(isPlaying);
+  // The mask repeats every bars.length bars.
+  const current = song === undefined ? undefined : song % bars.length;
   if (values.pattern)
     return (
       <PatternMask
@@ -71,6 +103,7 @@ export function ArrangeNode({
             type="button"
             aria-label={`Bar ${index + 1}`}
             aria-pressed={bit === '1'}
+            aria-current={index === current ? 'step' : undefined}
             onClick={() => toggle(index)}
             className={cn(
               'nodrag rounded-sm border border-border text-[9px] transition-colors',
@@ -79,12 +112,25 @@ export function ArrangeNode({
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-accent',
               index % 4 === 0 && 'border-l-foreground/60',
+              index === current &&
+                'ring-2 ring-foreground ring-offset-1 ring-offset-card',
             )}
           >
             {index + 1}
           </button>
         ))}
       </div>
+      {current !== undefined && (
+        <p
+          role="status"
+          className={cn(
+            'text-[11px]',
+            bars[current] === '1' ? 'text-muted-foreground' : 'text-foreground',
+          )}
+        >
+          {nowText(bars, current)}
+        </p>
+      )}
     </div>
   );
 }

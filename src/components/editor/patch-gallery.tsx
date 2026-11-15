@@ -19,7 +19,7 @@ export function PatchGallery({
       </summary>
       <div className="mt-3 space-y-3">
         <a
-          href="https://github.com/xyflow/strudel-flow/tree/main/patches"
+          href="https://github.com/detrin/strudelton/tree/HEAD/patches"
           target="_blank"
           rel="noreferrer"
           className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"

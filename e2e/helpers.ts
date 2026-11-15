@@ -46,8 +46,10 @@ export function trackErrors(page: Page) {
 
 /** A fresh app that never connects to a real Claude Code session. */
 export async function openFresh(page: Page) {
-  await page.goto('/?bridge=off');
+  // The Library in this browser: tests run in parallel and must not share
+  // the folder (e2e/library-folder.spec.ts tests the folder).
+  await page.goto('/?bridge=off&library=browser');
   await page.evaluate(() => localStorage.clear());
-  await page.goto('/?bridge=off');
+  await page.goto('/?bridge=off&library=browser');
   await expect(nodes(page).first()).toBeVisible();
 }

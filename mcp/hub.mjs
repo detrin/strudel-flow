@@ -1,5 +1,5 @@
 // The bridge hub, served by the Vite dev (or preview) server at /__bridge.
-// Strudel Flow tabs connect as `app`, Claude Code's MCP servers (mcp/server.mjs)
+// Strudelton tabs connect as `app`, Claude Code's MCP servers (mcp/server.mjs)
 // as `agent`. An agent's request goes to the newest tab still open; its reply
 // comes back to that agent. Any number of tabs and agents can come and go.
 import { WebSocketServer } from 'ws';
@@ -9,7 +9,7 @@ const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
 /** How long a request waits for a tab to (re)connect, e.g. after a reload. */
 const WAIT_FOR_TAB_MS = 3000;
 export const NO_TAB =
-  'Strudel Flow is not open. Open the app (the dev server prints its URL); it connects by itself.';
+  'Strudelton is not open. Open the app (the dev server prints its URL); it connects by itself.';
 
 /** Attaches the hub to an HTTP server; returns a function that closes it. */
 export function attachHub(httpServer) {

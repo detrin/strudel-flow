@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // MCP server that lets Claude Code read and edit the patch open in
-// Strudel Flow. Claude Code talks to it over stdio; it reaches the app
+// Strudelton. Claude Code talks to it over stdio; it reaches the app
 // through the bridge hub the dev server runs at /__bridge (mcp/hub.mjs), so
 // any number of Claude sessions and tabs can come and go.
 import { readFile } from 'node:fs/promises';
@@ -10,13 +10,13 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import WebSocket from 'ws';
 import { z } from 'zod';
 
-const APP_URL = process.env.STRUDEL_FLOW_URL ?? 'http://localhost:5173';
+const APP_URL = process.env.STRUDELTON_URL ?? 'http://localhost:5173';
 const HUB_URL = `${APP_URL.replace(/^http/, 'ws').replace(/\/$/, '')}/__bridge?role=agent`;
 const TIMEOUT_MS = 10_000;
 const CONNECT_MS = 1500;
 const NOT_RUNNING =
-  `Strudel Flow's dev server is not running at ${APP_URL}. ` +
-  'Run `pnpm dev` in the strudel-flow repo (or set STRUDEL_FLOW_URL), then open the app.';
+  `Strudelton's dev server is not running at ${APP_URL}. ` +
+  'Run `pnpm dev` in the strudelton repo (or set STRUDELTON_URL), then open the app.';
 
 let hub;
 let nextId = 1;
@@ -45,7 +45,7 @@ function connect() {
     if (hub === socket) hub = undefined;
     for (const [id, waiting] of pending) {
       pending.delete(id);
-      waiting.reject(new Error('The connection to Strudel Flow closed.'));
+      waiting.reject(new Error('The connection to Strudelton closed.'));
     }
   });
 }
@@ -66,7 +66,7 @@ async function call(method, params = {}) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       pending.delete(id);
-      reject(new Error(`Strudel Flow did not answer "${method}" in time.`));
+      reject(new Error(`Strudelton did not answer "${method}" in time.`));
     }, TIMEOUT_MS);
     pending.set(id, {
       resolve: (value) => (clearTimeout(timer), resolve(value)),
@@ -77,10 +77,10 @@ async function call(method, params = {}) {
 }
 
 const server = new McpServer(
-  { name: 'strudel-flow', version: '1.1.0' },
+  { name: 'strudelton', version: '1.1.0' },
   {
     instructions: [
-      'Strudel Flow is a live music editor: Strudel (strudel.cc) code and a',
+      'Strudelton is a live music editor: Strudel (strudel.cc) code and a',
       'node canvas that are two views of one patch. Changes apply to the open',
       'app immediately and are heard if it is playing.',
       'A patch is `setcpm(bpm/beatsPerCycle)` plus lines `label: expression`;',
@@ -139,9 +139,7 @@ tool(
   'open_file',
   'Open a song file (.strudel, .strudel.js, .js) as a new patch: read from disk here, so big files (embedded samples) never pass through the conversation. Name and author come from `// @name` / `// @author` comments.',
   {
-    path: z
-      .string()
-      .describe('Absolute, or relative to the strudel-flow repo.'),
+    path: z.string().describe('Absolute, or relative to the strudelton repo.'),
     play: z.boolean().optional().describe('Start playing once open.'),
   },
   async ({ path, play }) => {

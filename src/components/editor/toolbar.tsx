@@ -9,6 +9,7 @@ import { useAppStore } from '@/store/app-store';
 import { PlayPauseButton } from './play-pause-button';
 import { ZoomSlider } from './zoom-slider';
 import { PresetPopover } from './preset-popover';
+import { LibraryPopover } from '@/components/library/library-popover';
 
 export function EditorToolbar({
   onAddNode,
@@ -126,6 +127,7 @@ export function EditorToolbar({
         >
           <Rows3 className="size-4" aria-hidden="true" />
         </ControlButton>
+        <LibraryPopover />
         <PresetPopover />
         <AppearancePopover />
         <AppInfoPopover />

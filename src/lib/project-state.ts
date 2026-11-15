@@ -124,7 +124,7 @@ export function stateFromJson(json: string): ProjectState | null {
 
 export function downloadState(
   state: ProjectState,
-  filename = 'strudel-flow-project.json',
+  filename = 'strudelton-project.json',
 ): void {
   downloadText(stateToJson(state), filename, 'application/json');
 }

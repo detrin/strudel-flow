@@ -20,7 +20,7 @@ test('a share link opens its patch, then the address is plain', async ({
 }) => {
   await typeCode(page, 'hat: s("hh*8").gain(0.4)');
   await page.waitForTimeout(500);
-  await page.getByRole('button', { name: 'Patches' }).click();
+  await page.getByRole('button', { name: /^Export, share/ }).click();
   const link = await page
     .getByRole('textbox', { name: 'Shareable patch link' })
     .inputValue();

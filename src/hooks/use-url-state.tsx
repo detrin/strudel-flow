@@ -5,7 +5,7 @@ import { upgradePatch } from '@/store/code-sync';
 import { useAppStore } from '@/store/app-store';
 
 /** Where the open patch is kept between visits (this browser only). */
-const STORAGE_KEY = 'strudel-flow:patch';
+const STORAGE_KEY = 'strudelton:patch';
 
 const hasPatchLink = (url: URL) =>
   url.searchParams.has('state') || url.hash.startsWith('#patch=');

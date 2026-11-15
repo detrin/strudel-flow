@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
-import { Copy, Download, FileCode, Folder, Upload } from 'lucide-react';
+import { Copy, Download, FileCode, Share, Upload } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -72,8 +72,8 @@ export function PresetPopover() {
       }}
     >
       <PopoverTrigger asChild>
-        <ControlButton title="Patches">
-          <Folder className="size-4" />
+        <ControlButton title="Export, share and open patches">
+          <Share className="size-4" />
         </ControlButton>
       </PopoverTrigger>
       <PopoverContent

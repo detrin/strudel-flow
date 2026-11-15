@@ -3,7 +3,13 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '@/store/app-store';
 import { programOf } from '@/lib/program';
 import { emitProgram, isAudible } from '@/lib/program/emit';
-import { initStrudel, evaluate, hush, type StrudelSession } from '@strudel/web';
+import {
+  initStrudel,
+  evaluate,
+  getAudioContext,
+  hush,
+  type StrudelSession,
+} from '@strudel/web';
 import { setSchedulerNow } from '@/lib/strudel-clock';
 import { loadSamples } from '@/data/samples';
 import { collectPunchcards, tagPunchcards } from '@/lib/punchcards';
@@ -35,6 +41,10 @@ void loadSamples();
 
 async function evaluateAudio(pattern: string) {
   const session = await ready;
+  // Strudel's clock is the audio clock, and Strudel only wakes the audio
+  // when a sound plays: a song whose first bars are silent (arranged to
+  // start later, or muted) would stay frozen at its start. Playing wakes it.
+  await getAudioContext().resume();
   const code = tagAnalysers(tagPunchcards(pattern));
   await collectPunchcards(async () => {
     await evaluate(code);

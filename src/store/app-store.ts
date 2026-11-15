@@ -50,7 +50,7 @@ type AppState = {
 
 /** The code console panel; remembered per browser. */
 export type ConsoleLayout = { open: boolean; width: number };
-const CONSOLE_KEY = 'strudel-flow:console';
+const CONSOLE_KEY = 'strudelton:console';
 function savedConsole(): ConsoleLayout {
   try {
     const saved = JSON.parse(localStorage.getItem(CONSOLE_KEY) ?? 'null');
@@ -62,7 +62,7 @@ function savedConsole(): ConsoleLayout {
   return { open: true, width: 440 };
 }
 
-const THEME_KEY = 'strudel-flow:theme';
+const THEME_KEY = 'strudelton:theme';
 function savedTheme() {
   try {
     return localStorage.getItem(THEME_KEY) ?? DEFAULT_THEME;
@@ -214,8 +214,8 @@ if (import.meta.hot) import.meta.hot.dispose(unsubscribeTheme);
  * this way, hence the global.
  */
 if (import.meta.hot) {
-  const scope = globalThis as { __strudelFlowStore?: typeof useAppStore };
-  const previous = scope.__strudelFlowStore;
+  const scope = globalThis as { __strudeltonStore?: typeof useAppStore };
+  const previous = scope.__strudeltonStore;
   if (previous && previous !== useAppStore)
     useAppStore.setState(
       Object.fromEntries(
@@ -224,5 +224,5 @@ if (import.meta.hot) {
         ),
       ) as Partial<AppState>,
     );
-  scope.__strudelFlowStore = useAppStore;
+  scope.__strudeltonStore = useAppStore;
 }

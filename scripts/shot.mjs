@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Screenshot Strudel Flow with a song open, for checking how something
+// Screenshot Strudelton with a song open, for checking how something
 // looks without touching the app you have open:
 //
 //   pnpm shot <song file> [--tidy] [--play SECONDS] [--hide-console]

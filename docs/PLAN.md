@@ -1,4 +1,4 @@
-# Strudel Flow (fork) — plan
+# Strudelton — plan
 
 Goal: one patch, two equal views. A **code console** on the left and the **node
 canvas** on the right describe the same program. Typing code builds nodes;

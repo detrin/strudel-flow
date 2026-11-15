@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { editor, nodeOfType, nodes, openFresh, trackErrors } from './helpers';
 
 async function openUndertow(page: Page) {
-  await page.getByRole('button', { name: 'Patches' }).click();
+  await page.getByRole('button', { name: /^Export, share/ }).click();
   await page.getByText('Community patches').click();
   await page.getByRole('button', { name: /Load Undertow/ }).click();
   await page.keyboard.press('Escape');
@@ -75,7 +75,7 @@ test('a whole song: open, play, mix, rewire, undo, share', async ({
   await expect(editor(page)).toContainText('.delayfeedback(0.6)');
 
   // Share: the link opens the same song somewhere else.
-  await page.getByRole('button', { name: 'Patches' }).click();
+  await page.getByRole('button', { name: /^Export, share/ }).click();
   const link = await page
     .getByRole('textbox', { name: 'Shareable patch link' })
     .inputValue();

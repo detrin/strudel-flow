@@ -1,4 +1,4 @@
-# Strudel Flow
+# Strudelton
 
 A visual editor for Strudel where the code console and the node canvas are
 two views of one program. Fork of xyflow/strudel-flow (`origin` is the fork,
@@ -33,7 +33,7 @@ samples instead of pasting them), `new_patch`, `tidy`, `select_node`,
 `set_node`, `set_muted`, `set_tempo`, `play`, `stop`, `set_theme`,
 `list_node_types`. App-side handlers: `src/lib/bridge/commands.ts`.
 
-`STRUDEL_FLOW_LOCAL` in `.env.local` serves a folder read-only at `/local/`
+`STRUDELTON_LOCAL` in `.env.local` serves a folder read-only at `/local/`
 (here `../tidalcycles`), e.g. for samples.
 
 ## How the code becomes nodes
@@ -58,6 +58,18 @@ nodes), `lib/punchcards.ts` + `lib/punchcard-draw.ts`, `lib/tidy.ts` and
 `lib/same-sound.ts` (reorder only when Strudel plays identical events),
 `lib/node-location.ts` (canvas node → its code), `shared/piano-roll.tsx`
 (Pad and Notes), `strudel-scope.ts` (strudel.cc's `slider`, inline visuals).
+
+## Library (folder icon)
+
+Samples: every sound in Strudel's `soundMap`, with kinds and tags guessed
+from names (`src/lib/library/sound-tags.ts`; Strudel has no genre data) plus
+the person's own tags. Presets: saved lines with name and tags
+(`src/lib/library/presets.ts`), carrying the top-level `const`s they use.
+With the dev server both live in `~/.strudelton` (`presets/<name>.json`,
+`sound-tags.json`; `STRUDELTON_HOME` overrides), served at `/__library` by
+`mcp/library-files.mjs`; the browser keeps a copy and is the fallback
+without a dev server (or with `?library=browser`, which e2e uses; the e2e
+server's folder is a temp dir). Presets export and import as JSON. Export/share of the whole patch is the share icon.
 
 ## Conventions
 

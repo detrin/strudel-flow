@@ -1,3 +1,5 @@
+// First: carry data saved under the old name over to the new keys.
+import '@/lib/storage-migration';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ReactFlowProvider } from '@xyflow/react';

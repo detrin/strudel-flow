@@ -1,4 +1,4 @@
-# Strudel Flow (fork)
+# Strudelton
 
 A visual editor for [Strudel](https://strudel.cc) patterns where **code and
 nodes are two views of the same program**. Type Strudel code in the console on
@@ -60,10 +60,10 @@ preview` builds too, with `?bridge`; `?bridge=off` opts out). The
    other project:
 
    ```sh
-   claude mcp add strudel-flow -- node /path/to/strudel-flow/mcp/server.mjs
+   claude mcp add strudelton -- node /path/to/strudelton/mcp/server.mjs
    ```
 
-   It connects to the hub at `STRUDEL_FLOW_URL` (default
+   It connects to the hub at `STRUDELTON_URL` (default
    `http://localhost:5173`). Any number of Claude sessions and tabs can be
    open; commands go to the newest tab, and survive it reloading.
 
@@ -75,7 +75,7 @@ pass through the conversation), `new_patch`, `tidy`, `select_node`,
 
 ## Local files
 
-Set `STRUDEL_FLOW_LOCAL` (e.g. in `.env.local`) to a folder, and the dev
+Set `STRUDELTON_LOCAL` (e.g. in `.env.local`) to a folder, and the dev
 server serves it read-only at `/local/…`, with CORS, so songs can load their
 samples from disk: `samples({ vox: ['/local/songs/vox.mp3'] })`.
 

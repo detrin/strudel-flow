@@ -1,6 +1,6 @@
 {
-  "id": "strudel-flow",
-  "name": "Strudel Flow",
+  "id": "strudelton",
+  "name": "Strudelton",
   "skipBuild": true,
   "description": "A visual drum machine and pattern sequencer built with Strudel and React Flow.",
   "tags": [],

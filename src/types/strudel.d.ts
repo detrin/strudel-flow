@@ -34,6 +34,17 @@ declare module '@strudel/web' {
 
   export const analysers: Record<string, AnalyserNode | undefined>;
   export function getAudioContext(): AudioContext;
+  /** Every registered sound, by name (a nanostores map). */
+  export const soundMap: {
+    get(): Record<string, { data?: { type?: string; samples?: unknown } }>;
+    listen(listener: () => void): () => void;
+  };
+  /** Plays one sound now: value, start (audio clock), duration in seconds. */
+  export function superdough(
+    value: Record<string, unknown>,
+    time: number,
+    duration: number,
+  ): Promise<void>;
   export function getSuperdoughAudioController(): unknown;
   export function drawTimeScope(
     analyser: AnalyserNode | undefined,

@@ -10,7 +10,7 @@ export function AppInfoPopover() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <ControlButton title="About Strudel Flow">
+        <ControlButton title="About Strudelton">
           <Info className="size-4" />
         </ControlButton>
       </PopoverTrigger>
@@ -19,7 +19,7 @@ export function AppInfoPopover() {
         align="end"
         className="w-72 rounded-lg text-xs leading-relaxed"
       >
-        <h3 className="mb-2 text-sm font-semibold">Strudel Flow</h3>
+        <h3 className="mb-2 text-sm font-semibold">Strudelton</h3>
         <p className="mb-3 text-muted-foreground">
           Connect instruments, sounds, and effects to build repeating patterns,
           then change them while they play.
@@ -43,20 +43,27 @@ export function AppInfoPopover() {
           Powered by{' '}
           <a href="https://strudel.cc" className="text-foreground underline">
             Strudel
+          </a>
+          . Based on{' '}
+          <a
+            href="https://github.com/xyflow/strudel-flow"
+            className="text-foreground underline"
+          >
+            Strudel Flow
           </a>{' '}
-          and made by the creators of{' '}
+          by the creators of{' '}
           <a href="https://reactflow.dev" className="text-foreground underline">
             React Flow
           </a>
           .
         </p>
         <a
-          href="https://github.com/xyflow/strudel-flow"
+          href="https://github.com/detrin/strudelton"
           target="_blank"
           rel="noreferrer"
           className="mt-3 inline-flex text-foreground underline underline-offset-2"
         >
-          Contribute on GitHub
+          Source on GitHub
         </a>
       </PopoverContent>
     </Popover>

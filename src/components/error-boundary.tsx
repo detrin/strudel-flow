@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react';
 
-const RELOADED = 'strudel-flow:crash-reload';
+const RELOADED = 'strudelton:crash-reload';
 
 /**
  * Catches a crash anywhere in the app. Instead of a blank page: in
@@ -19,7 +19,7 @@ export class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error) {
-    console.error('Strudel Flow crashed:', error);
+    console.error('Strudelton crashed:', error);
     if (!import.meta.env.DEV) return;
     let last = 0;
     try {

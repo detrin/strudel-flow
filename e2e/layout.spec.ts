@@ -42,14 +42,14 @@ test('node positions live in the code and survive a save', async ({
   );
 
   // Save .strudel, open it in a fresh browser: same nodes, same places.
-  await page.getByRole('button', { name: 'Patches' }).click();
+  await page.getByRole('button', { name: /^Export, share/ }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: /Save \.strudel/ }).click();
   const file = await (await download).path();
 
   const fresh = await browser.newPage();
   await openFresh(fresh);
-  await fresh.getByRole('button', { name: 'Patches' }).click();
+  await fresh.getByRole('button', { name: /^Export, share/ }).click();
   await fresh.locator('input[type=file]').setInputFiles(file);
   const reopened = nodeOfType(fresh, 'level-node');
   await expect(reopened).toHaveCount(1);

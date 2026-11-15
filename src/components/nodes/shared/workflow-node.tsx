@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  BookmarkPlus,
   Code2,
   Plus,
   Power,
@@ -21,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { useAddAfter } from '@/components/editor/add-node-context';
 import { lineLabelOf, useLive } from '@/lib/live';
 import { tidyLines } from '@/lib/tidy';
+import { useLibrary } from '@/store/library-store';
 
 function WorkflowNode({
   id,
@@ -133,6 +135,14 @@ function WorkflowNode({
                 label: showCode ? 'Hide code' : 'Edit code',
                 icon: <Code2 />,
                 onSelect: () => setShowCode(!showCode),
+              },
+              {
+                label: 'Save line as preset',
+                icon: <BookmarkPlus />,
+                onSelect: () => {
+                  const label = lineLabelOf(id);
+                  if (label) useLibrary.getState().startSaving(label);
+                },
               },
               {
                 label: 'Tidy line',

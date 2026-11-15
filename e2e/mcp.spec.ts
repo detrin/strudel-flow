@@ -16,10 +16,7 @@ async function claude(appUrl: string) {
     new StdioClientTransport({
       command: 'node',
       args: ['mcp/server.mjs'],
-      env: { ...process.env, STRUDEL_FLOW_URL: appUrl } as Record<
-        string,
-        string
-      >,
+      env: { ...process.env, STRUDELTON_URL: appUrl } as Record<string, string>,
     }),
   );
   const call = async (name: string, args: Record<string, unknown> = {}) => {

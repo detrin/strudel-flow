@@ -7,7 +7,7 @@ import { attachHub } from './hub.mjs';
 /** Runs the bridge hub at /__bridge on the dev and preview servers. */
 export function bridgeHub() {
   return {
-    name: 'strudel-flow-bridge',
+    name: 'strudelton-bridge',
     configureServer(server) {
       if (server.httpServer) attachHub(server.httpServer);
     },
@@ -64,7 +64,7 @@ export function localFiles(dir) {
     createReadStream(file).pipe(response);
   };
   return {
-    name: 'strudel-flow-local-files',
+    name: 'strudelton-local-files',
     configureServer(server) {
       server.middlewares.use(middleware);
     },
