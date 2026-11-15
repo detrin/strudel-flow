@@ -158,3 +158,22 @@ describe('reconcile', () => {
     });
   });
 });
+
+describe('Pad from code', () => {
+  it('a Notes + Pitch line becomes a Pad, which keeps its id after', () => {
+    const before = typeCode('$: n("0 2 4").sound("sine")');
+    expect(before.nodes.map((n) => n.type)).toContain('notes-node');
+    const pad = typeCode(
+      '$: n("0 2 4").scale("C:major").sound("sine")',
+      before,
+    );
+    const [found] = pad.nodes.filter((n) => n.type === 'pad-node');
+    expect(found).toBeDefined();
+    expect(pad.nodes.map((n) => n.type)).not.toContain('notes-node');
+    const again = typeCode(
+      '$: n("0 2 4").scale("C:major").sound("square")',
+      pad,
+    );
+    expect(again.nodes.find((n) => n.type === 'pad-node')!.id).toBe(found.id);
+  });
+});

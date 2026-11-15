@@ -293,3 +293,52 @@ describe('node contract', () => {
     },
   );
 });
+
+describe('Pad from code', () => {
+  const DAVE =
+    '$: n("[0,2,5] 4 [-2,2] ~ -2 [7,11] ~ 4 ~ -2 [3,9] ~ 10 [1,9] 10 [-1,1,5,9]").scale("A:major")';
+
+  it('reads n("…").scale("…") as one Pad, writing the code back unchanged', () => {
+    expect(types(`${DAVE}.sound("triangle").lpf(800)`)).toEqual([
+      ['pad-node', 'synth-select-node', 'lpf-node'],
+    ]);
+    const program = parsed(DAVE);
+    expect(expression(emit(program).trim().split('\n').at(-1)!)).toBe(
+      expression(DAVE),
+    );
+    const [pad] = flatten(program.lines[0].sink);
+    expect(pad.data).toMatchObject({
+      division: 16,
+      bars: 1,
+      selectedKey: 'A',
+      selectedScaleType: 'major',
+      minOctave: -1,
+      maxOctave: 1,
+    });
+    expect((pad.data.notes as unknown[]).length).toBe(21);
+  });
+
+  it('finds the loop length and the octave', () => {
+    const [pad] = flatten(
+      parsed('$: n("<0 2 4 [5,7]>*4").scale("C3:minor")').lines[0].sink,
+    );
+    expect(pad.type).toBe('pad-node');
+    expect(pad.data).toMatchObject({ bars: 1, octave: 3, division: 16 });
+    const [slow] = flatten(
+      parsed('$: n("<0 2>").scale("C:major")').lines[0].sink,
+    );
+    expect(slow.data).toMatchObject({ bars: 2 });
+  });
+
+  it('leaves what a Pad cannot show to Notes and Pitch', () => {
+    for (const code of [
+      '$: n("0 2 4")', // no scale
+      '$: n("0.5 2").scale("C:major")', // not whole degrees
+      '$: n("0 2 4").scale("<C:major A:minor>")', // patterned scale
+      '$: n("[0 1 2 3 4]*7").scale("C:major")', // no grid for it
+      '$: n("0 <1 2 3>").scale("C:major")', // loops after 3 bars
+      '$: n("40").scale("C:major")', // above the roll
+    ])
+      expect(types(code)[0][0], code).toBe('notes-node');
+  });
+});

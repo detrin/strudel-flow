@@ -90,6 +90,15 @@ export type NodeDefinition = {
    * or null. The node must write that call back exactly.
    */
   parseSource?: (call: Call) => Record<string, unknown> | null;
+  /**
+   * Instruments written as a base call plus one method (the Pad's
+   * `n("0 2").scale("C:major")`): node data, or null. Tried before
+   * `parseSource`; the node must write both calls back exactly.
+   */
+  parseClip?: (
+    call: Call,
+    next: Call | undefined,
+  ) => Record<string, unknown> | null;
   /** A live picture of what the node does, under its controls. */
   visual?: ComponentType<VisualProps>;
   renderControls?: (
@@ -284,6 +293,10 @@ export function defineNode<
   /** Defaults to `parseParameters`. */
   parse?: (calls: Call[]) => Partial<D & ParameterValues<P>> | null;
   parseSource?: (call: Call) => Partial<D & ParameterValues<P>> | null;
+  parseClip?: (
+    call: Call,
+    next: Call | undefined,
+  ) => Partial<D & ParameterValues<P>> | null;
   component?: ComponentType<NodeControlsProps<P, D>>;
   visual?: ComponentType<VisualProps>;
 }): NodeDefinition {
@@ -303,6 +316,7 @@ export function defineNode<
       > | null,
     ordered = false,
     parseSource,
+    parseClip,
     ...metadata
   } = definition;
   const resolve = (data: Record<string, unknown>) => {
@@ -343,6 +357,12 @@ export function defineNode<
     parseSource: parseSource
       ? (call) => {
           const values = parseSource(call);
+          return values && encode({ ...values });
+        }
+      : undefined,
+    parseClip: parseClip
+      ? (call, next) => {
+          const values = parseClip(call, next);
           return values && encode({ ...values });
         }
       : undefined,

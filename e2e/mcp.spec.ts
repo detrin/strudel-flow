@@ -101,7 +101,7 @@ test('Claude Code edits the open patch over MCP', async ({ page, baseURL }) => {
     // get_patch is compact unless asked for everything.
     await call('new_patch', { code: 'p: n("0 2").scale("C:major")' });
     const compact = JSON.parse((await call('get_patch')).text);
-    expect(compact.lines[0].nodes[0].type).toBe('notes-node');
+    expect(compact.lines[0].nodes[0].type).toBe('pad-node');
   } finally {
     await client.close();
   }

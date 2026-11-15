@@ -1,6 +1,6 @@
 import { defineNode } from '../../define-node';
 import { PadNode } from './pad-node';
-import { generatePattern, type PadData } from './pad';
+import { generatePattern, readPad, type PadData } from './pad';
 
 export default defineNode({
   id: 'pad-node',
@@ -12,4 +12,5 @@ export default defineNode({
   defaults: {} as PadData,
   component: PadNode,
   generate: generatePattern,
+  parseClip: readPad,
 });
