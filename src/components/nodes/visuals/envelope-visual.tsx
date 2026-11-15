@@ -1,5 +1,5 @@
 import type { VisualProps } from '../define-node';
-import { lineLabelOf } from '@/lib/live';
+import { lineLabelOf } from '@/lib/lines';
 import { recentHaps, secondsPerCycle } from '@/lib/meters';
 import { getSchedulerNow } from '@/lib/strudel-clock';
 import { canvasClass, useCanvas } from './use-canvas';

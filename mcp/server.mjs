@@ -92,6 +92,16 @@ const server = new McpServer(
   },
 );
 
+/**
+ * Embedded samples (`data:` URIs, often 100k+ characters) are cut from
+ * replies, so a song's audio never fills the conversation.
+ */
+const shorten = (text) =>
+  text.replace(
+    /data:([\w/+.-]+);base64,[A-Za-z0-9+/=\\n]{200,}/g,
+    (uri, type) => `data:${type};base64,… (${uri.length} characters)`,
+  );
+
 /** Registers a tool that forwards to an app command. */
 function tool(name, description, shape, run = (input) => call(name, input)) {
   server.registerTool(
@@ -101,7 +111,9 @@ function tool(name, description, shape, run = (input) => call(name, input)) {
       try {
         const result = await run(input);
         return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          content: [
+            { type: 'text', text: shorten(JSON.stringify(result, null, 2)) },
+          ],
         };
       } catch (error) {
         return {

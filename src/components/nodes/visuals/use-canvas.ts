@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { isVisible } from '@/lib/visible';
 
 export type Colors = {
   foreground: string;
@@ -58,7 +59,7 @@ export function useCanvas(draw: Draw, animate: boolean, deps: unknown[] = []) {
       frame = requestAnimationFrame(loop);
       if (time - last < 33) return;
       last = time;
-      paint();
+      if (ref.current && isVisible(ref.current)) paint();
     };
     if (animate) frame = requestAnimationFrame(loop);
     else paint();

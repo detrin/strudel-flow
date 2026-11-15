@@ -1,5 +1,5 @@
 import type { VisualProps } from '../define-node';
-import { lineLabelOf } from '@/lib/live';
+import { lineLabelOf } from '@/lib/lines';
 import { historyOf } from '@/lib/meters';
 import { dbPosition, drawHistory } from './history-draw';
 import { canvasClass, useCanvas } from './use-canvas';

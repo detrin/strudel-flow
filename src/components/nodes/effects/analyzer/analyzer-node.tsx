@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import type { CustomControlsProps } from '../../define-node';
-import { lineLabelOf } from '@/lib/live';
+import { lineLabelOf } from '@/lib/lines';
 import { analyserOf, historyOf, MASTER } from '@/lib/meters';
 import { canvasClass, useCanvas } from '../../visuals/use-canvas';
 import { drawHistory } from '../../visuals/history-draw';

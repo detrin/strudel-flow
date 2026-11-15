@@ -17,7 +17,10 @@ const ready: Promise<StrudelSession> = initStrudel().then(
       () => session.scheduler.cps ?? 0,
     );
     startLive(() => session.scheduler.pattern);
-    startMeters(() => session.scheduler.pattern);
+    startMeters(
+      () => session.scheduler.pattern,
+      () => useAppStore.getState().isPlaying,
+    );
     return session;
   },
 );

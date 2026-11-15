@@ -27,6 +27,39 @@ function rowKey(value: Value): number | string {
   return typeof value.n === 'number' ? value.n : JSON.stringify(value);
 }
 
+type Piece = {
+  whole?: { begin: number; end: number };
+  hasOnset?: () => boolean;
+};
+const cache = new WeakMap<Pattern, Map<number, Piece[]>>();
+/**
+ * A pattern's haps over [begin, end), queried one cycle at a time and
+ * reused across frames (querying Strudel is the costly part of drawing):
+ * while playing, one new cycle is queried per cycle.
+ */
+function hapsOf(pattern: Pattern, begin: number, end: number) {
+  let cycles = cache.get(pattern);
+  if (!cycles) cache.set(pattern, (cycles = new Map()));
+  const first = Math.floor(begin);
+  const haps: Piece[] = [];
+  for (let cycle = first; cycle < end; cycle++) {
+    let pieces = cycles.get(cycle);
+    if (!pieces) {
+      pieces = (
+        pattern as unknown as { queryArc: (b: number, e: number) => Piece[] }
+      ).queryArc(cycle, cycle + 1);
+      cycles.set(cycle, pieces);
+    }
+    // A note crossing into a cycle comes back once per cycle: keep its
+    // start, or its piece in the first cycle shown.
+    for (const hap of pieces)
+      if (cycle === first || !hap.hasOnset || hap.hasOnset()) haps.push(hap);
+  }
+  for (const cycle of cycles.keys())
+    if (cycle < first - 1 || cycle > end + 1) cycles.delete(cycle);
+  return haps;
+}
+
 /** Draws a punchcard of `pattern` on `canvas` (`height` CSS pixels tall). */
 export function drawPunchcard(
   canvas: HTMLCanvasElement,
@@ -51,9 +84,12 @@ export function drawPunchcard(
   };
   let haps: Hap[];
   try {
-    haps = (pattern as unknown as { queryArc: (b: number, e: number) => Hap[] })
-      .queryArc(begin, begin + CYCLES)
-      .filter((hap) => hap.whole);
+    haps = (hapsOf(pattern, begin, begin + CYCLES) as Hap[]).filter(
+      (hap) =>
+        hap.whole &&
+        Number(hap.whole.end) > begin &&
+        Number(hap.whole.begin) < begin + CYCLES,
+    );
   } catch {
     return;
   }

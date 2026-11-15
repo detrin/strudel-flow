@@ -88,6 +88,8 @@ export default function Editor() {
             zoomOnDoubleClick={false}
             // Like Miro: two-finger swipe pans, pinch (or Ctrl/⌘ + wheel) zooms.
             panOnScroll
+            // 1:1 with the fingers (React Flow's default is half speed).
+            panOnScrollSpeed={1}
             zoomOnPinch
             proOptions={{ hideAttribution: true }}
             minZoom={0.1}

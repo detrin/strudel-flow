@@ -4,9 +4,8 @@ import {
   getSuperdoughAudioController,
   type Pattern,
 } from '@strudel/web';
-import { useAppStore } from '@/store/app-store';
 import { getSchedulerCps, getSchedulerNow } from '@/lib/strudel-clock';
-import { regionsOf } from '@/lib/live';
+import { regionsOf } from '@/lib/lines';
 
 /**
  * Measuring what plays, for the nodes that show it (Filter, Envelope,
@@ -105,7 +104,7 @@ export type RecentHap = {
   end: number;
   value: Record<string, unknown>;
 };
-let recent = new Map<string, RecentHap[]>();
+const recent = new Map<string, RecentHap[]>();
 /** Notes of a line that started in the last few cycles. */
 export const recentHaps = (label: string) => recent.get(label) ?? [];
 
@@ -135,12 +134,15 @@ type Hap = {
 type Queryable = { queryArc: (begin: number, end: number) => Hap[] };
 
 /** Keeps histories and recent notes while playing; returns a stop function. */
-export function startMeters(getPattern: () => Pattern | undefined) {
+export function startMeters(
+  getPattern: () => Pattern | undefined,
+  isPlaying: () => boolean,
+) {
   let frame = 0;
   let last = 0;
   const tick = (time: number) => {
     frame = requestAnimationFrame(tick);
-    if (!useAppStore.getState().isPlaying || time - last < 30) return;
+    if (!isPlaying() || time - last < 30) return;
     last = time;
     const now = getSchedulerNow();
     const record = (source: string, analyser: AnalyserNode | undefined) => {
@@ -155,11 +157,18 @@ export function startMeters(getPattern: () => Pattern | undefined) {
 
     const pattern = getPattern() as unknown as Queryable | undefined;
     if (!pattern) return;
+    // Only the time since the last tick is new: query just that slice
+    // (from scratch after a new pattern, a jump or a restart).
+    if (pattern !== queried || now < until || now - until > RECENT_CYCLES) {
+      recent.clear();
+      queried = pattern;
+      until = Math.max(0, now - RECENT_CYCLES);
+    }
+    if (now <= until) return;
     const byId = new Map([...lineIds].map(([label, id]) => [id, label]));
-    const next = new Map<string, RecentHap[]>();
     let haps: Hap[] = [];
     try {
-      haps = pattern.queryArc(Math.max(0, now - RECENT_CYCLES), now + 0.01);
+      haps = pattern.queryArc(until, now);
     } catch {
       return;
     }
@@ -168,14 +177,22 @@ export function startMeters(getPattern: () => Pattern | undefined) {
       const value = (hap.value ?? {}) as Record<string, unknown>;
       const label = byId.get(String(value.analyze));
       if (!label) continue;
-      const begin = Number(hap.whole.begin);
-      if (begin > now) continue;
-      const list = next.get(label) ?? [];
-      list.push({ begin, end: Number(hap.whole.end), value });
-      next.set(label, list);
+      const list = recent.get(label) ?? [];
+      list.push({
+        begin: Number(hap.whole.begin),
+        end: Number(hap.whole.end),
+        value,
+      });
+      recent.set(label, list);
     }
-    recent = next;
+    until = now;
+    for (const [label, list] of recent) {
+      const kept = list.filter((hap) => hap.begin >= now - RECENT_CYCLES);
+      if (kept.length !== list.length) recent.set(label, kept);
+    }
   };
+  let queried: Queryable | undefined;
+  let until = 0;
   frame = requestAnimationFrame(tick);
   return () => cancelAnimationFrame(frame);
 }

@@ -4,6 +4,9 @@ import { useAppStore } from '@/store/app-store';
 import { programOf } from '@/lib/program';
 import { flatten } from '@/lib/program/compile';
 import { getSchedulerNow } from '@/lib/strudel-clock';
+import { lineNodes, regionsOf, setLineNodes } from '@/lib/lines';
+
+export { lineLabelOf, regionsOf } from '@/lib/lines';
 
 /**
  * What is sounding right now, for highlighting: the code ranges of the
@@ -42,44 +45,10 @@ type Hap = {
 };
 type Queryable = { queryArc: (begin: number, end: number) => Hap[] };
 
-const LABEL = /^([A-Za-z_$][\w$]*)\s*:(?!:)/;
-
-/**
- * Each labelled line's span in some code: from its label to the next line
- * that starts at column 0 with something other than `.` or `)`. Anonymous
- * `$:` lines are numbered (`$0`, `$1`, …) the way Strudel names them.
- */
-export function regionsOf(code: string) {
-  const regions: { label: string; start: number; end: number }[] = [];
-  let offset = 0;
-  let anonymous = 0;
-  for (const line of code.split('\n')) {
-    const match = LABEL.exec(line);
-    const last = regions.at(-1);
-    if (match) {
-      let label = match[1].replace(/^_/, '');
-      if (label === '$') label = `$${anonymous++}`;
-      if (last && last.end === -1) last.end = offset;
-      regions.push({ label, start: offset, end: -1 });
-    } else if (/^[^\s.)/]/.test(line) && last && last.end === -1) {
-      last.end = offset;
-    }
-    offset += line.length + 1;
-  }
-  const last = regions.at(-1);
-  if (last && last.end === -1) last.end = code.length;
-  return regions;
-}
-
 let labelRegions: ReturnType<typeof regionsOf> = [];
 const labelAt = (offset: number) =>
   labelRegions.find((r) => offset >= r.start && offset < r.end)?.label;
 
-/** Node ids by line label, from the current graph. */
-let lineNodes = new Map<string, string[]>();
-/** The label of the line a node is part of (`$0` for the first `$:`). */
-export const lineLabelOf = (nodeId: string) =>
-  [...lineNodes].find(([, ids]) => ids.includes(nodeId))?.[0];
 function updateLineNodes() {
   const state = useAppStore.getState();
   const lines = programOf(state).lines;
@@ -91,13 +60,15 @@ function updateLineNodes() {
   );
   if (!sameSet(off, useLive.getState().off)) useLive.setState({ off });
   let anonymous = 0;
-  lineNodes = new Map(
-    programOf(state)
-      .lines.filter((line) => !line.muted)
-      .map((line) => [
-        line.label === '$' ? `$${anonymous++}` : line.label,
-        flatten(line.sink).flatMap((node) => (node.id ? [node.id] : [])),
-      ]),
+  setLineNodes(
+    new Map(
+      programOf(state)
+        .lines.filter((line) => !line.muted)
+        .map((line) => [
+          line.label === '$' ? `$${anonymous++}` : line.label,
+          flatten(line.sink).flatMap((node) => (node.id ? [node.id] : [])),
+        ]),
+    ),
   );
 }
 
@@ -115,8 +86,12 @@ export function startLive(getPattern: () => Pattern | undefined) {
       updateLineNodes();
   });
   let frame = 0;
-  const tick = () => {
+  let last = -Infinity;
+  const tick = (time: number) => {
     frame = requestAnimationFrame(tick);
+    // About 30 times a second: often enough for any note, and half the work.
+    if (time - last < 30) return;
+    last = time;
     const pattern = getPattern() as unknown as Queryable | undefined;
     let ranges: CodeRange[] = [];
     const nodes = new Set<string>();

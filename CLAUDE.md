@@ -71,4 +71,9 @@ nodes), `lib/punchcards.ts` + `lib/punchcard-draw.ts`, `lib/tidy.ts` and
   The Undertow demo (`patches/undertow.strudel`) must use every node type;
   regenerate its `@layout` comments in a browser (`pnpm shot` flow) rather
   than by hand.
+- Node definitions and their visuals must not import the store, directly
+  or through `live.ts`: the store imports every definition, and the cycle
+  crashes hot reloads into a blank page. Use `@/lib/lines` (line regions,
+  `lineLabelOf`), which imports nothing; `meters.ts` gets the play state as
+  an argument for the same reason.
 - Commit or push only when asked. Prose in docs and UI: short, plain.

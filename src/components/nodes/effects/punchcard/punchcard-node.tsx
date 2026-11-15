@@ -3,7 +3,8 @@ import type { CustomControlsProps } from '../../define-node';
 import type { PunchcardData } from './punchcard.node';
 import { drawPunchcard } from '@/lib/punchcard-draw';
 import { onPunchcards, punchcards } from '@/lib/punchcards';
-import { lineLabelOf } from '@/lib/live';
+import { lineLabelOf } from '@/lib/lines';
+import { isVisible } from '@/lib/visible';
 
 const HEIGHT = 96;
 
@@ -15,6 +16,13 @@ export function PunchcardNode({
 
   useEffect(() => {
     let frame = 0;
+    let last = 0;
+    const loop = (time: number) => {
+      frame = requestAnimationFrame(loop);
+      if (time - last < 33) return;
+      last = time;
+      if (canvas.current && isVisible(canvas.current)) paint();
+    };
     const paint = () => {
       const element = canvas.current;
       const label = lineLabelOf(id);
@@ -23,13 +31,10 @@ export function PunchcardNode({
         if (pattern) drawPunchcard(element, pattern, isPlaying, HEIGHT);
         else element.getContext('2d')?.clearRect(0, 0, 1e4, 1e4);
       }
-      if (isPlaying) frame = requestAnimationFrame(paint);
     };
     paint();
-    const stop = onPunchcards(() => {
-      cancelAnimationFrame(frame);
-      paint();
-    });
+    if (isPlaying) frame = requestAnimationFrame(loop);
+    const stop = onPunchcards(paint);
     return () => {
       cancelAnimationFrame(frame);
       stop();

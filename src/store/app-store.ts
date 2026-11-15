@@ -203,4 +203,26 @@ const unsubscribeTheme = useAppStore.subscribe(
   applyTheme,
   { fireImmediately: true },
 );
+
 if (import.meta.hot) import.meta.hot.dispose(unsubscribeTheme);
+
+/**
+ * A hot reload re-runs this module and would start a fresh store: the
+ * default patch, with no code; the autosave would then keep that over the
+ * open song. So the new store takes the previous one's data (the actions
+ * come from the new code). Vite runs no dispose hook for a module re-run
+ * this way, hence the global.
+ */
+if (import.meta.hot) {
+  const scope = globalThis as { __strudelFlowStore?: typeof useAppStore };
+  const previous = scope.__strudelFlowStore;
+  if (previous && previous !== useAppStore)
+    useAppStore.setState(
+      Object.fromEntries(
+        Object.entries(previous.getState()).filter(
+          ([, value]) => typeof value !== 'function',
+        ),
+      ) as Partial<AppState>,
+    );
+  scope.__strudelFlowStore = useAppStore;
+}

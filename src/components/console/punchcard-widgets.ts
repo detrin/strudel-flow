@@ -7,6 +7,7 @@ import {
   type DecorationSet,
 } from '@codemirror/view';
 import { onPunchcards, punchcards } from '@/lib/punchcards';
+import { isVisible } from '@/lib/visible';
 import { drawPunchcard } from '@/lib/punchcard-draw';
 import { useAppStore } from '@/store/app-store';
 
@@ -91,19 +92,27 @@ const field = StateField.define<DecorationSet>({
 
 const animation = ViewPlugin.define((view) => {
   let frame = 0;
-  const paint = () => {
+  let last = 0;
+  let force = true;
+  const paint = (time: number) => {
     const playing = useAppStore.getState().isPlaying;
+    frame = playing ? requestAnimationFrame(paint) : 0;
+    // About 30 frames a second is plenty for a punchcard.
+    if (!force && time - last < 33) return;
+    last = time;
     const cards = punchcards();
     view.dom
       .querySelectorAll<HTMLCanvasElement>('canvas[data-punchcard]')
       .forEach((canvas) => {
+        if (!force && !isVisible(canvas)) return;
         const pattern = cards.get(canvas.dataset.punchcard!);
         if (pattern) drawPunchcard(canvas, pattern, playing, HEIGHT);
       });
-    frame = playing ? requestAnimationFrame(paint) : 0;
+    force = false;
   };
   const restart = () => {
     cancelAnimationFrame(frame);
+    force = true;
     frame = requestAnimationFrame(paint);
   };
   const stopCards = onPunchcards(() => {
