@@ -26,7 +26,8 @@ test('a share link opens its patch, then the address is plain', async ({
     .inputValue();
   expect(link).toContain('#patch=');
   const elsewhere = await context.newPage();
-  await elsewhere.goto(link);
+  // Bridge off: only the MCP tests' tabs may take Claude's commands.
+  await elsewhere.goto(link.replace('#', '?bridge=off#'));
   await expect(editor(elsewhere)).toContainText('hat: s("hh*8")');
   await expect.poll(() => elsewhere.url()).not.toContain('patch=');
 });

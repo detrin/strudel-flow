@@ -85,7 +85,8 @@ test('a whole song: open, play, mix, rewire, undo, share', async ({
     .inputValue();
   const code = (await editor(page).textContent()) ?? '';
   const elsewhere = await context.newPage();
-  await elsewhere.goto(link);
+  // Bridge off: only the MCP tests' tabs may take Claude's commands.
+  await elsewhere.goto(link.replace('#', '?bridge=off#'));
   await expect(nodes(elsewhere)).toHaveCount(62);
   await expect(editor(elsewhere)).toHaveText(code);
   errors.expectNone();

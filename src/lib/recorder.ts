@@ -82,6 +82,19 @@ let session:
   | undefined;
 let loaded: Promise<void> | undefined;
 
+/** The worklet that copies its input to the main thread, once per tab. */
+export async function loadRecorderWorklet(context: BaseAudioContext) {
+  try {
+    loaded ??= context.audioWorklet.addModule(
+      URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })),
+    );
+    await loaded;
+  } catch (error) {
+    loaded = undefined;
+    throw error;
+  }
+}
+
 /** Strudel's master output, once it exists (after the first sound). */
 function masterOutput() {
   return masterGain();
@@ -91,12 +104,8 @@ export async function startRecording() {
   if (session) return;
   const context = getAudioContext();
   try {
-    loaded ??= context.audioWorklet.addModule(
-      URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })),
-    );
-    await loaded;
+    await loadRecorderWorklet(context);
   } catch (error) {
-    loaded = undefined;
     useRecorder.setState({
       error: error instanceof Error ? error.message : String(error),
     });

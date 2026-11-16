@@ -11,13 +11,15 @@ import { cn } from '@/lib/utils';
 import { stopPreview } from '@/lib/library/preview';
 import { SamplesTab } from './samples-tab';
 import { PresetsTab } from './presets-tab';
+import { TakesTab } from './takes-tab';
 
 const TABS: { id: LibraryTab; label: string }[] = [
   { id: 'samples', label: 'Samples' },
   { id: 'presets', label: 'Presets' },
+  { id: 'takes', label: 'Takes' },
 ];
 
-/** The Library: every sound to search and use, and saved presets. */
+/** The Library: every sound to search and use, saved presets, and takes. */
 export function LibraryPopover() {
   const open = useLibrary((state) => state.open);
   const setOpen = useLibrary((state) => state.setOpen);
@@ -35,7 +37,7 @@ export function LibraryPopover() {
       }}
     >
       <PopoverTrigger asChild>
-        <ControlButton title="Library: samples and presets">
+        <ControlButton title="Library: samples, presets and takes">
           <Folder className="size-4" />
         </ControlButton>
       </PopoverTrigger>
@@ -69,7 +71,7 @@ export function LibraryPopover() {
         </div>
         <div
           role="tabpanel"
-          aria-label={tab === 'samples' ? 'Samples' : 'Presets'}
+          aria-label={TABS.find((t) => t.id === tab)?.label}
           className="p-3"
         >
           {status && (
@@ -82,8 +84,10 @@ export function LibraryPopover() {
           )}
           {tab === 'samples' ? (
             <SamplesTab onStatus={setStatus} />
-          ) : (
+          ) : tab === 'presets' ? (
             <PresetsTab onStatus={setStatus} />
+          ) : (
+            <TakesTab onStatus={setStatus} />
           )}
         </div>
       </PopoverContent>

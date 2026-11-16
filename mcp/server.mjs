@@ -338,6 +338,49 @@ tool('delete_preset', 'Delete a preset from the Library.', {
   preset: z.string().describe('Its id, or its name.'),
 });
 
+const tuneParams = {
+  amount: z
+    .number()
+    .optional()
+    .describe(
+      'How much to tune: 0 (as recorded) to 1 (hard snap); 0-100 also works.',
+    ),
+  key: z.string().optional().describe('"C" … "B", e.g. "D", "F#", "Bb".'),
+  scale: z
+    .string()
+    .optional()
+    .describe('"major", "minor", "dorian", "major:pentatonic", "chromatic", …'),
+};
+tool(
+  'list_takes',
+  'Takes: sounds recorded (or imported) in the app and kept in the Library folder (~/.strudelton/takes), each playable as s("name"), with the key, scale and amount it was tuned with.',
+  {},
+);
+tool(
+  'tune_take',
+  'Tune a take again from its raw recording (the original is kept); options not given stay as they were.',
+  { name: z.string().describe('The take (its sound name).'), ...tuneParams },
+);
+tool(
+  'import_take',
+  'Make a sound file (WAV, MP3, …, read here) a take: trimmed of leading silence, tuned, kept as name.wav with the original as name.raw.wav, and playable at once as s("name").',
+  {
+    path: z
+      .string()
+      .describe('The file (absolute, or relative to the strudelton repo).'),
+    name: z.string().describe('Its sound name (lower case, digits, _).'),
+    trim: z
+      .boolean()
+      .optional()
+      .describe('Cut leading silence (default true).'),
+    ...tuneParams,
+  },
+  async ({ path, ...params }) => {
+    const base64 = (await readFile(resolve(path))).toString('base64');
+    return call('import_take', { ...params, base64 });
+  },
+);
+
 // Connect early, so the first tool call doesn't wait for it.
 void openHub().catch(() => {});
 await server.connect(new StdioServerTransport());

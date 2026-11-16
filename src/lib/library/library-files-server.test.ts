@@ -8,7 +8,12 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createLibrary, slugOf } from '../../../mcp/library-files.mjs';
+import {
+  TAKE_NAME,
+  createLibrary,
+  slugOf,
+  takeNameOf,
+} from '../../../mcp/library-files.mjs';
 
 let root = '';
 beforeEach(() => {
@@ -75,5 +80,49 @@ describe('the Library on disk', () => {
       empty: false,
     });
     expect(library.read().presets).toHaveLength(1);
+  });
+});
+
+describe('takes on disk', () => {
+  const wav = (n: number) => Buffer.from([82, 73, 70, 70, n]);
+  it('names takes as Strudel sounds', () => {
+    expect(takeNameOf('Clean windows!')).toBe('clean_windows');
+    expect(takeNameOf('2 girls')).toBe('take_2_girls');
+    expect(TAKE_NAME.test('vox_today')).toBe(true);
+    expect(TAKE_NAME.test('Vox')).toBe(false);
+    expect(TAKE_NAME.test('../x')).toBe(false);
+  });
+  it('saves both WAVs and the details, lists and deletes them', () => {
+    const library = createLibrary(root);
+    expect(library.listTakes()).toEqual([]);
+    const saved = library.saveTake('vox', {
+      raw: wav(1),
+      tuned: wav(2),
+      key: 'D',
+      scale: 'major',
+      amount: 1,
+    });
+    expect(saved).toMatchObject({ name: 'vox', key: 'D', amount: 1 });
+    expect(readdirSync(join(root, 'takes')).sort()).toEqual([
+      'vox.json',
+      'vox.raw.wav',
+      'vox.wav',
+    ]);
+    expect(library.readTake('vox')).toEqual(wav(2));
+    expect(library.readTake('vox', 'raw')).toEqual(wav(1));
+    expect(library.listTakes().map((take) => take.name)).toEqual(['vox']);
+    // Retuning writes over the tuned one; the raw one is what was sent.
+    library.saveTake('vox', { raw: wav(1), tuned: wav(3), amount: 0.5 });
+    expect(library.readTake('vox')).toEqual(wav(3));
+    expect(library.deleteTake('vox')).toBe(true);
+    expect(library.listTakes()).toEqual([]);
+    expect(library.deleteTake('vox')).toBe(false);
+  });
+  it('refuses names that are not sounds (no paths)', () => {
+    const library = createLibrary(root);
+    expect(() =>
+      library.saveTake('../evil', { raw: wav(1), tuned: wav(1) }),
+    ).toThrow(/take name/);
+    expect(library.readTake('../evil')).toBeUndefined();
   });
 });

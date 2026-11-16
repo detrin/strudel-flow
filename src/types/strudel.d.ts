@@ -24,7 +24,10 @@ declare module '@strudel/web' {
     curve?: string,
     unset?: number[],
   ): [number, number, number, number];
-  export function samples(source: string): Promise<unknown>;
+  export function samples(
+    source: string | Record<string, string | string[]>,
+    baseUrl?: string,
+  ): Promise<unknown>;
   export function transpiler(
     code: string,
     options: {

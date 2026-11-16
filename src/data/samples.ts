@@ -19,6 +19,8 @@ export function loadSamples() {
       soundfonts.registerSoundfonts(),
     ),
     ...SAMPLE_PACKS.map((pack) => samples(pack)),
+    // The person's own takes (recorded in the app), as sounds.
+    import('@/lib/takes/takes').then((takes) => takes.refreshTakes()),
   ]);
 }
 

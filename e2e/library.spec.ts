@@ -4,7 +4,7 @@ import { nodeOfType, openFresh, typeCode } from './helpers';
 const code = (page: Page) => page.locator('.cm-content');
 const openLibrary = async (page: Page) => {
   await page
-    .getByRole('button', { name: 'Library: samples and presets' })
+    .getByRole('button', { name: 'Library: samples, presets and takes' })
     .click();
   return page.getByRole('dialog');
 };

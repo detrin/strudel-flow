@@ -79,7 +79,8 @@ samples instead of pasting them), `new_patch`, `auto_arrange` (old name `tidy`),
 the WAV as base64; the server writes it, default
 `~/.strudelton/recordings/`), `add_annotation`, `list_sounds`,
 `list_presets`, `insert_preset`, `preview_preset`, `save_preset`,
-`delete_preset`, `set_theme`, `list_node_types`, `get_diagnostics`.
+`delete_preset`, `list_takes`, `tune_take`, `import_take` (a sound file
+becomes a take), `set_theme`, `list_node_types`, `get_diagnostics`.
 App-side handlers: `src/lib/bridge/commands.ts` (may be async). A new
 feature with an app action gets a tool here too.
 
@@ -163,6 +164,15 @@ With the dev server both live in `~/.strudelton` (`presets/<name>.json`,
 `mcp/library-files.mjs`; the browser keeps a copy and is the fallback
 without a dev server (or with `?library=browser`, which e2e uses; the e2e
 server's folder is a temp dir). Presets export and import as JSON. Export/share of the whole patch is the share icon.
+
+Takes (the Takes tab): sounds recorded from the mic (`lib/takes/mic.ts`),
+tuned by an amount toward a key and scale (`lib/takes/tune.ts`: YIN pitch,
+a held note, TD-PSOLA with marks aligned by cross-correlation; pure and
+unit-tested), kept as `takes/<name>.wav` (tuned), `<name>.raw.wav` (as
+recorded, so a take is retuned from it) and `<name>.json` in the Library
+folder (`/__library/takes`), and registered as Strudel sounds on start:
+`s("name")`. They need the dev server (no browser fallback). The e2e test
+records through Chromium's fake mic (`e2e/library-folder.spec.ts`).
 
 ## Playback and Strudel
 

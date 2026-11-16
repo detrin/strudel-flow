@@ -36,6 +36,8 @@ import { previewCode } from '@/lib/library/preview';
 import { addLine, currentCode } from '@/lib/library/insert';
 import { readSounds, tagsOfSound } from '@/lib/library/sounds';
 import { hasTags, matches } from '@/lib/library/filter';
+import { base64Of } from '@/lib/base64';
+import { importTake, listTakes, retuneTake } from '@/lib/takes/takes';
 
 /**
  * What an external agent (Claude Code over MCP) can do to the open patch.
@@ -140,12 +142,15 @@ function findPreset(params: Params) {
 }
 
 /** A WAV blob as base64, for the MCP server to write to disk. */
-async function base64Of(blob: Blob) {
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  let binary = '';
-  for (let at = 0; at < bytes.length; at += 0x8000)
-    binary += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
-  return btoa(binary);
+
+/** Tune options in the params (`amount` 0-1 or 0-100, `key`, `scale`). */
+function tuneOf(params: Params) {
+  const tune: { amount?: number; key?: string; scale?: string } = {};
+  if (typeof params.amount === 'number')
+    tune.amount = params.amount > 1 ? params.amount / 100 : params.amount;
+  if (typeof params.key === 'string') tune.key = params.key;
+  if (typeof params.scale === 'string') tune.scale = params.scale;
+  return tune;
 }
 
 export const commands: Record<string, (params: Params) => unknown> = {
@@ -438,6 +443,29 @@ export const commands: Record<string, (params: Params) => unknown> = {
     const preset = findPreset(params);
     useLibrary.getState().deletePreset(preset.id);
     return { deleted: preset.name };
+  },
+
+  /** Takes (recorded sounds) in the Library folder, newest first. */
+  list_takes: () => listTakes(),
+
+  /** Tunes a take again from its raw recording (missing options kept). */
+  tune_take: async (params) => {
+    const take = await retuneTake(
+      requireString(params, 'name'),
+      tuneOf(params),
+    );
+    return { take, use: `s("${take.name}")` };
+  },
+
+  /** A sound file sent as base64 becomes a take (trimmed, tuned). */
+  import_take: async (params) => {
+    const take = await importTake({
+      name: requireString(params, 'name'),
+      base64: requireString(params, 'base64'),
+      tune: { amount: 0, key: 'C', scale: 'chromatic', ...tuneOf(params) },
+      trim: params.trim !== false,
+    });
+    return { take, use: `s("${take.name}")` };
   },
 
   list_node_types: () =>
