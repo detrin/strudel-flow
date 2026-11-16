@@ -103,7 +103,9 @@ test.beforeEach(async ({ request }) => {
 const openLibrary = async (page: Page) => {
   await page.goto('/?bridge=off');
   await page
-    .getByRole('button', { name: 'Library: samples, presets and takes' })
+    .getByRole('button', {
+      name: 'Library: samples, presets, takes and chords',
+    })
     .click();
   const library = page.getByRole('dialog');
   await library.getByRole('tab', { name: 'Presets' }).click();
@@ -200,7 +202,9 @@ test('a take is recorded, tuned, kept beside its raw recording, retuned and dele
 }) => {
   await page.goto('/?bridge=off');
   await page
-    .getByRole('button', { name: 'Library: samples, presets and takes' })
+    .getByRole('button', {
+      name: 'Library: samples, presets, takes and chords',
+    })
     .click();
   const library = page.getByRole('dialog');
   await library.getByRole('tab', { name: 'Takes' }).click();
@@ -269,7 +273,9 @@ test('a take is recorded, tuned, kept beside its raw recording, retuned and dele
   // After a reload the take is still there (from the folder), and goes.
   await page.reload();
   await page
-    .getByRole('button', { name: 'Library: samples, presets and takes' })
+    .getByRole('button', {
+      name: 'Library: samples, presets, takes and chords',
+    })
     .click();
   await library.getByRole('tab', { name: 'Takes' }).click();
   await expect(library.getByRole('list', { name: 'Takes' })).toContainText(

@@ -38,6 +38,15 @@ import { readSounds, tagsOfSound } from '@/lib/library/sounds';
 import { hasTags, matches } from '@/lib/library/filter';
 import { base64Of } from '@/lib/base64';
 import { importTake, listTakes, retuneTake } from '@/lib/takes/takes';
+import { PROGRESSIONS } from '@/data/progressions';
+import { realize, type Technique } from '@/lib/chords/theory';
+import {
+  TECHNIQUE_IDS,
+  findProgression,
+  insertProgression,
+  parseBars,
+  togglePreviewProgression,
+} from '@/lib/chords/use';
 
 /**
  * What an external agent (Claude Code over MCP) can do to the open patch.
@@ -152,6 +161,26 @@ function tuneOf(params: Params) {
   if (typeof params.scale === 'string') tune.scale = params.scale;
   return tune;
 }
+
+/** Techniques named in the params (`techniques: ["mario", …]`). */
+function techniquesOf(params: Params): Technique[] {
+  const asked = Array.isArray(params.techniques) ? params.techniques : [];
+  for (const t of asked)
+    if (!TECHNIQUE_IDS.includes(t as Technique))
+      throw new Error(
+        `Unknown technique "${String(t)}"; one of ${TECHNIQUE_IDS.join(', ')}.`,
+      );
+  return asked as Technique[];
+}
+
+/** A progression from the catalog (`progression`) or numerals (`numerals`). */
+function progressionOf(params: Params) {
+  if (typeof params.numerals === 'string') return parseBars(params.numerals);
+  return findProgression(requireString(params, 'progression')).bars;
+}
+
+const keyOf = (params: Params) =>
+  typeof params.key === 'string' ? params.key : 'D';
 
 export const commands: Record<string, (params: Params) => unknown> = {
   get_patch: (params) => describe(params.detail !== 'full'),
@@ -443,6 +472,52 @@ export const commands: Record<string, (params: Params) => unknown> = {
     const preset = findPreset(params);
     useLibrary.getState().deletePreset(preset.id);
     return { deleted: preset.name };
+  },
+
+  /** The catalog of progressions in a key, changed by techniques. */
+  list_progressions: (params) => {
+    const key = keyOf(params);
+    const techniques = techniquesOf(params);
+    const feeling = typeof params.feeling === 'string' ? params.feeling : '';
+    return PROGRESSIONS.filter((p) => !feeling || p.tags.includes(feeling)).map(
+      (p) => {
+        const realized = realize(p.bars, key, techniques);
+        return {
+          id: p.id,
+          name: p.name,
+          feeling: p.feeling,
+          why: p.why,
+          tags: p.tags,
+          key: realized.key,
+          numerals: realized.bars
+            .map((bar) => bar.map((c) => c.numeral).join('+'))
+            .join(' '),
+          chords: realized.names,
+          notes: realized.chords,
+          roots: realized.bass,
+        };
+      },
+    );
+  },
+
+  /** Plays a progression alone at the song's tempo (again: stops it). */
+  preview_progression: (params) => {
+    const key = keyOf(params);
+    const bars = progressionOf(params);
+    const techniques = techniquesOf(params);
+    const previewing = togglePreviewProgression(key, bars, techniques);
+    return { previewing, chords: realize(bars, key, techniques).names };
+  },
+
+  /** Adds a progression's chords and roots to the song as two lines. */
+  insert_progression: (params) => {
+    const key = keyOf(params);
+    const bars = progressionOf(params);
+    const techniques = techniquesOf(params);
+    return {
+      lines: insertProgression(key, bars, techniques),
+      chords: realize(bars, key, techniques).names,
+    };
   },
 
   /** Takes (recorded sounds) in the Library folder, newest first. */

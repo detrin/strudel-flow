@@ -12,14 +12,16 @@ import { stopPreview } from '@/lib/library/preview';
 import { SamplesTab } from './samples-tab';
 import { PresetsTab } from './presets-tab';
 import { TakesTab } from './takes-tab';
+import { ChordsTab } from './chords-tab';
 
 const TABS: { id: LibraryTab; label: string }[] = [
   { id: 'samples', label: 'Samples' },
   { id: 'presets', label: 'Presets' },
   { id: 'takes', label: 'Takes' },
+  { id: 'chords', label: 'Chords' },
 ];
 
-/** The Library: every sound to search and use, saved presets, and takes. */
+/** The Library: every sound, saved presets, takes, and chord progressions. */
 export function LibraryPopover() {
   const open = useLibrary((state) => state.open);
   const setOpen = useLibrary((state) => state.setOpen);
@@ -37,7 +39,7 @@ export function LibraryPopover() {
       }}
     >
       <PopoverTrigger asChild>
-        <ControlButton title="Library: samples, presets and takes">
+        <ControlButton title="Library: samples, presets, takes and chords">
           <Folder className="size-4" />
         </ControlButton>
       </PopoverTrigger>
@@ -86,8 +88,10 @@ export function LibraryPopover() {
             <SamplesTab onStatus={setStatus} />
           ) : tab === 'presets' ? (
             <PresetsTab onStatus={setStatus} />
-          ) : (
+          ) : tab === 'takes' ? (
             <TakesTab onStatus={setStatus} />
+          ) : (
+            <ChordsTab onStatus={setStatus} />
           )}
         </div>
       </PopoverContent>

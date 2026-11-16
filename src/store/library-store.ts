@@ -24,7 +24,7 @@ function load(): Saved {
   return { presets: [], soundTags: {} };
 }
 
-export type LibraryTab = 'samples' | 'presets' | 'takes';
+export type LibraryTab = 'samples' | 'presets' | 'takes' | 'chords';
 
 /** Where the Library is kept: a folder on disk, or this browser. */
 export type LibraryStorage =

@@ -338,6 +338,55 @@ tool('delete_preset', 'Delete a preset from the Library.', {
   preset: z.string().describe('Its id, or its name.'),
 });
 
+const progressionParams = {
+  key: z.string().optional().describe('"C" … "B" (default "D").'),
+  techniques: z
+    .array(
+      z.enum([
+        'resolve',
+        'mario',
+        'borrow-iv',
+        'pedal',
+        'faster',
+        'colour',
+        'key-up',
+      ]),
+    )
+    .optional()
+    .describe(
+      'Changes: resolve (end on V), mario (end bVI bVII), borrow-iv (IV then iv), pedal (tonic bass), faster (two chords a bar), colour (add9, 7ths), key-up (a whole step).',
+    ),
+};
+const whichProgression = {
+  progression: z
+    .string()
+    .optional()
+    .describe('A catalog id or name (list_progressions).'),
+  numerals: z
+    .string()
+    .optional()
+    .describe(
+      'Or Roman numerals, a bar each: "I II IV bVI"; two in a bar "bVI+bVII"; suffixes 7, maj7, sus2, sus4, add9, 6, dim.',
+    ),
+};
+tool(
+  'list_progressions',
+  "Chord progressions by feeling (urgent, hopeful, bittersweet, triumphant, floating, …): each with why it feels so, its chords in the key, and its notes and roots as mini-notation, to write into the song's own lines (e.g. its chord or bass constants).",
+  {
+    ...progressionParams,
+    feeling: z.string().optional().describe('Only those with this tag.'),
+  },
+);
+tool(
+  'preview_progression',
+  "Play a progression alone at the song's tempo (supersaw chords, sine roots); call again to stop.",
+  { ...whichProgression, ...progressionParams },
+);
+tool(
+  'insert_progression',
+  'Add a progression to the song as two lines: chords (supersaw) and roots (sine).',
+  { ...whichProgression, ...progressionParams },
+);
 const tuneParams = {
   amount: z
     .number()

@@ -80,7 +80,8 @@ the WAV as base64; the server writes it, default
 `~/.strudelton/recordings/`), `add_annotation`, `list_sounds`,
 `list_presets`, `insert_preset`, `preview_preset`, `save_preset`,
 `delete_preset`, `list_takes`, `tune_take`, `import_take` (a sound file
-becomes a take), `set_theme`, `list_node_types`, `get_diagnostics`.
+becomes a take), `list_progressions`, `preview_progression`,
+`insert_progression`, `set_theme`, `list_node_types`, `get_diagnostics`.
 App-side handlers: `src/lib/bridge/commands.ts` (may be async). A new
 feature with an app action gets a tool here too.
 
@@ -173,6 +174,13 @@ recorded, so a take is retuned from it) and `<name>.json` in the Library
 folder (`/__library/takes`), and registered as Strudel sounds on start:
 `s("name")`. They need the dev server (no browser fallback). The e2e test
 records through Chromium's fake mic (`e2e/library-folder.spec.ts`).
+
+Chords (the Chords tab): progressions by feeling (`data/progressions.ts`,
+each with why and a source), Roman numerals in a key and the techniques
+that change them (resolve, Mario ending, borrow iv, pedal, faster,
+colour, key up) in `lib/chords/theory.ts` (pure, unit-tested: spelling,
+least-movement voicings, roots in octave 2); preview and insert in
+`lib/chords/use.ts` (two lines, `chords` and `roots`).
 
 ## Playback and Strudel
 
