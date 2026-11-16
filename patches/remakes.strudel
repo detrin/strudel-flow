@@ -1,22 +1,25 @@
-// @name Remakes: 2 GIRLS and starstruck
+// @name Remakes: 2 GIRLS, starstruck, Shelter
 // @author detrin
-// @description Sounds remade from reference tracks with the match-sound skill: the gated, hard-tuned vocal intro and the 0:18 glitch of 2 GIRLS (muted), and the first 10 seconds of starstruck, including the 808's high whine.
-// 2 GIRLS (Earth To Emily): gated vocal intro and the 0:18 glitch, muted
+// @description Sounds remade from reference tracks with the match-sound skill: the gated, hard-tuned vocal intro and the 0:18 glitch of 2 GIRLS and the first 10 seconds of starstruck with the 808's high whine (both muted), and Shelter from 0:48 to 1:17 without the voice.
+// 2 GIRLS (Earth To Emily): gated vocal intro and the 0:18 glitch, muted (160 bpm)
 
-setcpm(146/4)
+setcpm(100/4)
 const VOX = "[63@8 ~@8] [63@9 ~@7] [63@8 65@3 ~@5] [63@8 65@4 67@4 63@8 ~@8]@2 [63@8 ~@8] [63@8 67@3 ~@5] [63@8 65@4 67@2 65@2 63@8 ~@8]@2 [63@8 ~@8] [63@8 65@3 ~@5] [63@8 65@4 67@4 63@8 ~@8]@2 [63@8 ~@8] [63@8 67@4 63@4] [63 63 63 63 65 65 67 65]"
 const HARM = [1, 1, 0.56, 0.06, 0.06, 0.32, 0.4, 0.14, 0.14, 0.09, 0.11, 0.11, 0.06, 0.04, 0.045, 0.05]
-// starstruck (prod. geam): first 10 s, 6 bars
+// starstruck (prod. geam): first 10 s, 6 bars at 146 bpm (muted; set setcpm(146/4) to hear it)
 const MEL = "[74@7 ~@9 76@3 ~ 78@3 ~ 81@8 76@3 ~ 78@3 ~ 76@7 ~ 74@7 ~@9] [76@3 ~@5 76@3 ~@5 76@3 ~ 76@3 ~ 76@7 ~ 76@3 ~ 78@3 ~ 76@7 ~ 74@7 ~ 69@7 ~]"
 const LEAD = [1, 0.4, 0.4, 0.32, 0.47, 0.21, 0.13, 0.06, 0.19, 0.1, 0.11, 0.11, 0.053, 0.056, 0.042, 0.06, 0.032, 0.028, 0.03, 0.033]
 const BASS = "[23@6 26@6 31@6 ~@2 31@6 30@6]"
 const WHINE = "[~@20 31@6 30@6]"
-// @frame -60,-60,3080,1180 "2 GIRLS (muted)"
-// @frame -60,1180,2200,1030 "starstruck melody"
-// @frame -60,2270,2440,1420 "starstruck bass"
-// @frame -60,3730,1760,1900 "starstruck drums"
+// Shelter (Porter Robinson & Madeon): 0:48-1:17 of the video, 12 bars at 100 bpm, no voice
+const SH_CHORDS = "<[F3,C4,G4] [[E3,G3,C4,D4] [G3,B3,C4,D4]] [[E3,G3,B3,C5] [E3,G3,A3,C4]] [[F3,A3,C4,G4] [D3,F3,A3,C4]]>"
+const SH_ROOTS = "<[41 41] [40 43] [40 45] [41 38]>"
+const SH_CHIME = "<[~ ~ ~ ~ 88 81 79 ~ ~ ~ ~ ~ ~ ~ ~ ~] [~ ~ ~ ~ 88 88 79 86 81 86 ~ ~ 86 86 ~ 79] [~ ~ ~ ~ 88 81 79 ~ ~ ~ ~ ~ ~ ~ 76 ~] [83 76 ~ ~ 83 76 ~ ~ 83 76 ~ ~ 76 76 ~ ~] [~ ~ ~ ~ 88 88 79 79 ~ ~ ~ ~ ~ ~ 76 ~] [~ ~ ~ ~ 88 ~ 79 86 96 86 ~ ~ ~ 76 ~ 79] [79 79 ~ ~ 88 ~ 79 79 79 ~ ~ ~ ~ ~ 76 76] [83 76 ~ ~ 76 76 ~ ~ 83 76 ~ ~ 76 76 ~ ~]>"
+// @frame -60,-60,2750,1332 "2 GIRLS (muted)"
+// @frame -60,1282,2424,4313 "starstruck (muted)"
+// @frame -60,5605,2424,4474 "Shelter"
 
-// @layout 0,0 390,0 716,0 1036,0 1362,0 1688,0 2014,0
+// @layout 0,0 390,0 716,0 1026,0 1352,0 1678,0 2004,0
 _vox: stack(...HARM.map((g, i) => note(VOX).add(note(12 * Math.log2(i + 1))).gain(g)))
   .slow(4)
   .sound("sine")
@@ -25,7 +28,7 @@ _vox: stack(...HARM.map((g, i) => note(VOX).add(note(12 * Math.log2(i + 1))).gai
   .postgain(0.35)
   .mask("<1!4 0!32>")
 
-// @layout 0,570 390,570 710,570 1036,570 1362,570 1688,570 2014,570 2340,570 2666,570
+// @layout 0,505 390,505 700,505 1026,505 1352,505 1678,505 1678,878 2004,505 2330,505
 _glitch: note(81.25)
   .sound("sawtooth")
   .struct("x*32").degradeBy(0.45)
@@ -36,24 +39,24 @@ _glitch: note(81.25)
   .attack(0.002).decay(0.03).sustain(0).release(0.01)
   .mask("<0!12 1!7 0 1!16>")
 
-// @layout 0,1220 390,1220 716,1220 1026,1220 1352,1220 1678,1220
-lead: stack(...LEAD.map((g, i) => note(MEL).add(note(12 * Math.log2(i + 1))).gain(g)))
+// @layout 0,1342 390,1342 716,1342 1026,1342 1352,1342 1678,1342
+_lead: stack(...LEAD.map((g, i) => note(MEL).add(note(12 * Math.log2(i + 1))).gain(g)))
   .slow(2)
   .sound("sine")
   .attack(0.005).release(0.02)
   .postgain(0.6)
   .mask("<1 [1@14 0@2] 1 1 1 1>")
 
-// @layout 0,1725 477,1725 787,1725 1113,1725 1439,1725 1765,1725
-counter: note("[66@2 ~ 69 ~ 66 [55,62]@2] [~ [55,62]@2 ~ 62 61 ~@2]")
+// @layout 0,1847 477,1847 787,1847 1113,1847 1439,1847 1765,1847
+_counter: note("[66@2 ~ 69 ~ 66 [55,62]@2] [~ [55,62]@2 ~ 62 61 ~@2]")
   .sound("sawtooth")
   .slow(2)
   .attack(0.04).release(0.05)
   .gain(0.6)
   .mask("<1!6>")
 
-// @layout 0,2311 390,2311 716,2311 1026,2311 1352,2311 1678,2311 2004,2311
-sub: note(BASS)
+// @layout 0,2353 390,2353 716,2353 1026,2353 1352,2353 1678,2353 2004,2353
+_sub: note(BASS)
   .slow(2)
   .sound("sine")
   .shape(0.35)
@@ -61,38 +64,102 @@ sub: note(BASS)
   .gain(2)
   .mask("<0!2 1!4>")
 
-// @layout 0,2816 390,2816 716,2816 1026,2816 1352,2816 1678,2816
-whine: stack(...[[290, 0.5], [291, 1], [292, 0.5]].map(([k, g]) => note(WHINE).add(note(12 * Math.log2(k))).gain(g)))
+// @layout 0,2858 390,2858 716,2858 1026,2858 1352,2858 1678,2858
+_whine: stack(...[[290, 0.5], [291, 1], [292, 0.5]].map(([k, g]) => note(WHINE).add(note(12 * Math.log2(k))).gain(g)))
   .slow(2)
   .sound("sine")
   .attack(0.005).release(0.02)
   .postgain(0.08)
   .mask("<0!3 1 0 1>")
 
-// @layout 0,3321 326,3321 652,3321 978,3321 1304,3321
-kick: s("[bd ~@5 bd ~@5 bd ~@7 bd ~@11]")
+// @layout 0,3363 326,3363 652,3363 978,3363 1304,3363
+_kick: s("[bd ~@5 bd ~@5 bd ~@7 bd ~@11]")
   .bank("RolandTR808")
   .slow(2)
   .gain(3.5)
   .mask("<0!2 1!4>")
 
-// @layout 0,3765 326,3765 652,3765 978,3765
-snare: s("~ ~ sd ~")
+// @layout 0,3727 326,3727 652,3727 978,3727
+_snare: s("~ ~ sd ~")
   .bank("RolandTR909")
   .gain(0.6)
   .mask("<0!2 1!4>")
 
-// @layout 0,4129 326,4129 652,4129 652,4502 978,4129
-hats: s("<[hh hh hh ~]*4 [[hh hh hh ~] [hh hh hh [~ hh]] [hh hh hh ~] [hh hh hh ~]]>")
+// @layout 0,4091 326,4091 652,4091 652,4464 978,4091
+_hats: s("<[hh hh hh ~]*4 [[hh hh hh ~] [hh hh hh [~ hh]] [hh hh hh ~] [hh hh hh ~]]>")
   .bank("RolandTR808")
   .speed(0.8)
   .gain(2).postgain(1.2)
   .mask("<0!2 1!4>")
 
-// @layout 0,4866 326,4866 652,4866 652,5239 978,4866 1304,4866
-roll: s("<~ [~ [~@6 hh ~] [~@5 hh hh hh] [~@3 hh ~ hh hh hh]]>")
+// @layout 0,4828 326,4828 652,4828 652,5201 978,4828 1304,4828
+_roll: s("<~ [~ [~@6 hh ~] [~@5 hh hh hh] [~@3 hh ~ hh hh hh]]>")
   .bank("RolandTR808")
   .speed(1.5)
   .hpf(10000)
   .gain(1.5)
   .mask("<0!2 1!4>")
+
+// @layout 0,5665 390,5665 700,5665 1026,5665 1352,5665 1352,5993 1678,5665
+sh_pad: note(SH_CHORDS)
+  .sound("supersaw")
+  .lpf("<1500!4 9000!4 12000!4>")
+  .attack(0.02).release(0.3)
+  .gain(0.55)
+  .orbit(2)
+  .mask("<1!12>")
+
+// @layout 0,6261 390,6261 700,6261 1026,6261 1352,6261
+sh_chime: note(SH_CHIME)
+  .sound("sine")
+  .attack(0.003).decay(0.12).sustain(0.2).release(0.1)
+  .gain(0.8)
+  .mask("<1!12>")
+
+// @layout 0,6766 390,6766 716,6766 1026,6766 1352,6766 1352,7094 1678,6766
+sh_bass: note(SH_ROOTS)
+  .add(note("<0!8 -12!4>"))
+  .sound("triangle")
+  .attack(0.005).release(0.05)
+  .gain(0.55)
+  .orbit(2)
+  .mask("<1!8 [1@27 0@5]!2 1!2>")
+
+// @layout 0,7362 390,7362 716,7362 1026,7362 1352,7362 1678,7362 2004,7362
+sh_sub: note(SH_ROOTS)
+  .add(note(-12))
+  .sound("sine")
+  .attack(0.005).release(0.05)
+  .gain("<0.12!4 0.33 0.12 0.035 0.03 0.9!3 0.5>")
+  .orbit(2)
+  .mask("<1!8 [1@27 0@5]!2 1!2>")
+
+// @layout 0,7867 326,7867 652,7867 978,7867 978,8336 1304,7867
+sh_air: s("white")
+  .gain("<0.03!3 0 0.25!8>")
+  .hpf(9000)
+  .attack(0.3).release(0.3)
+  .orbit(2)
+  .mask("<1!3 0 1!8>")
+
+// @layout 0,8604 326,8604 652,8604 652,8901 978,8604
+sh_kick: s("bd*4")
+  .bank("RolandTR909")
+  .duck("2 3 2 3")
+  .duckdepth(0.6)
+  .duckattack(0.15)
+  .gain(1.2)
+  .mask("<0!8 1!4>")
+
+// @layout 0,9265 326,9265 652,9265 978,9265
+sh_clap: s("cp*4")
+  .bank("RolandTR909")
+  .gain(0.7)
+  .mask("<0!7 1 0!4>")
+
+// @layout 0,9629 326,9629 652,9629 978,9629 1304,9629
+sh_riser: s("white")
+  .hpf(saw.range(1000, 10000))
+  .attack(1.5).release(0.3)
+  .gain(0.25)
+  .mask("<0!3 1 0!8>")
