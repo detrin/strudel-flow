@@ -22,8 +22,12 @@ two views of one program. Fork of xyflow/strudel-flow (`origin` is the fork,
 - `pnpm dev`: the app at http://localhost:5173, plus the bridge hub at
   `/__bridge` (see Claude Code below). Vite restarts itself on config or
   `.env.local` changes.
-- `pnpm check`: format, lint (0 warnings), typecheck, knip, unit tests. The
-  pre-commit hook runs it. Lint forbids non-component exports from `.tsx`
+- `pnpm check`: format, lint (0 warnings), typecheck, strict core, import
+  cycles, knip, unit tests. The pre-commit hook runs it; CI
+  (`.github/workflows/ci.yml`) runs it plus `pnpm e2e` on every push, and
+  2000 fuzz cases nightly. Check CI after pushing:
+  `gh run list -R detrin/strudelton` (`gh` defaults to the upstream repo,
+  so always pass `-R`). Lint forbids non-component exports from `.tsx`
   files (react-refresh): put helpers in `.ts` modules.
 - `pnpm e2e`: Playwright (its own dev server on :5199). Specs import
   `test`/`expect` from `e2e/fixtures.ts`, which fails a test on any page
@@ -39,6 +43,28 @@ two views of one program. Fork of xyflow/strudel-flow (`origin` is the fork,
 - `pnpm survey <folder>`: share of nodes that are raw code (Code/Method) over
   a folder of songs, and which methods remain. `../tidalcycles/dj_dave` is
   the reference corpus; re-run it when adding or changing nodes.
+
+## How to make a change
+
+1. Start from `main` in your own worktree (see Run and check). Read the
+   section below for the area you touch.
+2. Bug from the person: read `~/.strudelton/logs/` and
+   `get_diagnostics` (recent commands, problems) first; reproduce it with
+   the MCP tools or a test before fixing.
+3. Write the failing test first where you can: a unit test next to the
+   module, a corpus or fuzz case for code ↔ nodes, an e2e spec for UI.
+   A fuzz failure prints its seed: `FUZZ_SEED=… pnpm test fuzz`.
+4. Edit the song only through commands; parse/emit changes must keep
+   `corpus.test.ts` and the fuzz tests green (they compare what plays).
+5. `pnpm check`, then `pnpm e2e` (twice for flaky-looking specs), then
+   look at it: `pnpm shot <song>` or the MCP tools on your dev server.
+6. Commit, `git push origin main`, check CI, re-run `pnpm stable` so the
+   person's tab gets it. Update this file when a rule or map changes.
+
+Adding a node: a `*.node.ts` with `defineNode` (parameters, `generate`,
+`parse`, `methods`), a parse ↔ generate unit test, a place in
+`src/data/radial-menu.ts` (else it lands under "More"), use it in
+`patches/undertow.strudel`, and re-run `pnpm survey ../tidalcycles/dj_dave`.
 
 ## Claude Code (MCP)
 
@@ -164,6 +190,23 @@ the canvas's components map is `components/nodes/node-types.ts`, apart
 from the registry, so the store never imports components). Each node
 draws inside an error boundary: one failing node shows its error, the
 rest goes on.
+
+## Known limits and gotchas
+
+- A Voice or Drums node with no sound picked writes no code, so it is not
+  saved (it vanishes on reload).
+- An LFO (Modulate) right after a node that sets the same control reads
+  back as that node's pattern value: same sound, one node fewer. Kept so
+  saved songs don't change; the fuzz test avoids it.
+- A switched-off stack part is written `part.hush()`; switched-off calls
+  are comments (`// .delay(…)`, `/* .gain(…) */`) that parse reads back as
+  disabled nodes.
+- Strudel lets notes already started ring on after `evaluate`; cutting
+  sound (preview change, stop) goes through `lib/cut-sound.ts`.
+- Hot reloads re-run modules: anything that must exist once per tab
+  (Strudel, the engine) lives on `globalThis`.
+- The Bash tool's safety check may refuse heredocs with `$`-templates;
+  write the edit script to a file first.
 
 ## Conventions
 
