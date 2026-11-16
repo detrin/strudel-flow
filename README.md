@@ -62,12 +62,16 @@ tab you play in. Errors from any tab are logged to
 ```sh
 pnpm install
 pnpm dev          # http://localhost:5173
-pnpm check        # format, lint, typecheck, dead code (knip), unit tests
-pnpm e2e          # Playwright end-to-end tests (local only)
+pnpm check        # format, lint, typecheck, strict core, import cycles,
+                  # dead code (knip), unit tests (round trips over every
+                  # song, fuzzing)
+pnpm e2e          # Playwright end-to-end tests
 ```
 
-Commits run `pnpm check`'s gates in a pre-commit hook; CI runs them (plus a
-build) on every push to `main`. End-to-end tests run locally only.
+Commits run `pnpm check`'s gates in a pre-commit hook. CI runs them, a
+build and the end-to-end tests on every push to `main`, and the fuzz tests
+at depth every night (`FUZZ_RUNS=2000`; a failure names its seed, rerun it
+with `FUZZ_SEED=…`).
 
 How it works, and the plan it follows: [docs/PLAN.md](docs/PLAN.md).
 

@@ -90,7 +90,11 @@ function claim(calls: Call[], from: number) {
   return best;
 }
 
-function claimAs(type: string, calls: Call[], from: number) {
+function claimAs(
+  type: string,
+  calls: Call[],
+  from: number,
+): { type: string; data: Record<string, unknown>; length: number } | null {
   const definition = must(nodeDefinitions[type], `node type ${type}`);
   let end = from;
   const seen = new Set<string>();
@@ -99,16 +103,29 @@ function claimAs(type: string, calls: Call[], from: number) {
     seen.add(call.name);
     end++;
   }
+  // Stopped at a method this node already took: a second node of the same
+  // kind follows (`.speed(1).clip(1).begin(0)…clip(2)`), so where one ends
+  // is where its own code, written back in order, ends.
+  const another = definition.methods.includes(calls[end]?.name ?? '');
+  let fallback: {
+    type: string;
+    data: Record<string, unknown>;
+    length: number;
+  } | null = null;
   for (; end > from; end--) {
-    const run = calls.slice(from, end).map((call) => call.name);
-    const data = definition.parse(calls.slice(from, end));
+    const slice = calls.slice(from, end);
+    const run = slice.map((call) => call.name);
+    const data = definition.parse(slice);
     const written = data && methodNames(definition.generate(data, { id: '' }));
     const faithful = definition.ordered
       ? written?.join() === run.join()
       : written && run.every((name) => written.includes(name));
-    if (faithful) return { type, data: data!, length: end - from };
+    if (!faithful) continue;
+    const found = { type, data: data!, length: end - from };
+    if (!another || written?.join() === run.join()) return found;
+    fallback ??= found;
   }
-  return null;
+  return fallback;
 }
 
 /** Turns method calls into a chain of effect nodes fed by `inputs`. */
@@ -253,32 +270,64 @@ function createParser(source: string, known: Known[], comments: Comment[]) {
   };
 
   /** `part` is one part of a stack: `.hush()` at its end switches it off. */
-  const tree = (expression: Expression, part = false): ProgramNode => {
+  /**
+   * `reach`: where the expression's own switched-off calls may still be,
+   * past its last call (a line's trailing `// .delay(…)` rows, a part's
+   * `/* .gain(…) *\/` before the comma).
+   */
+  const tree = (
+    expression: Expression,
+    part = false,
+    reach = expression.end,
+  ): ProgramNode => {
     const { base, calls } = decompose(source, expression);
     const last = calls.at(-1);
     if (part && last && `${last.name}()` === HUSH && !last.args.length) {
       calls.pop();
-      return switchOff(build(expression, base, calls));
+      return switchOff(build(expression, base, calls, reach));
     }
-    return build(expression, base, calls);
+    return build(expression, base, calls, reach);
+  };
+
+  /**
+   * The end of the switched-off calls right after `from` (comments that
+   * hold only method calls, nothing but space between), or `from`.
+   */
+  const disabledAfter = (from: number, limit = source.length) => {
+    let end = from;
+    for (const comment of comments) {
+      if (comment.start < end) continue;
+      if (comment.end > limit || source.slice(end, comment.start).trim()) break;
+      if (!commentCalls(comment.text)) break;
+      end = comment.end;
+    }
+    return end;
   };
 
   const build = (
     expression: Expression,
     base: Expression,
     calls: (Call & { end: number })[],
+    reach = expression.end,
   ): ProgramNode => {
     const model = modelled(base, calls);
-    // Commented-out calls between this line's calls are disabled nodes.
+    // Commented-out calls between this line's calls (and right after its
+    // last one, up to `reach`) are disabled nodes.
     const items: Item[] = [
       ...calls.map((call) => ({ at: call.end, call })),
       ...comments.flatMap((comment) => {
-        if (comment.start < base.end || comment.end > expression.end) return [];
+        if (comment.start < base.end || comment.end > reach) return [];
         const disabled = commentCalls(comment.text);
         return disabled ? [{ at: comment.start, disabled }] : [];
       }),
     ].sort((a, b) => a.at - b.at);
-    const after = (offset: number) => items.filter((item) => item.at > offset);
+    // What comes after `offset`: calls ending after it, and switched-off
+    // calls starting at or after it (`note("c")/* .gain(1) */` starts
+    // exactly where the code before it ends).
+    const after = (offset: number) =>
+      items.filter((item) =>
+        'call' in item ? item.at > offset : item.at >= offset,
+      );
     // 1. An existing source node that writes exactly this code keeps its id
     //    (a Code node only while no instrument models its code).
     //    A shorter match than an instrument's model loses to the model (a
@@ -304,7 +353,15 @@ function createParser(source: string, known: Known[], comments: Comment[]) {
       base.arguments.length > 0 &&
       base.arguments.every((arg) => arg.type !== 'SpreadElement')
     ) {
-      const inputs = base.arguments.map((arg) => tree(arg as Expression, true));
+      const args = base.arguments as Expression[];
+      const inputs = args.map((arg, index) =>
+        tree(
+          arg,
+          true,
+          // Up to the next part, or the closing parenthesis.
+          disabledAfter(arg.end, args[index + 1]?.start ?? base.end),
+        ),
+      );
       return chainItems(inputs, after(base.end - 1));
     }
     // 3. A call an instrument models (`note("c e g")` is a Notes node).
@@ -325,7 +382,7 @@ function createParser(source: string, known: Known[], comments: Comment[]) {
     return items.length ? chainItems([node], items) : node;
   };
 
-  return tree;
+  return Object.assign(tree, { disabledAfter });
 }
 
 /**
@@ -443,20 +500,22 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
       // The `// @layout` comment right above the line is part of it.
       const layout = layoutAbove(statement.start);
       if (layout) lineRanges.push(layout);
+      const trailing = tree.disabledAfter(statement.end);
       const parsed = line(
         label,
         muted,
-        tree(statement.body.expression),
+        tree(statement.body.expression, false, trailing),
         layout && positionsOf(layout.text),
         soloed,
       );
       program.lines.push(parsed);
       lineStarts.set(parsed, statement.start);
-      // A comment on the same line as the statement belongs to it.
+      // A comment on the same line as the statement belongs to it, and so
+      // do its trailing switched-off calls.
       const lineEnd = source.indexOf('\n', statement.end);
       lineRanges.push({
         start: statement.start,
-        end: lineEnd === -1 ? source.length : lineEnd,
+        end: Math.max(trailing, lineEnd === -1 ? source.length : lineEnd),
       });
       continue;
     }

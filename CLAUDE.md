@@ -142,6 +142,18 @@ server's folder is a temp dir). Presets export and import as JSON. Export/share 
   undocumented internals (master gain, analysers, sound map, resetting
   the output). Its test pins @strudel/web 1.3.0: upgrading starts there.
 
+## Tests that find bugs
+
+- `lib/program/corpus.test.ts`: every demo patch, DJ_Dave song and
+  Library preset (whichever exist here) round-trips: fixed point, nodes
+  kept, layout kept, same events. Run it after any change to parsing,
+  writing or layout.
+- `lib/fuzz.test.ts`: random songs and random edit sequences (seeded:
+  `FUZZ_SEED=… pnpm test fuzz`; `FUZZ_RUNS` for more). CI runs 2000 a
+  night.
+- `e2e/sound.spec.ts` measures what plays; `e2e/bug-bash.spec.ts` is a
+  long real session. Both run in CI.
+
 ## Guard rails
 
 `pnpm check` also runs `pnpm strict` (the core in `lib/program`,

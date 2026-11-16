@@ -1,6 +1,6 @@
 import { defineNode } from '../../define-node';
 import { ScopeNode } from './scope-node';
-import { scopeId, type ScopeData } from './scope';
+import { analyserOf, type ScopeData } from './scope';
 
 export default defineNode({
   id: 'scope-node',
@@ -11,7 +11,10 @@ export default defineNode({
   parameters: {},
   defaults: {} as ScopeData,
   component: ScopeNode,
-  generate: (_values, { id }) => `analyze(${JSON.stringify(scopeId(id))})`,
+  generate: (values, { id }) =>
+    `analyze(${JSON.stringify(analyserOf(id, values))})`,
   methods: ['analyze'],
-  parse: () => ({}),
+  // The id stays as written: a reopened song keeps its code.
+  parse: ([call]) =>
+    typeof call?.args[0] === 'string' ? { analyser: call.args[0] } : {},
 });

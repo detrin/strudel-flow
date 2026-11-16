@@ -80,7 +80,12 @@ export function parseEnvelope(
     ADSR_KEYS.map((key) => values[key]) as Partial4,
     unset,
   );
-  ADSR_KEYS.forEach((key, index) => (values[key] = adsr[index]));
+  // Stages the code leaves out show what Strudel fills in; stages it sets
+  // keep their written value (`.attack(0)` stays 0, though it plays as
+  // Strudel's minimum), so reading the code back never changes it.
+  ADSR_KEYS.forEach((key, index) => {
+    if (!set.includes(key)) values[key] = adsr[index];
+  });
   return { ...values, stages: set.join(' ') } as Record<
     string,
     number | string
@@ -100,7 +105,12 @@ export function adsrCalls(
   values: Record<string, unknown>,
   unset: Adsr,
 ) {
-  const wanted = ADSR_KEYS.map((key) => String(values[key]));
+  // What plays: compared that way, `.attack(0)` and Strudel's 0.001 are
+  // one value.
+  const wanted = effectiveAdsr(
+    ADSR_KEYS.map((key) => values[key] as Value) as Partial4,
+    unset,
+  ).map(String);
   const resolved = (stages: number[]) =>
     effectiveAdsr(
       ADSR_KEYS.map((key, i) =>

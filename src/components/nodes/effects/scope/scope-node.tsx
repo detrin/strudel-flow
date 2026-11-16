@@ -3,7 +3,7 @@ import type { ScopeData } from './scope';
 import { useEffect, useRef } from 'react';
 import { ParameterKnob } from '../../shared/parameter-knob';
 import { drawScope } from '@/lib/strudel-scope';
-import { DEFAULT_SCOPE_SCALE, scopeId } from './scope';
+import { DEFAULT_SCOPE_SCALE, analyserOf } from './scope';
 
 export function ScopeNode({
   values: data,
@@ -11,7 +11,7 @@ export function ScopeNode({
   isPlaying: playing,
   id,
 }: CustomControlsProps<ScopeData>) {
-  const analyser = scopeId(id);
+  const analyser = analyserOf(id, data);
   const canvas = useRef<HTMLCanvasElement>(null);
   const scale = Number(data.scopeScale ?? DEFAULT_SCOPE_SCALE);
 
