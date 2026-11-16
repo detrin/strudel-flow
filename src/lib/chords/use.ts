@@ -14,7 +14,11 @@ export const TECHNIQUE_IDS: Technique[] = [
   'borrow-iv',
   'pedal',
   'faster',
+  'slower',
   'colour',
+  'lush',
+  'suspend',
+  'deceptive',
   'key-up',
 ];
 

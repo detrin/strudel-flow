@@ -348,13 +348,17 @@ const progressionParams = {
         'borrow-iv',
         'pedal',
         'faster',
+        'slower',
         'colour',
+        'lush',
+        'suspend',
+        'deceptive',
         'key-up',
       ]),
     )
     .optional()
     .describe(
-      'Changes: resolve (end on V), mario (end bVI bVII), borrow-iv (IV then iv), pedal (tonic bass), faster (two chords a bar), colour (add9, 7ths), key-up (a whole step).',
+      'Changes: resolve (end on V), mario (end bVI bVII), borrow-iv (IV then iv), pedal (tonic bass), faster (two chords a bar), slower (each chord two bars), colour (add9, 7ths), lush (maj9, 9, m9), suspend (sus4 resolving in each bar), deceptive (V to vi), key-up (a whole step).',
     ),
 };
 const whichProgression = {
@@ -366,7 +370,7 @@ const whichProgression = {
     .string()
     .optional()
     .describe(
-      'Or Roman numerals, a bar each: "I II IV bVI"; two in a bar "bVI+bVII"; suffixes 7, maj7, sus2, sus4, add9, 6, dim.',
+      'Or Roman numerals, a bar each: "I II IV bVI"; two in a bar "bVI+bVII"; suffixes 7, maj7, 9, maj9, 11, 13, 6, 69, add9, sus2, sus4, 7sus4, dim, dim7, m7b5, aug, 7b9, maj7#11; slash bass II/I.',
     ),
 };
 tool(

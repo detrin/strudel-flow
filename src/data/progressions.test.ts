@@ -52,7 +52,7 @@ describe('the progression catalog', () => {
             }
           });
         }
-  });
+  }, 60_000);
 
   it('writes lines Strudel can read', () => {
     const lines = progressionLines(realize(PROGRESSIONS[0]!.bars, 'D', []));

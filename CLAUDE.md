@@ -175,10 +175,11 @@ folder (`/__library/takes`), and registered as Strudel sounds on start:
 `s("name")`. They need the dev server (no browser fallback). The e2e test
 records through Chromium's fake mic (`e2e/library-folder.spec.ts`).
 
-Chords (the Chords tab): progressions by feeling (`data/progressions.ts`,
-each with why and a source), Roman numerals in a key and the techniques
+Chords (the Chords tab): progressions by feeling and style
+(`data/progressions.ts`, each with why and a source), Roman numerals in a
+key (extended and altered chords, slash bass `II/I`) and the techniques
 that change them (resolve, Mario ending, borrow iv, pedal, faster,
-colour, key up) in `lib/chords/theory.ts` (pure, unit-tested: spelling,
+slower, colour, lush, suspend, deceptive, key up) in `lib/chords/theory.ts` (pure, unit-tested: spelling,
 least-movement voicings, roots in octave 2); preview and insert in
 `lib/chords/use.ts` (two lines, `chords` and `roots`).
 

@@ -3,7 +3,9 @@ import { Play, Plus, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KEY_OPTIONS } from '@/data/sounds';
 import {
+  FEELINGS,
   PROGRESSIONS,
+  STYLES,
   TECHNIQUES,
   type Progression,
 } from '@/data/progressions';
@@ -18,7 +20,6 @@ import { cn } from '@/lib/utils';
 import { chip } from './tag-input';
 
 const KEY = 'strudelton:chords-key';
-const FEELINGS = [...new Set(PROGRESSIONS.flatMap((p) => p.tags))].sort();
 
 function ProgressionCard({
   progression,
@@ -105,8 +106,44 @@ export function ChordsTab({ onStatus }: { onStatus: (text: string) => void }) {
   const [musicalKey, setKey] = useState(() => localStorage.getItem(KEY) ?? 'D');
   const [techniques, setTechniques] = useState<Technique[]>([]);
   const [feeling, setFeeling] = useState<string | null>(null);
-  const shown = PROGRESSIONS.filter(
-    (p) => !feeling || p.tags.includes(feeling),
+  const [style, setStyle] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const shown = PROGRESSIONS.filter((p) => {
+    if (feeling && !p.tags.includes(feeling)) return false;
+    if (style && !p.style.includes(style)) return false;
+    const text = [p.name, p.feeling, p.why, ...p.tags, ...p.style]
+      .join(' ')
+      .toLowerCase();
+    return words.every((word) => text.includes(word));
+  });
+  const filter = (
+    label: string,
+    tags: readonly string[],
+    value: string | null,
+    set: (tag: string | null) => void,
+  ) => (
+    <div>
+      <div className="mb-1 text-xs font-medium">{label}</div>
+      <div className="flex flex-wrap gap-1" aria-label={`${label}s`}>
+        {tags.map((tag) => (
+          <button
+            key={tag}
+            type="button"
+            aria-pressed={value === tag}
+            onClick={() => set(value === tag ? null : tag)}
+            className={cn(
+              chip,
+              value === tag
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'hover:bg-accent',
+            )}
+          >
+            {tag}
+          </button>
+        ))}
+      </div>
+    </div>
   );
   return (
     <div className="space-y-3">
@@ -164,27 +201,19 @@ export function ChordsTab({ onStatus }: { onStatus: (text: string) => void }) {
           })}
         </div>
       </div>
-      <div>
-        <div className="mb-1 text-xs font-medium">Feeling</div>
-        <div className="flex flex-wrap gap-1" aria-label="Feelings">
-          {FEELINGS.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              aria-pressed={feeling === tag}
-              onClick={() => setFeeling(feeling === tag ? null : tag)}
-              className={cn(
-                chip,
-                feeling === tag
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'hover:bg-accent',
-              )}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-      </div>
+      <input
+        type="search"
+        aria-label="Search progressions"
+        placeholder="Search: name, feeling, style…"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        className="w-full rounded-md border bg-muted/30 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+      />
+      {filter('Feeling', FEELINGS, feeling, setFeeling)}
+      {filter('Style', STYLES, style, setStyle)}
+      <p className="text-[11px] text-muted-foreground" role="note">
+        {shown.length} of {PROGRESSIONS.length} progressions
+      </p>
       <ul aria-label="Progressions" className="space-y-2">
         {shown.map((progression) => (
           <ProgressionCard

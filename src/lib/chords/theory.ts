@@ -3,9 +3,10 @@
  * how to voice them (moving as little as possible from chord to chord),
  * and the techniques that change how a progression feels without
  * rewriting it. Numerals: case is the quality (IV major, iv minor), `b`
- * or `#` before shifts the root, and a suffix adds colour (7, maj7, sus2,
- * sus4, add9, 6, dim). A progression is bars of numerals: one or more
- * chords a bar.
+ * or `#` before shifts the root, a suffix adds colour (7, maj7, 9, maj9,
+ * 11, 13, 6, 69, add9, sus2, sus4, 7sus4, dim, dim7, m7b5, aug, 7b9,
+ * maj7#11), and `/` puts another degree in the bass (II/I is E over D in
+ * D). A progression is bars of numerals: one or more chords a bar.
  */
 
 export type Bars = string[][];
@@ -21,8 +22,16 @@ export type Technique =
   | 'pedal'
   /** Two chords a bar: the loop twice in the same time. */
   | 'faster'
+  /** Each chord two bars: calmer, more space. */
+  | 'slower'
   /** add9 on major chords, 7 on minor ones: open, floating. */
   | 'colour'
+  /** maj9, 9 and m9: the lush future-bass sound. */
+  | 'lush'
+  /** Each plain chord leans on its 4th first, then resolves: yearning. */
+  | 'suspend'
+  /** V goes to vi instead of home: a poignant surprise. */
+  | 'deceptive'
   /** Everything a whole step up: the final-chorus lift. */
   | 'key-up';
 
@@ -30,6 +39,8 @@ export type Chord = {
   numeral: string;
   /** Pitch class of the root, 0 = C. */
   root: number;
+  /** Pitch class in the bass: the root, or the degree after a slash. */
+  bass: number;
   /** Semitones above the root. */
   tones: number[];
   name: string;
@@ -39,8 +50,10 @@ const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 const NATURAL = [0, 2, 4, 5, 7, 9, 11];
 const MAJOR = [0, 2, 4, 5, 7, 9, 11];
 const DEGREES = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
-const NUMERAL =
-  /^(b|#)?(VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)(maj7|7|sus2|sus4|add9|6|dim)?$/;
+const ROMAN = '(b|#)?(VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)';
+const SUFFIX =
+  '(maj7#11|maj9|maj7|m7b5|7sus4|7b9|dim7|dim|aug|sus2|sus4|add9|69|13|11|9|7|6)?';
+const NUMERAL = new RegExp(`^${ROMAN}${SUFFIX}(?:/${ROMAN})?$`);
 
 function parseKey(key: string) {
   const match = /^([A-Ga-g])(#|b)?$/.exec(key.trim());
@@ -53,43 +66,82 @@ function parseKey(key: string) {
 const accidental = (shift: number) =>
   shift > 0 ? '#'.repeat(shift) : 'b'.repeat(-shift);
 
+/** A degree of the key: its pitch class and its name, spelled from the key. */
+function degreeOf(mark: string | undefined, roman: string, key: string) {
+  const { letter: keyLetter, pc: keyPc } = parseKey(key);
+  const degree = DEGREES.indexOf(roman.toUpperCase());
+  const shift = mark === 'b' ? -1 : mark === '#' ? 1 : 0;
+  const pc = (keyPc + MAJOR[degree]! + shift + 12) % 12;
+  // The 6th degree of D is a B, so bVI is Bb (not A#).
+  const letter = (keyLetter + degree) % 7;
+  let off = pc - NATURAL[letter]!;
+  if (off > 6) off -= 12;
+  if (off < -6) off += 12;
+  return { pc, name: LETTERS[letter]! + accidental(off) };
+}
+
+/** Tones (semitones over the root) and the name's ending, by suffix. */
+function quality(suffix: string, minor: boolean): [number[], string] {
+  const third = minor ? 3 : 4;
+  const m = minor ? 'm' : '';
+  switch (suffix) {
+    case '7':
+      return [[0, third, 7, 10], `${m}7`];
+    case 'maj7':
+      return [[0, third, 7, 11], minor ? 'm(maj7)' : 'maj7'];
+    case '9':
+      return [[0, third, 7, 10, 14], `${m}9`];
+    case 'maj9':
+      return [[0, third, 7, 11, 14], minor ? 'm(maj9)' : 'maj9'];
+    // 11 and 13 leave out what clashes (the 3rd under a major 11th, the
+    // 5th and 11th in a 13th), as players do.
+    case '11':
+      return [minor ? [0, 3, 7, 10, 14, 17] : [0, 7, 10, 14, 17], `${m}11`];
+    case '13':
+      return [[0, third, 10, 14, 21], `${m}13`];
+    case '6':
+      return [[0, third, 7, 9], `${m}6`];
+    case '69':
+      return [[0, third, 7, 9, 14], `${m}6/9`];
+    case 'add9':
+      return [[0, third, 7, 14], `${m}add9`];
+    case 'sus2':
+      return [[0, 2, 7], 'sus2'];
+    case 'sus4':
+      return [[0, 5, 7], 'sus4'];
+    case '7sus4':
+      return [[0, 5, 7, 10], '7sus4'];
+    case 'dim':
+      return [[0, 3, 6], 'dim'];
+    case 'dim7':
+      return [[0, 3, 6, 9], 'dim7'];
+    case 'm7b5':
+      return [[0, 3, 6, 10], 'm7b5'];
+    case 'aug':
+      return [[0, 4, 8], 'aug'];
+    case '7b9':
+      return [[0, 4, 7, 10, 13], '7b9'];
+    case 'maj7#11':
+      return [[0, 4, 7, 11, 18], 'maj7#11'];
+    default:
+      return [[0, third, 7], m];
+  }
+}
+
 export function chordOf(numeral: string, key: string): Chord {
   const match = NUMERAL.exec(numeral);
   if (!match) throw new Error(`Not a chord numeral: "${numeral}".`);
-  const [, shiftMark, roman, suffix = ''] = match;
-  const { letter: keyLetter, pc: keyPc } = parseKey(key);
-  const degree = DEGREES.indexOf(roman!.toUpperCase());
-  const shift = shiftMark === 'b' ? -1 : shiftMark === '#' ? 1 : 0;
-  const root = (keyPc + MAJOR[degree]! + shift + 12) % 12;
-  // Spelled from the key: the 6th degree of D is a B, so bVI is Bb.
-  const letter = (keyLetter + degree) % 7;
-  let off = root - NATURAL[letter]!;
-  if (off > 6) off -= 12;
-  if (off < -6) off += 12;
-  const rootName = LETTERS[letter]! + accidental(off);
-  const minor = roman === roman!.toLowerCase();
-  const third = minor ? 3 : 4;
-  const [tones, kind] = ((): [number[], string] => {
-    switch (suffix) {
-      case 'dim':
-        return [[0, 3, 6], 'dim'];
-      case '7':
-        return [[0, third, 7, 10], minor ? 'm7' : '7'];
-      case 'maj7':
-        return [[0, third, 7, 11], minor ? 'm(maj7)' : 'maj7'];
-      case 'sus2':
-        return [[0, 2, 7], 'sus2'];
-      case 'sus4':
-        return [[0, 5, 7], 'sus4'];
-      case 'add9':
-        return [[0, third, 7, 14], minor ? 'madd9' : 'add9'];
-      case '6':
-        return [[0, third, 7, 9], minor ? 'm6' : '6'];
-      default:
-        return [[0, third, 7], minor ? 'm' : ''];
-    }
-  })();
-  return { numeral, root, tones, name: rootName + kind };
+  const [, mark, roman, suffix = '', bassMark, bassRoman] = match;
+  const root = degreeOf(mark, roman!, key);
+  const [tones, kind] = quality(suffix, roman === roman!.toLowerCase());
+  const bass = bassRoman ? degreeOf(bassMark, bassRoman, key) : root;
+  return {
+    numeral,
+    root: root.pc,
+    bass: bass.pc,
+    tones,
+    name: root.name + kind + (bassRoman ? `/${bass.name}` : ''),
+  };
 }
 
 const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -97,41 +149,80 @@ const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 export const transposeKey = (key: string, semitones: number) =>
   NAMES[(parseKey(key).pc + semitones + 120) % 12]!;
 
-const base = (numeral: string) => NUMERAL.exec(numeral)?.[2] ?? '';
+const parts = (numeral: string) => {
+  const match = NUMERAL.exec(numeral);
+  return {
+    roman: match?.[2] ?? '',
+    plain: Boolean(match && !match[3] && !match[5]),
+  };
+};
+const base = (numeral: string) => parts(numeral).roman.toUpperCase();
+const isMajor = (numeral: string) => {
+  const { roman } = parts(numeral);
+  return roman !== '' && roman === roman.toUpperCase();
+};
+
+/** Plain triads changed by a function (chords with colour are left alone). */
+const onPlain = (bars: Bars, change: (numeral: string) => string[]) =>
+  bars.map((bar) =>
+    bar.length === 1 && parts(bar[0]!).plain ? change(bar[0]!) : bar,
+  );
 
 /** The progression changed by the techniques (pedal and key-up apply when realized). */
 export function applyTechniques(bars: Bars, techniques: Technique[]): Bars {
+  const has = (technique: Technique) => techniques.includes(technique);
   let out = bars.map((bar) => [...bar]);
-  if (techniques.includes('colour'))
+  if (has('lush'))
     out = out.map((bar) =>
       bar.map((numeral) => {
-        const match = NUMERAL.exec(numeral);
-        if (!match || match[3]) return numeral;
-        return numeral + (match[2] === match[2]!.toUpperCase() ? 'add9' : '7');
+        if (!parts(numeral).plain) return numeral;
+        if (!isMajor(numeral)) return `${numeral}9`;
+        // The home chords get the major 7th; the others are dominant 9ths.
+        return ['I', 'IV'].includes(base(numeral)) || /^b/.test(numeral)
+          ? `${numeral}maj9`
+          : `${numeral}9`;
       }),
     );
-  if (techniques.includes('borrow-iv')) {
+  else if (has('colour'))
+    out = out.map((bar) =>
+      bar.map((numeral) =>
+        parts(numeral).plain
+          ? numeral + (isMajor(numeral) ? 'add9' : '7')
+          : numeral,
+      ),
+    );
+  if (has('borrow-iv')) {
     const at = out.findIndex(
-      (bar) => bar.length === 1 && base(bar[0]!) === 'IV',
+      (bar) => bar.length === 1 && base(bar[0]!) === 'IV' && isMajor(bar[0]!),
     );
     if (at >= 0) out[at] = [out[at]![0]!, 'iv'];
   }
   const last = out.length - 1;
   const ending = out[last]?.at(-1) ?? '';
-  if (techniques.includes('mario') && last >= 0) out[last] = ['bVI', 'bVII'];
-  else if (
-    techniques.includes('resolve') &&
-    last >= 0 &&
-    !['V', 'I'].includes(base(ending))
-  )
+  if (has('mario') && last >= 0) out[last] = ['bVI', 'bVII'];
+  else if (has('resolve') && last >= 0 && !['V', 'I'].includes(base(ending)))
     out[last] = [out[last]![0]!, 'V'];
-  if (techniques.includes('faster')) {
+  if (has('deceptive')) {
+    // The first V that goes home goes to vi instead (around the loop too).
+    const flat = out.flatMap((bar, b) => bar.map((n, i) => ({ n, b, i })));
+    for (let k = 0; k < flat.length; k++) {
+      const here = flat[k]!;
+      const next = flat[(k + 1) % flat.length]!;
+      if (base(here.n) === 'V' && isMajor(here.n) && base(next.n) === 'I') {
+        out[next.b]![next.i] = 'vi';
+        break;
+      }
+    }
+  }
+  if (has('suspend'))
+    out = onPlain(out, (numeral) => [`${numeral}sus4`, numeral]);
+  if (has('faster')) {
     const flat = [...out.flat(), ...out.flat()];
     const pairs: Bars = [];
     for (let i = 0; i < flat.length && pairs.length < out.length; i += 2)
       pairs.push(flat.slice(i, i + 2));
     out = pairs;
-  }
+  } else if (has('slower')) out = out.flatMap((bar) => [bar, [...bar]]);
   return out;
 }
 
@@ -207,7 +298,7 @@ export function realize(
   const step = (items: string[]) =>
     items.length === 1 ? items[0]! : `[${items.join(' ')}]`;
   const root = (chord: Chord) =>
-    36 + (techniques.includes('pedal') ? tonic : chord.root);
+    36 + (techniques.includes('pedal') ? tonic : chord.bass);
   return {
     key: inKey,
     bars,
