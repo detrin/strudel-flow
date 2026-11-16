@@ -307,6 +307,8 @@ def find_offset(orig, repro, bars, bpm):
     period = bars * 60 / bpm * 4
     n = int(period / 0.005)
     ea = [band_env(sra, xa, lo, hi)[:n] for lo, hi in ((25, 60), (600, 2500), (6000, 12000))]
+    n = min(n, *(len(a) for a in ea))
+    ea = [a[:n] for a in ea]
     eb = [band_env(srb, xb, lo, hi) for lo, hi in ((25, 60), (600, 2500), (6000, 12000))]
     best = (-9, 0)
     for lag in range(0, n):
