@@ -205,6 +205,9 @@ rest goes on.
   sound (preview change, stop) goes through `lib/cut-sound.ts`.
 - Hot reloads re-run modules: anything that must exist once per tab
   (Strudel, the engine) lives on `globalThis`.
+- `.mcp.json` runs `mcp/server.mjs` from the checkout Claude Code opens:
+  without `pnpm install` there it fails to connect. No pnpm on the
+  machine (Node 25+ has no corepack): `npm install -g pnpm@10`.
 - The Bash tool's safety check may refuse heredocs with `$`-templates;
   write the edit script to a file first.
 

@@ -47,6 +47,16 @@ the creators of React Flow).
 Open **Export → Community patches → Undertow** for a 64-bar acid techno
 track that uses every node.
 
+## Install
+
+Needs Node 20.19 or newer and pnpm 10 (`package.json` pins the version).
+Node 25 and later no longer ship corepack, so install pnpm with npm:
+
+```sh
+npm install -g pnpm@10
+pnpm install      # also needed for the Claude Code tools (mcp/server.mjs)
+```
+
 ## Play
 
 ```sh
@@ -60,12 +70,12 @@ tab you play in. Errors from any tab are logged to
 ## Develop
 
 ```sh
-pnpm install
 pnpm dev          # http://localhost:5173
 pnpm check        # format, lint, typecheck, strict core, import cycles,
                   # dead code (knip), unit tests (round trips over every
                   # song, fuzzing)
-pnpm e2e          # Playwright end-to-end tests
+pnpm e2e          # Playwright end-to-end tests (first time:
+                  # pnpm exec playwright install chromium)
 ```
 
 Commits run `pnpm check`'s gates in a pre-commit hook. CI runs them, a
