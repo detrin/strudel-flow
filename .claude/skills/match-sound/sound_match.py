@@ -17,6 +17,8 @@ Commands (times in seconds, --bpm and --t0 give the beat grid):
   melody ORIG REPRO A B         main note of both per frame, agreement per bar
   octaves ORIG REPRO T DUR      one note's octave spectrum in both (--offset)
   entry FILE                    where a part starts after silence (--band)
+  lines FILE A B                every steady tone line as a TONES table
+  distance ORIG REPRO A DUR     mean dB difference of the spectrograms
 """
 
 import argparse
@@ -519,6 +521,116 @@ def cmd_entry(args):
     sys.exit('no entry found')
 
 
+def tone_lines(sr, x, a, b, lo, hi, n=4096, minlen=0.07, floor=60):
+    """Peaks of an STFT linked over time into lines (within 1.2% in
+    frequency). Each line: start, end, Hz, median, start, end and peak level
+    (dB re the loudest bin), and seconds from its start to its peak."""
+    from scipy.signal import stft as _stft
+    y = x[int(a * sr) : int(b * sr)]
+    hop = 256
+    fr, tt, z = _stft(y, sr, nperseg=n, noverlap=n - hop, nfft=4 * n)
+    s = db(np.abs(z))
+    top = s.max()
+    w = (fr > lo) & (fr < hi)
+    f, s = fr[w], s[w]
+    done, act = [], []
+    for j in range(s.shape[1]):
+        col = s[:, j]
+        pk, _ = find_peaks(col, prominence=10, height=top - floor)
+        peaks = []
+        for i in pk:
+            if 0 < i < len(col) - 1:
+                p, q, r = col[i - 1], col[i], col[i + 1]
+                peaks.append((f[i] + 0.5 * (p - r) / (p - 2 * q + r) * (f[1] - f[0]), q))
+        used, keep = set(), []
+        for tr in act:
+            last = tr['f'][-1]
+            near = [k for k, (q, _) in enumerate(peaks) if k not in used and abs(q / last - 1) < 0.012]
+            if near:
+                k = min(near, key=lambda k: abs(peaks[k][0] - last))
+                used.add(k)
+                tr['f'].append(peaks[k][0]); tr['l'].append(peaks[k][1]); tr['e'] = j
+                keep.append(tr)
+            elif j - tr['e'] <= 2:
+                keep.append(tr)
+            else:
+                done.append(tr)
+        keep += [{'s': j, 'e': j, 'f': [q], 'l': [l]} for k, (q, l) in enumerate(peaks) if k not in used]
+        act = keep
+    out = []
+    for tr in done + act:
+        ts, te = a + tt[tr['s']], a + tt[tr['e']]
+        if te - ts < minlen:
+            continue
+        lv = np.array(tr['l']) - top
+        k = max(1, min(6, len(lv) // 3))
+        out.append((ts, te, float(np.median(tr['f'])), float(np.median(lv)), float(np.median(lv[:k])),
+                    float(np.median(lv[-k:])), float(lv.max()), float(tt[tr['s'] + int(np.argmax(lv))] - tt[tr['s']])))
+    return sorted(out)
+
+
+def cmd_lines(args):
+    """Every steady tone of a passage, for a remake that plays them as sines:
+    a list, then (with --bpm and --t0) a TONES table of [start and length in
+    16ths, MIDI note with cents, peak level, time to the peak, decay to the
+    end, end level / peak] for lines whose peak is above --min dB."""
+    sr, x = load(args.file)
+    rows = tone_lines(sr, x, args.a, args.b, args.lo, args.hi, n=args.window)
+    s16 = 15 / args.bpm
+    t0 = args.a if args.t0 is None else args.t0
+    table = []
+    for ts, te, hz, med, l0, l1, lp, tp in rows:
+        m = 69 + 12 * np.log2(hz / 440)
+        if not args.table:
+            print(f'{ts:7.3f}-{te:7.3f}  16th {(ts - t0) / s16:6.2f}  {hz:7.1f} Hz {cents(m):9s} '
+                  f'median {med:4.0f}  start {l0:4.0f}  end {l1:4.0f}  peak {lp:4.0f} dB')
+        if lp <= args.min:
+            continue
+        st = max(0, round((ts - t0) / s16 * 4) / 4)
+        ln = max(0.25, round((te - t0) / s16 * 4) / 4 - st)
+        dur = ln * s16
+        att = min(max(tp, 0.005), dur * 0.9)
+        table.append([st, ln, round(float(m), 2), round(10 ** (lp / 20), 4), round(att, 3),
+                      round(max(dur - att, 0.01), 3), round(min(10 ** ((l1 - lp) / 20), 1), 3)])
+    if args.table:
+        body = ',\n  '.join(', '.join('[' + ','.join(f'{v:g}' for v in r) + ']' for r in table[i : i + 4])
+                            for i in range(0, len(table), 4))
+        print(f'// {len(table)} tone lines, {args.a:g}-{args.b:g} s\nconst TONES = [\n  {body}\n]')
+
+
+def cmd_distance(args):
+    """Mean absolute dB difference between the two spectrograms (third
+    octaves 250 Hz-8 kHz, 23 ms frames) after matching overall level, per bar
+    and overall: one number to choose between remakes. Frames where the
+    original is 40 dB under its peak are skipped. The offset is refined
+    within 60 ms (the best one is printed)."""
+    def spec(path, a):
+        sr, x = load(path)
+        y = x[int(a * sr) : int((a + args.dur) * sr)]
+        hop = int(sr * 0.0234375)
+        fr, _, z = stft(y, sr, nperseg=2048, noverlap=2048 - hop)
+        pw = np.abs(z) ** 2
+        edges = 250 * 2 ** (np.arange(16) / 3)
+        return 10 * np.log10(np.array([pw[(fr >= lo) & (fr < hi)].sum(0) for lo, hi in zip(edges, edges[1:])]) + 1e-12)
+    sa = spec(args.orig, args.a)
+    keep_a = sa.max(0) > sa.max() - 40
+    best = None
+    for off in np.arange(args.offset - 0.06, args.offset + 0.0601, 0.005):
+        sb = spec(args.repro, args.a + off)
+        n = min(sa.shape[1], sb.shape[1])
+        a_, b_ = sa[:, :n], sb[:, :n]
+        b_ = b_ - np.median(b_ - a_)
+        keep = keep_a[:n]
+        d = np.abs(a_ - b_)[:, keep]
+        if best is None or d.mean() < best[0]:
+            best = (d.mean(), off, d, np.arange(n)[keep])
+    _, off, d, frames = best
+    bar = (frames * 0.0234375 // (240 / args.bpm)).astype(int)
+    per = ' '.join(f'{d[:, bar == k].mean():.2f}' for k in range(int(args.dur // (240 / args.bpm))))
+    print(f'best offset {off:.3f}')
+    print(f'mean {d.mean():.2f} dB; per bar {per}')
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest='cmd', required=True)
@@ -567,6 +679,13 @@ def main():
     s.add_argument('--lo', type=float, default=150); s.add_argument('--hi', type=float, default=1000)
     s = sub.add_parser('octaves'); s.add_argument('orig'); s.add_argument('repro')
     s.add_argument('t', type=float); s.add_argument('dur', type=float); s.add_argument('--offset', type=float, required=True)
+    s = sub.add_parser('lines'); s.add_argument('file'); s.add_argument('a', type=float); s.add_argument('b', type=float); grid(s)
+    s.add_argument('--lo', type=float, default=150); s.add_argument('--hi', type=float, default=6000)
+    s.add_argument('--window', type=int, default=4096); s.add_argument('--min', type=float, default=-33)
+    s.add_argument('--table', action='store_true')
+    s = sub.add_parser('distance'); s.add_argument('orig'); s.add_argument('repro')
+    s.add_argument('a', type=float); s.add_argument('dur', type=float)
+    s.add_argument('--offset', type=float, required=True); s.add_argument('--bpm', type=float, default=120)
     s = sub.add_parser('entry'); s.add_argument('file')
     s.add_argument('--band', type=lambda v: [float(k) for k in v.split(',')], default=[25, 60])
     s.add_argument('--quiet', type=float, default=3); s.add_argument('--level', type=float, default=-30)

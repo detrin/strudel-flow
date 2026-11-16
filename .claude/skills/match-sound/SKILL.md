@@ -66,11 +66,48 @@ A B --bpm B --t0 T` lists the notes in each 16th (`--div 8` for 8ths,
    a 16th grid hides. Tuning comes only from `track`: FFT peaks read about
    10 cents flat at these window sizes, and a detune that is not there beats
    against every other part (it sounds "distorted", "uncanny").
-9. Add only parts you measured. Before adding chords or a pad, check the
-   band they would fill (`sm bands` on the original, or `octaves`): a pad
-   under a lead that has none was the main thing that sounded wrong in one
-   remake. Two voices of one instrument are two lines with their own levels.
-10. Drums: onsets per 32nd in bands (kick 40-90 Hz, snare 1.5-4 kHz, hats
+9. When a lead still sounds "close but not exact" (two voices, harmonics
+   that change from note to note, the second voice's harmonics landing on
+   the first's), stop modelling notes and resynthesize the tone lines:
+   `sm lines song.wav A B --bpm B --t0 T --table` prints every steady line
+   of the spectrogram as `const TONES = [[start16, len16, midi, peak,
+attack, decay, sustain], …]`, played with
+
+   ```js
+   tones: stack(
+     ...TONES.map(([s, d, m, g, a, dc, su]) =>
+       timeCat(
+         ...[
+           [s, silence],
+           [
+             d,
+             note(m)
+               .gain(g * 0.55)
+               .attack(a)
+               .decay(dc)
+               .sustain(su),
+           ],
+           [LOOP16 - s - d, silence],
+         ].filter(([w]) => w > 0),
+       ).slow(LOOP16 / 16),
+     ),
+   )
+     .sound('sine')
+     .release(0.03);
+   ```
+
+   (`LOOP16` = 16ths in the whole loop; Strudel reads backtick strings as
+   mini-notation, so build patterns with `timeCat`, not template strings).
+   Keep the 4096 window: 2048 blurs low tones and scored worse. Add
+   band-limited noise gated with the notes if the original has it between
+   the lines (without it the distance doubled here). On one lead this went
+   from 7.7 dB (hand-written notes) to 4.3 dB.
+
+10. Add only parts you measured. Before adding chords or a pad, check the
+    band they would fill (`sm bands` on the original, or `octaves`): a pad
+    under a lead that has none was the main thing that sounded wrong in one
+    remake. Two voices of one instrument are two lines with their own levels.
+11. Drums: onsets per 32nd in bands (kick 40-90 Hz, snare 1.5-4 kHz, hats
     7-12 kHz, top 12-16 kHz). A hit in every band at once is a snare, not a
     chord; rolls often sit in the top band only.
 
@@ -154,6 +191,12 @@ of the take's bar 1 minus the original's:
   per octave against the note's loudest octave. Within about 4 dB is right.
   Fill a band only on the notes it is missing on: noise added to raise a
   per-bar level made the notes 10-20 dB too noisy.
+
+`sm distance song.wav take.wav A DUR --offset O --bpm B` gives one number
+for the whole passage (mean dB difference of the spectrograms, per bar),
+and refines the offset within 60 ms. Use it to choose between two versions;
+the per-frame `melody` score can prefer a version that sounds further off,
+because it only looks at the strongest note.
 
 `sm align` can be off by 50 ms or more. Check it with `sm entry take.wav`
 (where a part enters after silence, default the sub band) against the same
