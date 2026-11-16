@@ -82,7 +82,7 @@ describe('code ↔ canvas sync', () => {
     ]);
   });
 
-  it('dragging a line above another reorders the code', () => {
+  it('moving a line never reorders the code; only its layout changes', () => {
     setCode('$: s("bd")\n$: s("hh")');
     const [kick, hat] = state().nodes;
     useAppStore.setState({
@@ -91,7 +91,8 @@ describe('code ↔ canvas sync', () => {
         { ...hat, position: { x: 0, y: 0 } },
       ],
     });
-    expect(state().code).toMatch(/hh[\s\S]*bd/);
+    expect(state().code).toMatch(/bd[\s\S]*hh/);
+    expect(state().code).toContain('// @layout 0,500');
   });
 
   it('muting a node mutes its whole line and only that line', () => {

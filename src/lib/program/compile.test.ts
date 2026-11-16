@@ -27,13 +27,16 @@ describe('compileGraph + emitProgram', () => {
     );
   });
 
-  it('stacks inputs that fan into one node, top to bottom', () => {
+  it('stacks inputs that fan into one node in wire order, wherever they sit', () => {
     const nodes = [
       kick('a', 100),
       node('custom-node', 'b', { customPattern: 's("hh*8")' }, { x: 0, y: 0 }),
       node('level-node', 'g', { gain: '0.8' }),
     ];
     expect(code(nodes, [wire('a', 'g'), wire('b', 'g')], tempo)).toContain(
+      '$: stack(s("bd*4"), s("hh*8"))\n  .gain(0.8)',
+    );
+    expect(code(nodes, [wire('b', 'g'), wire('a', 'g')], tempo)).toContain(
       '$: stack(s("hh*8"), s("bd*4"))\n  .gain(0.8)',
     );
   });
@@ -49,10 +52,11 @@ describe('compileGraph + emitProgram', () => {
     );
   });
 
-  it('orders lines by canvas position', () => {
+  it("orders lines by their nodes' order, not by where they sit", () => {
     const nodes = [kick('low', 300), kick('high', 0)];
     nodes[1].data.customPattern = 's("hh")';
-    expect(code(nodes, [], tempo)).toMatch(/hh[\s\S]*bd/);
+    expect(code(nodes, [], tempo)).toMatch(/bd[\s\S]*hh/);
+    expect(code([nodes[1], nodes[0]], [], tempo)).toMatch(/hh[\s\S]*bd/);
   });
 
   it('skips chains without a sound source', () => {

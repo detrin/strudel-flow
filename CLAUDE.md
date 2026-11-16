@@ -104,6 +104,11 @@ server's folder is a temp dir). Presets export and import as JSON. Export/share 
 
 ## Conventions
 
+- Order is explicit, never read from positions: lines come in the order
+  of their nodes in the store's `nodes`, a stack's parts in the order of
+  their wires in `edges` (reconcile builds both in code order; things
+  made on the canvas go last). Moving a node never reorders the code;
+  Auto-arrange lays the canvas out in code order.
 - The canvas follows the code: a row reads left to right in code order;
   consecutive order-free nodes stack in one column. Never reorder code unless
   it provably sounds the same (Tidy checks by playing both versions).
