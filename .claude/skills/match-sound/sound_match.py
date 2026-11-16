@@ -13,6 +13,10 @@ Commands (times in seconds, --bpm and --t0 give the beat grid):
   harmonics FILE F0 T...        harmonic profile at times T (gains for Strudel)
   compare ORIG REPRO A B        blocks and pitches side by side, aligned
   peaks FILE A B                tonal peaks (--side, --fmin, --fmax)
+  track FILE A B                two strongest pitches every 23 ms, in cents
+  melody ORIG REPRO A B         main note of both per frame, agreement per bar
+  octaves ORIG REPRO T DUR      one note's octave spectrum in both (--offset)
+  entry FILE                    where a part starts after silence (--band)
 """
 
 import argparse
@@ -407,6 +411,114 @@ def cmd_peaks(args):
         print('spacings:', ' '.join(f'{d:.0f}' for d in np.diff(fs)))
 
 
+def track_frames(sr, x, a, b, lo, hi, hop=0.0234375, win=0.06):
+    """Two strongest pitches per frame by harmonic sum (4 harmonics), as
+    (time, level dB, [(midi, rel dB), (midi, rel dB)]). Cents are exact, not
+    rounded to FFT bins, and a fifth or octave above is not taken for a note."""
+    from scipy.ndimage import maximum_filter1d
+    w, h, z = int(win * sr), int(hop * sr), 1 << 16
+    fr = np.fft.rfftfreq(z, 1 / sr)
+    cand = 440 * 2 ** ((np.arange(12 * np.log2(lo / 440) * 10, 12 * np.log2(hi / 440) * 10) / 10) / 12)
+    idx = [np.clip(np.round(cand * k / fr[1]).astype(int), 0, len(fr) - 1) for k in range(1, 5)]
+    out = []
+    for c in range(int(a * sr), int(b * sr) - w, h):
+        sp = maximum_filter1d(np.abs(np.fft.rfft(x[c : c + w] * np.hanning(w), z)), 7)
+        hs = sum(sp[i] / np.sqrt(k + 1) for k, i in enumerate(idx))
+        picks = []
+        for i in np.argsort(hs)[::-1]:
+            m = 69 + 12 * np.log2(cand[i] / 440)
+            if all(abs(m - q) > 1.5 and abs(abs(m - q) - 12) > 0.5 for q, _ in picks):
+                picks.append((m, db(hs[i] / hs.max())))
+            if len(picks) == 2:
+                break
+        out.append((c / sr, float(db(hs.max() / w)), picks))
+    return out
+
+
+def cents(m):
+    return f'{note_name(m)}{(m - round(m)) * 100:+3.0f}'
+
+
+def cmd_track(args):
+    sr, x = load(args.file)
+    for t, lv, picks in track_frames(sr, x, args.a, args.b, args.lo, args.hi):
+        pos = f'  16th {(t - args.t0) / (15 / args.bpm):6.2f}' if args.t0 is not None else ''
+        (m1, _), (m2, r2) = picks
+        print(f'{t:7.3f}{pos} {lv:5.0f} dB  {cents(m1):9s} {cents(m2):9s}({r2:4.0f})')
+
+
+def cmd_melody(args):
+    """The main note of the original and the take, frame by frame: how often
+    they agree per bar, and every frame where they do not (A, B on the
+    original; the take is read at the same times plus --offset)."""
+    sra, xa = load(args.orig)
+    srb, xb = load(args.repro)
+    ta = track_frames(sra, xa, args.a, args.b, args.lo, args.hi)
+    tb = track_frames(srb, xb, args.a + args.offset, args.b + args.offset, args.lo, args.hi)
+    bar = 240 / args.bpm
+    top = max(lv for _, lv, _ in ta)
+    stats, wrong = {}, []
+    for (t, la, pa), (_, lb, pb) in zip(ta, tb):
+        if la < top - args.floor:
+            continue
+        k = int((t - args.a) / bar) + 1
+        na, nb = round(pa[0][0]), round(pb[0][0])
+        s = stats.setdefault(k, [0, 0, 0])
+        s[0] += 1
+        if na == nb:
+            s[1] += 1
+        elif na in (round(m) for m, _ in pb) or nb in (round(m) for m, _ in pa):
+            s[2] += 1
+        else:
+            wrong.append(f'{t:7.3f}  16th {(t - args.a) / (15 / args.bpm):6.2f}  orig {cents(pa[0][0]):9s} take {cents(pb[0][0])}')
+        if abs(pa[0][0] - pb[0][0]) < 0.5:
+            s.append(pa[0][0] - pb[0][0])
+    for k, s in sorted(stats.items()):
+        tune = np.median(s[3:]) * 100 if len(s) > 3 else 0
+        print(f'bar {k}: same note {100 * s[1] / s[0]:3.0f}%, voices swapped {100 * s[2] / s[0]:3.0f}%, '
+              f'other {100 * (s[0] - s[1] - s[2]) / s[0]:3.0f}%; original is {tune:+.0f} cents from the take')
+    print('\n'.join(wrong))
+
+
+def octave_levels(sr, x, a, dur):
+    y = x[int(a * sr) : int((a + dur) * sr)]
+    sp = np.abs(np.fft.rfft(y * np.hanning(len(y)))) ** 2
+    fr = np.fft.rfftfreq(len(y), 1 / sr)
+    edges = [100, 200, 400, 800, 1600, 3200, 6400, 12800, 20000]
+    return edges, np.array([10 * np.log10(sp[(fr >= lo) & (fr < hi)].sum() + 1e-12) for lo, hi in zip(edges, edges[1:])])
+
+
+def cmd_octaves(args):
+    """One held note (T on the original, T + --offset on the take): energy per
+    octave relative to its loudest octave. Harmonics too weak, a noise layer
+    missing or a part that should not be there all show here."""
+    sra, xa = load(args.orig)
+    srb, xb = load(args.repro)
+    edges, la = octave_levels(sra, xa, args.t, args.dur)
+    _, lb = octave_levels(srb, xb, args.t + args.offset, args.dur)
+    la, lb = la - la.max(), lb - lb.max()
+    print('octave       ' + ' '.join(f'{lo:>6}' for lo in edges[:-1]))
+    print('original     ' + ' '.join(f'{v:6.0f}' for v in la))
+    print('take         ' + ' '.join(f'{v:6.0f}' for v in lb))
+    print('take - orig  ' + ' '.join(f'{b - a:+6.0f}' for a, b in zip(la, lb)))
+
+
+def cmd_entry(args):
+    """First time the band rises above --level dB after at least --quiet
+    seconds under it: where a part enters (the 808 after an intro). Use it for
+    the take's offset when `align` disagrees with what you hear."""
+    sr, x = load(args.file)
+    y = bandpass(sr, x, args.band)
+    h = int(0.005 * sr)
+    e = db(np.sqrt(np.convolve(y ** 2, np.ones(h) / h, 'same'))[::h])
+    q = int(args.quiet / 0.005)
+    for i in range(q, len(e)):
+        if e[i] > args.level and e[i - q : i].max() <= args.level:
+            print(f'{i * 0.005:.3f}')
+            return
+    sys.exit('no entry found')
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest='cmd', required=True)
@@ -445,6 +557,19 @@ def main():
     s = sub.add_parser('peaks'); s.add_argument('file'); s.add_argument('a', type=float); s.add_argument('b', type=float)
     s.add_argument('--side', action='store_true')
     s.add_argument('--fmin', type=float, default=2000); s.add_argument('--fmax', type=float, default=20000)
+
+    for name in ('track',):
+        s = sub.add_parser(name); s.add_argument('file'); s.add_argument('a', type=float); s.add_argument('b', type=float); grid(s)
+        s.add_argument('--lo', type=float, default=150); s.add_argument('--hi', type=float, default=1000)
+    s = sub.add_parser('melody'); s.add_argument('orig'); s.add_argument('repro')
+    s.add_argument('a', type=float); s.add_argument('b', type=float); s.add_argument('--offset', type=float, required=True)
+    s.add_argument('--bpm', type=float, default=120); s.add_argument('--floor', type=float, default=12)
+    s.add_argument('--lo', type=float, default=150); s.add_argument('--hi', type=float, default=1000)
+    s = sub.add_parser('octaves'); s.add_argument('orig'); s.add_argument('repro')
+    s.add_argument('t', type=float); s.add_argument('dur', type=float); s.add_argument('--offset', type=float, required=True)
+    s = sub.add_parser('entry'); s.add_argument('file')
+    s.add_argument('--band', type=lambda v: [float(k) for k in v.split(',')], default=[25, 60])
+    s.add_argument('--quiet', type=float, default=3); s.add_argument('--level', type=float, default=-30)
 
     args = p.parse_args()
     if getattr(args, 't0', 0) is None and args.cmd == 'bars':

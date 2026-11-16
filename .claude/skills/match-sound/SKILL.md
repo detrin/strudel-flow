@@ -59,9 +59,20 @@ A B --bpm B --t0 T` lists the notes in each 16th (`--div 8` for 8ths,
    about 60 Hz: for an 808 find where notes change in the roll, then measure
    each segment with a long FFT (its strongest peak; check the 2nd and 3rd
    harmonics).
-8. Drums: onsets per 32nd in bands (kick 40-90 Hz, snare 1.5-4 kHz, hats
-   7-12 kHz, top 12-16 kHz). A hit in every band at once is a snare, not a
-   chord; rolls often sit in the top band only.
+8. A lead or melody: `sm track song.wav A B --lo HZ --hi HZ --bpm B --t0 T`
+   gives the two strongest pitches every 23 ms with exact cents. Write the
+   notes from it, not from `roll` alone: it shows held notes, short bends,
+   rests and a second voice (a fifth under or over, often 5-10 dB down) that
+   a 16th grid hides. Tuning comes only from `track`: FFT peaks read about
+   10 cents flat at these window sizes, and a detune that is not there beats
+   against every other part (it sounds "distorted", "uncanny").
+9. Add only parts you measured. Before adding chords or a pad, check the
+   band they would fill (`sm bands` on the original, or `octaves`): a pad
+   under a lead that has none was the main thing that sounded wrong in one
+   remake. Two voices of one instrument are two lines with their own levels.
+10. Drums: onsets per 32nd in bands (kick 40-90 Hz, snare 1.5-4 kHz, hats
+    7-12 kHz, top 12-16 kHz). A hit in every band at once is a snare, not a
+    chord; rolls often sit in the top band only.
 
 Clues seen so far: notes exactly on equal temperament with instant jumps
 are a hard-tuned vocal; harmonic strengths that change from note to note
@@ -104,6 +115,14 @@ per bar in fixed bands (sub, low, mid, snare, hats, air, plus `--band LO,HI`)
 and the take minus the original: fix the part that owns each band.
 `set_node` cannot change a Voice node's sound; use `set_code`.
 
+Work on your own dev server (own worktree and port) when another session
+uses the app. The MCP tools only reach :5174 and :5173; for another port
+talk to `/__bridge?role=agent` on it with the same JSON messages
+(`{id, method, params}`; `play` is `set_playing`). If the Playwright MCP
+browser is busy, launch Chromium from the worktree's `@playwright/test` with
+`--autoplay-policy=no-user-gesture-required`, open the app and click
+"Play code": that tab gets the commands and records without a click.
+
 If `record_stop` says "Nothing was recorded" and `get_diagnostics` shows an
 empty `evaluated`, the tab was reloaded and its audio is locked until a
 click. Do not ask the person: open the app in Playwright
@@ -122,6 +141,23 @@ the block's peak, for both, with the differences. Read it as:
 - `d-12`: where the gate cuts. This is the note length to fix.
 - `d-6`: the shape inside the block (decay too slow or fast).
 - `d-20`: the tail after the cut (release).
+
+For a melody, per-bar levels are not enough: they matched within 1 dB on
+a remake whose notes and timbre were clearly off. Also run, with the offset
+of the take's bar 1 minus the original's:
+
+- `sm melody song.wav take.wav A B --offset O --bpm B --lo HZ --hi HZ`: the
+  share of 23 ms frames where the main note agrees, per bar (aim for 85%+;
+  the rest should be one-frame edges), the frames that differ, and the
+  tuning difference.
+- `sm octaves song.wav take.wav T DUR --offset O` on a few held notes: energy
+  per octave against the note's loudest octave. Within about 4 dB is right.
+  Fill a band only on the notes it is missing on: noise added to raise a
+  per-bar level made the notes 10-20 dB too noisy.
+
+`sm align` can be off by 50 ms or more. Check it with `sm entry take.wav`
+(where a part enters after silence, default the sub band) against the same
+part in the original, and pass `--offset` to `bands` yourself.
 
 Also `bars`, `peaks` and `harmonics` on the take, to compare levels per
 bar, high tones and timbre. Repeat until the differences are below the grid
