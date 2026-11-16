@@ -13,6 +13,10 @@ Commands (times in seconds, --bpm and --t0 give the beat grid):
   harmonics FILE F0 T...        harmonic profile at times T (gains for Strudel)
   compare ORIG REPRO A B        blocks and pitches side by side, aligned
   peaks FILE A B                tonal peaks (--side, --fmin, --fmax)
+  loop FILE A B                 how long a passage takes to repeat (→ tempo)
+  steps FILE --bpm --t0         per step: note, high partial ×note, levels (--compare TAKE --offset)
+  drums FILE --bpm --t0         onsets per 32nd in kick/snare/hats/top bands
+  roots FILE --bpm --t0         bass note per half bar (long windows)
   track FILE A B                two strongest pitches every 23 ms, in cents
   melody ORIG REPRO A B         main note of both per frame, agreement per bar
   octaves ORIG REPRO T DUR      one note's octave spectrum in both (--offset)
@@ -316,19 +320,25 @@ def find_offset(orig, repro, bars, bpm):
     n = min(n, *(len(a) for a in ea))
     ea = [a[:n] for a in ea]
     eb = [band_env(srb, xb, lo, hi) for lo, hi in ((25, 60), (600, 2500), (6000, 12000))]
-    best = (-9, 0)
+    scores = []
     for lag in range(0, n):
         if lag + n > len(eb[0]):
             break
-        c = sum(np.dot(a, b[lag : lag + n]) for a, b in zip(ea, eb)) / n / len(ea)
-        best = max(best, (c, lag))
+        scores.append((sum(np.dot(a, b[lag : lag + n]) for a, b in zip(ea, eb)) / n / len(ea), lag))
+    scores.sort(reverse=True)
+    best = scores[0]
+    beat = 60 / bpm / 0.005
+    rival = next((s for s in scores[1:] if abs(s[1] - best[1]) > beat), None)
+    find_offset.rival = (rival[1] * 0.005, rival[0]) if rival else None
     return best[1] * 0.005, best[0]
 
 
 def cmd_align(args):
     off, corr = find_offset(args.orig, args.repro, args.bars, args.bpm)
     print(f'{off:.3f}')
-    print(f'correlation {corr:.2f} (record at least two loops)', file=sys.stderr)
+    rival = getattr(find_offset, 'rival', None)
+    note = f'; runner-up {rival[0]:.3f}s at {rival[1]:.2f}' if rival else ''
+    print(f'correlation {corr:.2f}{note} (record at least two loops; a runner-up close to the best means check by ear or with `entry`)', file=sys.stderr)
 
 
 BANDS = {
@@ -631,6 +641,138 @@ def cmd_distance(args):
     print(f'mean {d.mean():.2f} dB; per bar {per}')
 
 
+def cmd_loop(args):
+    """How long a passage takes to repeat: spectral autocorrelation between
+    --min and --max seconds. Derive the tempo from this (a loop is a whole
+    number of bars), not only from `tempo`, which can lock onto a cross-rhythm."""
+    sr, x = load(args.file)
+    seg = x[int(args.a * sr) : int(args.b * sr)]
+    hop = 480
+    _, _, z = stft(seg, sr, nperseg=2048, noverlap=2048 - hop)
+    s = np.log1p(np.abs(z))
+    s = s - s.mean(1, keepdims=True)
+    fps = sr / hop
+    out = []
+    for lag_s in np.arange(args.min, args.max, 0.005):
+        lag = int(lag_s * fps)
+        if lag >= s.shape[1] - 10:
+            break
+        a, b = s[:, :-lag], s[:, lag:]
+        out.append((np.sum(a * b) / np.sqrt(np.sum(a * a) * np.sum(b * b)), lag_s))
+    out.sort(reverse=True)
+    picked = []
+    for c, lag_s in out:
+        if all(abs(lag_s - q) > 0.05 for _, q in picked):
+            picked.append((c, lag_s))
+        if len(picked) == 4:
+            break
+    for c, lag_s in picked:
+        bpms = ', '.join(f'{bars} bar{"s" if bars > 1 else ""} at {240 * bars / lag_s:.2f} bpm' for bars in (1, 2, 4))
+        print(f'{lag_s:.3f}s  correlation {c:.2f}   = {bpms}')
+
+
+def step_table(path, t0, bpm, n, div):
+    """Per step: main note (harmonic sum of harmonics 1-4), its strongest
+    partial above 2.5 kHz as a multiple of that note, that partial's level
+    re the note (dB), and the step's level (dB)."""
+    sr, x = load(path)
+    st = 60 / bpm * 4 / div
+    cand = np.arange(28, 96, 1.0)
+    big = 1 << 16
+    f = np.fft.rfftfreq(big, 1 / sr)
+    rows = []
+    for k in range(n):
+        a = t0 + k * st + 0.015
+        s = x[int(a * sr) : int((a + st - 0.03) * sr)]
+        if len(s) < 64:
+            break
+        spec = np.abs(np.fft.rfft(s * np.hanning(len(s)), big))
+        score = []
+        for m in cand:
+            f0 = 440 * 2 ** ((m - 69) / 12)
+            score.append(sum(np.interp(f0 * h, f, spec) / h for h in (1, 2, 3, 4) if f0 * h < 2500))
+        m = int(cand[int(np.argmax(score))])
+        f0 = 440 * 2 ** ((m - 69) / 12)
+        w = f > 2500
+        hp = f[w][np.argmax(spec[w])]
+        side = db(spec[w].max() / max(np.interp(f0, f, spec), 1e-12))
+        rows.append((k, m, hp / f0, side, db(np.sqrt(np.mean(s**2)))))
+    return rows
+
+
+def cmd_steps(args):
+    """One row per grid step (16ths by default): note, strongest high partial
+    as a multiple of the note (FM: sidebands at (k-1) and (k+1) times the note
+    mean fmh(k)), that partial's level re the note, and the step's level. With
+    --compare TAKE --offset S, the take's row beside the original's and the
+    level difference."""
+    a = step_table(args.file, args.t0 or 0.0, args.bpm, args.n, args.div)
+    b = step_table(args.compare, args.offset, args.bpm, args.n, args.div) if args.compare else None
+    print('step  note  ×note  high dB  level' + ('   | take: note  ×note  high dB  level  Δlevel' if b else ''))
+    for i, (k, m, r, side, lv) in enumerate(a):
+        line = f'{k:4d}  {note_name(m):4s} {r:6.2f}  {side:6.0f}  {lv:6.1f}'
+        if b and i < len(b):
+            _, m2, r2, s2, l2 = b[i]
+            same = '' if m2 == m else ' ≠'
+            line += f'   | {note_name(m2):4s}{same:2s}{r2:6.2f}  {s2:6.0f}  {l2:6.1f}  {l2 - lv:+5.1f}'
+        print(line)
+    if b:
+        diffs = [abs(bb[4] - aa[4]) for aa, bb in zip(a, b)]
+        same = sum(aa[1] == bb[1] for aa, bb in zip(a, b))
+        print(f'notes the same: {same}/{min(len(a), len(b))}; mean |Δlevel| {np.mean(diffs):.2f} dB')
+
+
+DRUM_BANDS = (('kick 40-100', 40, 100), ('snare 1.5-4k', 1500, 4000), ('hats 7-12k', 7000, 12000), ('top 12-18k', 12000, 18000))
+
+
+def cmd_drums(args):
+    """Onsets per 32nd in drum bands, one row per bar: '#' a jump over 9 dB,
+    '+' over 5 dB. A hit in every band at once is a snare or clap, not a
+    chord; rolls often live in the top band only; a 'kick' row that follows
+    the bassline is the 808, not a kick."""
+    sr, x = load(args.file)
+    st = 60 / args.bpm / 8
+    t0 = args.t0 or 0.0
+    h = int(sr * 0.005)
+    for name, lo, hi in DRUM_BANDS:
+        y = bandpass(sr, x, (lo, hi))
+        e = db(np.array([np.sqrt(np.mean(y[i : i + h] ** 2)) for i in range(0, len(y) - h, h)]))
+        print(name)
+        for bar in range(args.first - 1, args.first - 1 + args.bars):
+            row = ''
+            for k in range(32):
+                i = int((t0 + bar * 32 * st + k * st) / 0.005)
+                jump = e[i : i + 4].max() - e[max(0, i - 5) : max(1, i - 1)].mean()
+                row += '#' if jump > 9 else ('+' if jump > 5 else '.')
+            print(f'  bar{bar + 1:3d} |' + ' '.join(row[j : j + 8] for j in range(0, 32, 8)) + '|')
+
+
+def cmd_roots(args):
+    """Bass note per part of a bar (--div 2: half bars), from long windows
+    with harmonics 1-4: a 16th-note `roll` cannot resolve notes under ~60 Hz.
+    Also prints the strongest peak, which is the truth when the harmonic sum
+    picks a neighbour (an 808's 2nd and 3rd harmonics decide)."""
+    sr, x = load(args.file)
+    bar = 60 / args.bpm * 4
+    t0 = args.t0 or 0.0
+    big = 1 << 18
+    f = np.fft.rfftfreq(big, 1 / sr)
+    cand = np.arange(23, 60, 0.05)
+    f0s = 440 * 2 ** ((cand - 69) / 12)
+    for b in range(args.bars):
+        cells = []
+        for part in range(args.div):
+            a = t0 + b * bar + part * bar / args.div + 0.05
+            s = x[int(a * sr) : int((a + bar / args.div - 0.1) * sr)]
+            spec = np.abs(np.fft.rfft(s * np.hanning(len(s)), big))
+            score = [sum(np.interp(q * k, f, spec) / k**0.5 for k in (1, 2, 3, 4)) for q in f0s]
+            m = cand[int(np.argmax(score))]
+            w = (f > 25) & (f < 130)
+            pk = f[w][np.argmax(spec[w])]
+            cells.append(f'{note_name(m):4s}(peak {pk:5.1f} Hz)')
+        print(f'bar{b + 1:3d}: ' + '  '.join(cells))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest='cmd', required=True)
@@ -689,6 +831,16 @@ def main():
     s = sub.add_parser('entry'); s.add_argument('file')
     s.add_argument('--band', type=lambda v: [float(k) for k in v.split(',')], default=[25, 60])
     s.add_argument('--quiet', type=float, default=3); s.add_argument('--level', type=float, default=-30)
+
+    s = sub.add_parser('loop'); s.add_argument('file'); s.add_argument('a', type=float); s.add_argument('b', type=float)
+    s.add_argument('--min', type=float, default=1.0); s.add_argument('--max', type=float, default=8.0)
+    s = sub.add_parser('steps'); s.add_argument('file'); grid(s)
+    s.add_argument('--n', type=int, default=32); s.add_argument('--div', type=int, default=16, help='steps per bar')
+    s.add_argument('--compare'); s.add_argument('--offset', type=float, default=0.0)
+    s = sub.add_parser('drums'); s.add_argument('file'); grid(s)
+    s.add_argument('--bars', type=int, default=4); s.add_argument('--first', type=int, default=1)
+    s = sub.add_parser('roots'); s.add_argument('file'); grid(s)
+    s.add_argument('--bars', type=int, default=4); s.add_argument('--div', type=int, default=2)
 
     args = p.parse_args()
     if getattr(args, 't0', 0) is None and args.cmd == 'bars':

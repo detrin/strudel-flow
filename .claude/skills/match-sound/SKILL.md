@@ -37,7 +37,10 @@ Update the global one with the Python it was installed with
 
 1. Tempo and grid: `sm tempo song.wav 30 110` (it may say half or double;
    check against block starts). Beat 1 is the first onset of the section:
-   `sm blocks` prints it.
+   `sm blocks` prints it. For anything that loops, `sm loop song.wav A B`
+   first: the loop is a whole number of bars, so its length fixes the tempo.
+   `tempo` can lock onto a cross-rhythm (it said 142.5 for a 4.5 s loop that
+   is 2 bars at 106.67, a 4:3 feel).
 2. Look at short stretches, not the whole song: `sm spectro song.wav A 6
 out.png`, then Read the PNG. Whole-song pictures hide the detail.
 3. Sounds the person calls "high" or "glitchy" often live only in the side
@@ -56,9 +59,9 @@ out.png`, then Read the PNG. Whole-song pictures hide the detail.
 7. Several parts at once (melody over chords, a bassline): `sm roll song.wav
 A B --bpm B --t0 T` lists the notes in each 16th (`--div 8` for 8ths,
    `--lo/--hi` MIDI range per part). A 16th window cannot resolve notes under
-   about 60 Hz: for an 808 find where notes change in the roll, then measure
-   each segment with a long FFT (its strongest peak; check the 2nd and 3rd
-   harmonics).
+   about 60 Hz: for a bassline or 808 use `sm roots song.wav --bpm B --t0 T
+--bars N --div 2` (half bars; `--div 4` for quarters), long windows with
+   the strongest peak beside the note (trust the peak when they disagree).
 8. A lead or melody: `sm track song.wav A B --lo HZ --hi HZ --bpm B --t0 T`
    gives the two strongest pitches every 23 ms with exact cents. Write the
    notes from it, not from `roll` alone: it shows held notes, short bends,
@@ -107,9 +110,15 @@ attack, decay, sustain], …]`, played with
     band they would fill (`sm bands` on the original, or `octaves`): a pad
     under a lead that has none was the main thing that sounded wrong in one
     remake. Two voices of one instrument are two lines with their own levels.
-11. Drums: onsets per 32nd in bands (kick 40-90 Hz, snare 1.5-4 kHz, hats
-    7-12 kHz, top 12-16 kHz). A hit in every band at once is a snare, not a
-    chord; rolls often sit in the top band only.
+11. Drums: `sm drums song.wav --bpm B --t0 T --bars N` prints onsets per
+    32nd in kick, snare, hats and top bands. A hit in every band at once is a
+    snare or clap, not a chord; rolls often sit in the top band only; a kick
+    row that follows the bassline is the 808.
+12. A sequence that changes every step (an arp, a glitch loop): `sm steps
+song.wav --bpm B --t0 T --n 32` gives per 16th the note, its strongest
+    partial above 2.5 kHz as a multiple of the note, that partial's level re
+    the note, and the step's level. Write the remake's patterns from these
+    columns (notes, `fmh`, `fm`, `gain` per step).
 
 Clues seen so far: notes exactly on equal temperament with instant jumps
 are a hard-tuned vocal; harmonic strengths that change from note to note
@@ -120,7 +129,11 @@ bitcrusher (`coarse`, `crush`); a high tone whose frequency is a fixed
 multiple of the bass note (it moves with it and pulses at the bass
 frequency) is a high harmonic of the 808 itself, remade as sines at
 `bass * 290, 291, 292`; dense harmonics up to 16 kHz that vanish when one
-part rests mean that part is a bright saw, whatever the mix suggests.
+part rests mean that part is a bright saw, whatever the mix suggests;
+pairs of high partials at exactly (k-1) and (k+1) times the note with
+nothing at k are FM: a sine with `.fmh(k)`, and Strudel's `.fm(i)` index is
+about 2·10^(sideband dB/20) (it matched within 1-2 dB); k that jumps from
+note to note is what makes such a loop sound glitchy.
 
 ## 3. Remake it
 
@@ -138,6 +151,9 @@ part rests mean that part is a bright saw, whatever the mix suggests.
   them shorter, and check with `compare`, not by arithmetic.
 - `coarse`/`crush` seem to run after the filters: a low-pass will not
   remove the aliasing they add.
+- Per-step patterns (`fm`, `fmh`, `gain` from `steps`) go before `.slow()`:
+  `note(N).fm(I).fmh(R).gain(G).slow(2)`. After `.slow(2)` they would run
+  twice as fast as the notes.
 
 ## 4. Record and compare
 
@@ -160,8 +176,11 @@ browser is busy, launch Chromium from the worktree's `@playwright/test` with
 `--autoplay-policy=no-user-gesture-required`, open the app and click
 "Play code": that tab gets the commands and records without a click.
 
-If `record_stop` says "Nothing was recorded" and `get_diagnostics` shows an
-empty `evaluated`, the tab was reloaded and its audio is locked until a
+After the app is rebuilt (`pnpm stable`) the person's tab reloads and its
+audio is locked until a click, so open the Playwright tab before the first
+take instead of finding out from a failed one. If `record_stop` says "Nothing
+was recorded" and `get_diagnostics` shows an empty `evaluated`, the tab was
+reloaded and its audio is locked until a
 click. Do not ask the person: open the app in Playwright
 (`browser_navigate` to the same URL, click "Play code"), then commands go
 to that newest tab. Close it afterwards and `set_code` again so the
@@ -198,7 +217,14 @@ and refines the offset within 60 ms. Use it to choose between two versions;
 the per-frame `melody` score can prefer a version that sounds further off,
 because it only looks at the strongest note.
 
-`sm align` can be off by 50 ms or more. Check it with `sm entry take.wav`
+For a step sequence, `sm steps song.wav --bpm B --t0 0 --compare take.wav
+--offset O` puts the take's row beside each step of the original and ends
+with "notes the same: N/32; mean |Δlevel|". All notes the same and under
+1 dB was a match.
+
+`sm align` also prints the runner-up offset (at least a beat away): when
+its correlation is close to the best one, the match is ambiguous. `sm align`
+can be off by 50 ms or more. Check it with `sm entry take.wav`
 (where a part enters after silence, default the sub band) against the same
 part in the original, and pass `--offset` to `bands` yourself.
 
@@ -208,3 +234,22 @@ bar, high tones and timbre. Repeat until the differences are below the grid
 
 Save takes for the person to listen to in `~/.strudelton/recordings/`,
 next to a cut of the original (`ffmpeg -ss A -t D -i song.wav out.wav`).
+
+## 5. Keep it and show it
+
+- Finished tracks go to the Library, which is local
+  (`~/.strudelton/presets/`): `save_preset` per line, named "song: part",
+  tagged with the song, the role and "N bpm" (presets do not keep the
+  tempo; `preview_preset` plays them at it). The repo is public: never commit
+  the person's songs or presets unless they ask; code fixes found on the way
+  are fine.
+- The tempo is global. When songs at different tempi share a patch, mute
+  the others (`_label:`) and note each song's tempo in a comment above its
+  constants.
+- Lay the canvas out per song: the layout from `pnpm shot FILE --tidy --code
+OUT` (Auto-arrange in a background tab measures nothing and stacks nodes on
+  a default grid), each song's group moved down 100-200 px from the previous
+  one, then one `// @frame` per song from 60 px above its first row to 70 px
+  above the next song, labels under about 20 characters (longer ones are
+  cut). Check with `pnpm shot FILE --fit` and read the PNG before opening it
+  in the person's tab (`open_file` reads the file on disk).
