@@ -48,8 +48,9 @@ function chain(node: ProgramNode): Chain {
     .filter((input) => input.base);
   const stacked = (extra: string[] = []): Chain => {
     const parts = [...inputs.map(inline), ...extra];
-    return parts.length === 1
-      ? (inputs[0] ?? { base: parts[0], calls: [] })
+    const [only] = parts;
+    return parts.length === 1 && only !== undefined
+      ? (inputs[0] ?? { base: only, calls: [] })
       : { base: parts.length ? `stack(${parts.join(', ')})` : '', calls: [] };
   };
   if (definition && isSource(definition)) {

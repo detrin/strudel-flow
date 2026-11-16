@@ -1,5 +1,5 @@
 import { useAppStore } from '@/store/app-store';
-import { nodeTypes, type AppNode } from '@/components/nodes/registry';
+import { nodeDefinitions, type AppNode } from '@/components/nodes/registry';
 import type { ProjectState } from './project-state';
 import { FORMAT_VERSION } from './save-format';
 
@@ -37,7 +37,7 @@ export function applyPatch(state: ProjectState): boolean {
   if (
     state.nodes.some(
       (node) =>
-        !Object.prototype.hasOwnProperty.call(nodeTypes, node.type ?? ''),
+        !Object.prototype.hasOwnProperty.call(nodeDefinitions, node.type ?? ''),
     )
   )
     return false;

@@ -3,7 +3,7 @@ import { ReactFlow, SelectionMode, useReactFlow } from '@xyflow/react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
-import { nodeTypes } from '@/components/nodes/registry';
+import { nodeTypes } from '@/components/nodes/node-types';
 import deleteEdge from '@/components/edges/delete-edge';
 import { useAppStore } from '@/store/app-store';
 import { EditorToolbar } from './toolbar';

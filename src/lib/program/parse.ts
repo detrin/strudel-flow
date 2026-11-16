@@ -18,6 +18,7 @@ import {
 import { labelOf } from '@/lib/lines';
 import { flatten } from './compile';
 import { HUSH, LAYOUT } from './emit';
+import { must } from '@/lib/must';
 import { ANONYMOUS, type Line, type Program, type ProgramNode } from './types';
 
 /** An existing source node and the code it writes, for identity matching. */
@@ -75,10 +76,10 @@ function claim(calls: Call[], from: number) {
   // only keeps them as pattern values; then the longer run wins.
   let best: ReturnType<typeof claimAs> = null;
   let bestScore = -1;
-  for (const type of byMethod(calls[from].name)) {
+  for (const type of byMethod(must(calls[from], 'call').name)) {
     const found = claimAs(type, calls, from);
     if (!found) continue;
-    const definition = nodeDefinitions[type];
+    const definition = must(nodeDefinitions[type], `node type ${type}`);
     const literal = !Object.entries(definition.parameters).some(
       ([key, parameter]) =>
         parameter.control === 'knob' && isPatternValue(found.data[key]),
@@ -90,15 +91,14 @@ function claim(calls: Call[], from: number) {
 }
 
 function claimAs(type: string, calls: Call[], from: number) {
-  const definition = nodeDefinitions[type];
+  const definition = must(nodeDefinitions[type], `node type ${type}`);
   let end = from;
   const seen = new Set<string>();
-  while (
-    end < calls.length &&
-    definition.methods.includes(calls[end].name) &&
-    !seen.has(calls[end].name)
-  )
-    seen.add(calls[end++].name);
+  for (let call = calls[end]; call; call = calls[end]) {
+    if (!definition.methods.includes(call.name) || seen.has(call.name)) break;
+    seen.add(call.name);
+    end++;
+  }
   for (; end > from; end--) {
     const run = calls.slice(from, end).map((call) => call.name);
     const data = definition.parse(calls.slice(from, end));
@@ -121,14 +121,15 @@ function chainEffects(inputs: ProgramNode[], calls: Call[]): ProgramNode {
       current = [{ type: claimed.type, data: claimed.data, inputs: current }];
       index += claimed.length;
     } else if (previous?.type === METHOD) {
-      previous.data.calls += `.${calls[index++].text}`;
+      previous.data.calls += `.${must(calls[index++], 'call').text}`;
     } else {
-      const data = { calls: calls[index++].text };
+      const data = { calls: must(calls[index++], 'call').text };
       current = [{ type: METHOD, data, inputs: current }];
     }
   }
-  return current.length === 1
-    ? current[0]
+  const [only] = current;
+  return current.length === 1 && only
+    ? only
     : { type: MIX, data: {}, inputs: current };
 }
 
@@ -186,7 +187,8 @@ function chainItems(inputs: ProgramNode[], items: Item[]): ProgramNode {
     current = [node];
   }
   flush();
-  return current.length === 1 ? current[0] : chainEffects(current, []);
+  const [only] = current;
+  return current.length === 1 && only ? only : chainEffects(current, []);
 }
 
 function createParser(source: string, known: Known[], comments: Comment[]) {
@@ -282,7 +284,7 @@ function createParser(source: string, known: Known[], comments: Comment[]) {
     //    A shorter match than an instrument's model loses to the model (a
     //    Notes node no longer holds what is now a Pad's code).
     for (let used = calls.length; used >= (model?.used ?? 0); used--) {
-      const end = used ? calls[used - 1].end : base.end;
+      const end = used ? must(calls[used - 1], 'call').end : base.end;
       const match = takeKnown(
         normalize(source.slice(base.start, end)),
         used === 0 && model !== null,
@@ -307,7 +309,9 @@ function createParser(source: string, known: Known[], comments: Comment[]) {
     }
     // 3. A call an instrument models (`note("c e g")` is a Notes node).
     if (model) {
-      const rest = model.used ? after(calls[model.used - 1].end) : items;
+      const rest = model.used
+        ? after(must(calls[model.used - 1], 'call').end)
+        : items;
       return rest.length ? chainItems([model.node], rest) : model.node;
     }
     // 4. Anything else is a Code node holding the base expression.
@@ -342,7 +346,7 @@ function tempoOf(
   )
     return null;
   const { name } = statement.expression.callee;
-  const [arg] = statement.expression.arguments;
+  const arg = must(statement.expression.arguments[0], 'tempo argument');
   type Operand = Expression | PrivateIdentifier | SpreadElement;
   const resolve = (node: Operand) => {
     const value =
@@ -532,29 +536,31 @@ function disabledLines(source: string) {
   const rows = source.split('\n');
   const offsets: number[] = [];
   rows.reduce((at, row) => (offsets.push(at), at + row.length + 1), 0);
+  const row = (at: number) => must(rows[at], 'row');
   for (let i = 0; i < rows.length; i++) {
-    const head = COMMENT_LINE.exec(rows[i]);
-    if (!head || !LABELLED.test(head[2])) continue;
-    const body = [head[2]];
+    const head = COMMENT_LINE.exec(row(i));
+    const text = head?.[2];
+    if (text === undefined || !LABELLED.test(text)) continue;
+    const body = [text];
     let last = i;
     for (let j = i + 1; j < rows.length; j++) {
-      const next = COMMENT_LINE.exec(rows[j]);
+      const next = COMMENT_LINE.exec(row(j))?.[2];
       // Continuations are indented, or start with `.` or an inner comment.
-      if (!next || !/^(\s|\.|\/\/)/.test(next[2])) break;
-      body.push(next[2]);
+      if (next === undefined || !/^(\s|\.|\/\/)/.test(next)) break;
+      body.push(next);
       last = j;
     }
     const result = parseProgram(body.join('\n'));
     if (!result.ok || result.program.lines.length !== 1) continue;
     if (result.program.prelude.trim()) continue;
-    const [parsed] = result.program.lines;
+    const parsed = must(result.program.lines[0], 'line');
     const first = flatten(parsed.sink).at(-1);
     // `todo: fix` is valid code but no music: the source must be a call.
     if (first?.type === CODE && !/\(/.test(String(first.data.customPattern)))
       continue;
     found.push({
-      start: offsets[i],
-      end: offsets[last] + rows[last].length,
+      start: must(offsets[i], 'offset'),
+      end: must(offsets[last], 'offset') + row(last).length,
       line: parsed,
     });
     i = last;
@@ -565,13 +571,14 @@ function disabledLines(source: string) {
 /** `// @layout 0,0 320,0` → positions, or undefined if malformed. */
 function positionsOf(comment: string) {
   const pairs = comment.split(LAYOUT)[1]?.trim().split(/\s+/) ?? [];
-  const positions = pairs.map((pair) => {
+  const positions: { x: number; y: number }[] = [];
+  for (const pair of pairs) {
     const [x, y] = pair.split(',').map(Number);
-    return { x, y };
-  });
-  return positions.every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))
-    ? positions
-    : undefined;
+    if (x === undefined || y === undefined) return undefined;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return undefined;
+    positions.push({ x, y });
+  }
+  return positions;
 }
 
 function line(

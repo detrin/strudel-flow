@@ -1,143 +1,12 @@
-import '@/lib/strudel-scope';
 import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '@/store/app-store';
 import { programOf } from '@/lib/program';
 import { emitProgram, isAudible } from '@/lib/program/emit';
-import {
-  initStrudel,
-  evaluate,
-  getAudioContext,
-  hush,
-  type StrudelSession,
-} from '@strudel/web';
-import { setSchedulerNow } from '@/lib/strudel-clock';
-import { loadSamples } from '@/data/samples';
-import { collectPunchcards, tagPunchcards } from '@/lib/punchcards';
-import { setEvaluatedCode, startLive } from '@/lib/live';
-import { startMeters, tagAnalysers } from '@/lib/meters';
-import { prepareLaunch } from '@/lib/launch';
-import { cutSound } from '@/lib/cut-sound';
 import { useRecorder } from '@/lib/recorder';
+import { playbackEngine, type Engine } from '@/lib/engine';
 
-/**
- * Strudel, started once per tab. A hot update re-runs this module (when it
- * or anything it imports changes); starting Strudel again would leave the
- * old player running, still audible, with nothing able to stop it. The
- * live view and meters re-attach to it instead, replacing the old ones.
- */
-const shared = globalThis as {
-  __strudeltonStrudel?: Promise<StrudelSession>;
-  __strudeltonWatchers?: () => void;
-};
-const ready: Promise<StrudelSession> = (shared.__strudeltonStrudel ??=
-  initStrudel()).then((session: StrudelSession) => {
-  shared.__strudeltonWatchers?.();
-  setSchedulerNow(
-    () => session.scheduler.now(),
-    () => session.scheduler.cps ?? 0,
-  );
-  const stopLive = startLive(() => session.scheduler.pattern);
-  const stopMeters = startMeters(
-    () => session.scheduler.pattern,
-    () => useAppStore.getState().isPlaying,
-  );
-  shared.__strudeltonWatchers = () => {
-    stopLive();
-    stopMeters();
-  };
-  return session;
-});
-void ready.catch((error: unknown) => {
-  useAppStore
-    .getState()
-    .setError(
-      error instanceof Error ? error.message : 'Audio could not start.',
-    );
-});
-void loadSamples();
-
-async function evaluateAudio(pattern: string) {
-  const session = await ready;
-  // Strudel's clock is the audio clock, and Strudel only wakes the audio
-  // when a sound plays: a song whose first bars are silent (arranged to
-  // start later, or muted) would stay frozen at its start. Playing wakes it.
-  await getAudioContext().resume();
-  const code = tagAnalysers(tagPunchcards(pattern));
-  // While playing, an edit may wait for the next bar (launch quantization).
-  const launch = prepareLaunch(session.scheduler);
-  await collectPunchcards(async () => {
-    await evaluate(code);
-    if (session.state.evalError) throw session.state.evalError;
-  });
-  launch?.();
-  setEvaluatedCode(code);
-}
-
-type PlaybackAdapter = {
-  evaluate: (pattern: string) => unknown | Promise<unknown>;
-  hush: () => void;
-  onError: (error: unknown) => void;
-};
-function createPlaybackEngine(adapter: PlaybackAdapter) {
-  let desired: string | null = null;
-  let applied: string | null = null;
-  let busy = false;
-  let disposed = false;
-  let revision = 0;
-  let stopGeneration = 0;
-
-  async function drain() {
-    if (busy || disposed) return;
-    busy = true;
-    try {
-      while (!disposed && desired !== null && desired !== applied) {
-        const pattern = desired;
-        const startedAt = revision;
-        const generation = stopGeneration;
-        try {
-          await adapter.evaluate(pattern);
-          applied = generation === stopGeneration ? pattern : null;
-        } catch (error) {
-          if (startedAt === revision && !disposed) {
-            desired = applied;
-            if (applied === null) {
-              adapter.hush();
-              adapter.onError(error);
-            }
-          }
-        }
-        if (disposed || desired === null) {
-          adapter.hush();
-          applied = null;
-        }
-      }
-    } finally {
-      busy = false;
-    }
-  }
-
-  return {
-    setPattern(pattern: string | null) {
-      if (disposed) return;
-      revision += 1;
-      desired = pattern;
-      if (pattern === null) {
-        stopGeneration += 1;
-        applied = null;
-        adapter.hush();
-      } else {
-        void drain();
-      }
-    },
-    dispose() {
-      disposed = true;
-      desired = null;
-      adapter.hush();
-    },
-  };
-}
 export function useWorkflowRunner() {
-  const engine = useRef<ReturnType<typeof createPlaybackEngine> | null>(null);
+  const engine = useRef<Engine | null>(null);
   // The song, not the canvas: selecting or measuring nodes plays nothing.
   const song = useAppStore((state) => state.song);
   const tempoName = useAppStore((state) => state.tempoName);
@@ -163,18 +32,16 @@ export function useWorkflowRunner() {
   }, [song, tempoName]);
 
   useEffect(() => {
-    const instance = createPlaybackEngine({
-      evaluate: evaluateAudio,
-      hush,
-      onError: (error) =>
-        setError(error instanceof Error ? error.message : String(error)),
+    const instance = playbackEngine({
+      isPlaying: () => useAppStore.getState().isPlaying,
+      onError: (message) => useAppStore.getState().setError(message),
     });
     engine.current = instance;
     return () => {
-      instance.dispose();
+      instance.play(null);
       engine.current = null;
     };
-  }, [setError]);
+  }, []);
 
   useEffect(() => {
     if (compiled.error) setError(compiled.error);
@@ -190,7 +57,7 @@ export function useWorkflowRunner() {
     if (id === shown.current) return;
     shown.current = id;
     if (useRecorder.getState().since === null) {
-      cutting.current = cutSound();
+      cutting.current = engine.current?.cut() ?? Promise.resolve();
     }
   }, [preview]);
 
@@ -201,7 +68,7 @@ export function useWorkflowRunner() {
       const timer = window.setTimeout(
         () =>
           void cutting.current.then(() => {
-            if (!cancelled) engine.current?.setPattern(preview.code);
+            if (!cancelled) engine.current?.play(preview.code);
           }),
         40,
       );
@@ -211,14 +78,14 @@ export function useWorkflowRunner() {
       };
     }
     if (!isPlaying || !compiled.audible || compiled.error) {
-      engine.current?.setPattern(null);
+      engine.current?.play(null);
       return;
     }
     let cancelled = false;
     const timer = window.setTimeout(
       () =>
         void cutting.current.then(() => {
-          if (!cancelled) engine.current?.setPattern(compiled.pattern);
+          if (!cancelled) engine.current?.play(compiled.pattern);
         }),
       40,
     );

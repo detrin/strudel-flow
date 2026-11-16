@@ -1,9 +1,9 @@
+import type { Pattern } from '@strudel/web';
 import {
-  analysers,
-  getAudioContext,
-  getSuperdoughAudioController,
-  type Pattern,
-} from '@strudel/web';
+  analyserById,
+  audioContext as getAudioContext,
+  masterGain,
+} from '@/lib/strudel-internals';
 import { getSchedulerCps, getSchedulerNow } from '@/lib/strudel-clock';
 import { regionsOf } from '@/lib/lines';
 import { parseScript } from '@/lib/program/syntax';
@@ -131,7 +131,7 @@ const sums = new Map<
 function summed(label: string, keys: string[]) {
   const sources = keys.flatMap((key) => {
     const id = lineIds.get(key);
-    const node = id ? (analysers[id] as AnalyserNode | undefined) : undefined;
+    const node = id ? analyserById(id) : undefined;
     return node ? [node] : [];
   });
   if (!sources.length) return undefined;
@@ -159,7 +159,7 @@ export const lineAnalyser = (key: string) => {
   const keys = lineParts.get(key);
   if (keys) return summed(key, keys);
   const id = lineIds.get(key);
-  return id ? (analysers[id] as AnalyserNode | undefined) : undefined;
+  return id ? analyserById(id) : undefined;
 };
 
 export const analyserIdOf = (key: string) => lineIds.get(key);
@@ -168,12 +168,7 @@ let master: AnalyserNode | undefined;
 let tapped: AudioNode | undefined;
 /** An analyser on the master output (re-tapped if Strudel rebuilds it). */
 export function masterAnalyser() {
-  const output = (
-    getSuperdoughAudioController() as unknown as {
-      output?: { destinationGain?: AudioNode | null };
-    }
-  ).output;
-  const gain = output?.destinationGain;
+  const gain = masterGain();
   if (!gain) return undefined;
   if (gain !== tapped) {
     master ??= getAudioContext().createAnalyser();

@@ -13,13 +13,13 @@ export class ErrorBoundary extends Component<
   { children: ReactNode },
   { error?: Error }
 > {
-  state: { error?: Error } = {};
+  override state: { error?: Error } = {};
 
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
 
-  componentDidCatch(error: Error) {
+  override componentDidCatch(error: Error) {
     report('crash', error);
     if (!import.meta.env.DEV) return;
     let last = 0;
@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<
     location.reload();
   }
 
-  render() {
+  override render() {
     const { error } = this.state;
     if (!error) return this.props.children;
     return (

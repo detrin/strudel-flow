@@ -1,5 +1,4 @@
 import type { NodeDefinition } from './define-node';
-import { createDefinitionComponent } from './shared/definition-node';
 import type { XYPosition } from '@xyflow/react';
 import { nanoid } from 'nanoid';
 import type { AppNode, AppNodeType, WorkflowNodeData } from './types';
@@ -25,13 +24,6 @@ export const nodeDefinitions = Object.fromEntries(
     ([, a], [, b]) =>
       (a.order ?? 100) - (b.order ?? 100) || a.title.localeCompare(b.title),
   ),
-);
-
-export const nodeTypes = Object.fromEntries(
-  Object.values(nodeDefinitions).map((definition) => [
-    definition.id,
-    createDefinitionComponent(definition),
-  ]),
 );
 
 export function createNodeByType({

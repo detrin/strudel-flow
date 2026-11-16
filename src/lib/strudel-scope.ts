@@ -1,4 +1,5 @@
-import { Pattern, analysers, drawTimeScope } from '@strudel/web';
+import { Pattern, drawTimeScope } from '@strudel/web';
+import { analyserById } from '@/lib/strudel-internals';
 Pattern.prototype._scope = function ({ id = 1 } = {}) {
   return this.analyze(id);
 };
@@ -31,7 +32,7 @@ export function drawScope(
   playing: boolean,
 ) {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  drawTimeScope(playing ? analysers[id] : undefined, {
+  drawTimeScope(playing ? analyserById(id) : undefined, {
     id,
     ctx,
     scale,

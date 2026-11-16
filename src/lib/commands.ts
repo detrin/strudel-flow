@@ -22,6 +22,8 @@ import type { AppNode } from '@/components/nodes/types';
 import { programOf } from '@/lib/program';
 import { flatten } from '@/lib/program/compile';
 import { insertNodeAfter } from '@/lib/node-placement';
+import { nodeDefinitions } from '@/components/nodes/registry';
+import { isPatternValue } from '@/components/nodes/define-node';
 
 /** The parts of the store a command may change. */
 export type Song = {
@@ -105,6 +107,38 @@ const withData = (node: AppNode, updates: Record<string, unknown>): AppNode => {
   return { ...node, data: data as AppNode['data'] };
 };
 
+/**
+ * Why a value can't go into a node's parameter, or null when it can. A
+ * knob holds a number or code (a pattern, an expression); a select one of
+ * its options; a text field text. Keys that aren't parameters (a pad's
+ * notes, a line's state) are the node's own business.
+ */
+export function valueProblem(type: string, key: string, value: unknown) {
+  const parameter = nodeDefinitions[type]?.parameters[key];
+  if (!parameter || value === undefined) return null;
+  const shown = JSON.stringify(value);
+  switch (parameter.control) {
+    case 'knob':
+      if (typeof value === 'number')
+        return Number.isFinite(value) ? null : `${key} can't be ${shown}`;
+      return typeof value === 'string' &&
+        (isPatternValue(value) || Number.isFinite(Number(value))) &&
+        value.trim() !== ''
+        ? null
+        : `${key} must be a number or code, not ${shown}`;
+    case 'select':
+      return parameter.options.some((option) => option.value === value)
+        ? null
+        : `${key} must be one of ${parameter.options
+            .map((option) => option.value)
+            .join(', ')}, not ${shown}`;
+    case 'text':
+      return typeof value === 'string' || typeof value === 'number'
+        ? null
+        : `${key} must be text, not ${shown}`;
+  }
+}
+
 const deselected = (nodes: AppNode[]) =>
   nodes.map((node) => (node.selected ? { ...node, selected: false } : node));
 
@@ -161,12 +195,17 @@ export function apply(song: Song, command: Command): Partial<Song> {
     }
     case 'setData': {
       Object.keys(command.updates).forEach(need);
+      const types = new Map(song.nodes.map((node) => [node.id, node.type]));
+      for (const [id, values] of Object.entries(command.updates))
+        for (const [key, value] of Object.entries(values)) {
+          const problem = valueProblem(types.get(id) ?? '', key, value);
+          if (problem) throw new CommandError(`${id}: ${problem}`);
+        }
       return {
-        nodes: song.nodes.map((node) =>
-          command.updates[node.id]
-            ? withData(node, command.updates[node.id])
-            : node,
-        ),
+        nodes: song.nodes.map((node) => {
+          const updates = command.updates[node.id];
+          return updates ? withData(node, updates) : node;
+        }),
       };
     }
     case 'setMuted': {

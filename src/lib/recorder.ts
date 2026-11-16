@@ -4,7 +4,10 @@
  * encodes them as 16-bit PCM WAV.
  */
 import { create } from 'zustand';
-import { getAudioContext, getSuperdoughAudioController } from '@strudel/web';
+import {
+  audioContext as getAudioContext,
+  masterGain,
+} from '@/lib/strudel-internals';
 
 /** 16-bit PCM WAV of the given channels (equal lengths, -1…1). */
 export function encodeWav(channels: Float32Array[], sampleRate: number) {
@@ -81,10 +84,7 @@ let loaded: Promise<void> | undefined;
 
 /** Strudel's master output, once it exists (after the first sound). */
 function masterOutput() {
-  const controller = getSuperdoughAudioController() as {
-    output?: { destinationGain?: AudioNode | null };
-  };
-  return controller.output?.destinationGain ?? undefined;
+  return masterGain();
 }
 
 export async function startRecording() {

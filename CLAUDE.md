@@ -133,6 +133,26 @@ With the dev server both live in `~/.strudelton` (`presets/<name>.json`,
 without a dev server (or with `?library=browser`, which e2e uses; the e2e
 server's folder is a temp dir). Presets export and import as JSON. Export/share of the whole patch is the share icon.
 
+## Playback and Strudel
+
+- `lib/engine.ts`: the playback engine, one per tab (Strudel started once,
+  live view and meters attached, a queue that plays the newest code and
+  keeps the last good one). `use-workflow-runner` only decides what plays.
+- `lib/strudel-internals.ts`: the only place that touches Strudel's
+  undocumented internals (master gain, analysers, sound map, resetting
+  the output). Its test pins @strudel/web 1.3.0: upgrading starts there.
+
+## Guard rails
+
+`pnpm check` also runs `pnpm strict` (the core in `lib/program`,
+commands, song, save format and engine is checked with
+`noUncheckedIndexedAccess`; use `must(value, 'what')` from `lib/must.ts`
+for what can't be missing) and `pnpm cycles` (no import cycles in src/;
+the canvas's components map is `components/nodes/node-types.ts`, apart
+from the registry, so the store never imports components). Each node
+draws inside an error boundary: one failing node shows its error, the
+rest goes on.
+
 ## Conventions
 
 - Order is explicit, never read from positions: lines come in the order

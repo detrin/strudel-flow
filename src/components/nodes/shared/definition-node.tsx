@@ -1,4 +1,5 @@
 import WorkflowNode from './workflow-node';
+import { NodeErrorBoundary } from './node-error-boundary';
 import { ParameterKnob } from './parameter-knob';
 import { useAppStore } from '@/store/app-store';
 import type { WorkflowNodeProps } from '../types';
@@ -12,7 +13,16 @@ const formatNumber = (value: number, unit = '') =>
 
 /** The generic node body: fields on top, knobs below. */
 export function createDefinitionComponent(definition: NodeDefinition) {
-  return function DefinitionNode({ id, data }: WorkflowNodeProps) {
+  /** One node failing to draw never takes the canvas down with it. */
+  return function GuardedNode(props: WorkflowNodeProps) {
+    return (
+      <NodeErrorBoundary id={props.id} title={definition.title}>
+        <DefinitionNode {...props} />
+      </NodeErrorBoundary>
+    );
+  };
+
+  function DefinitionNode({ id, data }: WorkflowNodeProps) {
     const update = useAppStore((state) => state.updateNodeData);
     const isPlaying = useAppStore((state) => state.isPlaying);
     const values = definition.getValues(data);
@@ -97,5 +107,5 @@ export function createDefinitionComponent(definition: NodeDefinition) {
         )}
       </WorkflowNode>
     );
-  };
+  }
 }

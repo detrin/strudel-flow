@@ -1,8 +1,4 @@
-import {
-  getAudioContext,
-  getSuperdoughAudioController,
-  resetGlobalEffects,
-} from '@strudel/web';
+import { audioContext, masterGain, resetOutput } from '@/lib/strudel-internals';
 
 /** How long the fade before the cut takes, in seconds (no click). */
 const FADE = 0.03;
@@ -15,20 +11,15 @@ const FADE = 0.03;
  * delay), which drops those notes. Resolves when new sounds can play.
  */
 export function cutSound(): Promise<void> {
-  const output = (
-    getSuperdoughAudioController() as {
-      output?: { destinationGain?: GainNode | null };
-    }
-  ).output;
-  const gain = output?.destinationGain;
+  const gain = masterGain();
   if (!gain) return Promise.resolve();
-  const now = getAudioContext().currentTime;
+  const now = audioContext().currentTime;
   gain.gain.setValueAtTime(gain.gain.value, now);
   gain.gain.linearRampToValueAtTime(0, now + FADE);
   return new Promise((resolve) =>
     setTimeout(
       () => {
-        resetGlobalEffects();
+        resetOutput();
         resolve();
       },
       FADE * 1000 + 10,

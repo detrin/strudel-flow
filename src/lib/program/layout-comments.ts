@@ -3,6 +3,7 @@ import { LAYOUT, layoutComment } from './emit';
 import { parseScript } from './syntax';
 import type { Program } from './types';
 import { labelOf } from '@/lib/lines';
+import { must } from '@/lib/must';
 
 /** Code without its `// @layout` lines: what the patch says, not where. */
 export const withoutLayout = (code: string) =>
@@ -48,13 +49,16 @@ export function updateLayout(code: string, program: Program): string | null {
     new Set(statementKeys).size === statementKeys.length &&
     statementKeys.every((key) => lineKeys.includes(key));
   const lineFor = (index: number) =>
-    byName
-      ? program.lines[lineKeys.indexOf(statementKeys[index])]
-      : program.lines[index];
+    must(
+      byName
+        ? program.lines[lineKeys.indexOf(must(statementKeys[index], 'label'))]
+        : program.lines[index],
+      'line',
+    );
   let result = code;
   // Back to front, so earlier offsets stay valid.
   for (let index = statements.length - 1; index >= 0; index--) {
-    const statement = statements[index];
+    const statement = must(statements[index], 'statement');
     const comment = layoutComment(lineFor(index).sink).trimEnd();
     const existing = comments.findLast(
       (c) =>

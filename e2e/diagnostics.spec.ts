@@ -91,3 +91,41 @@ test('errors in the tab are written to the log on disk', async ({ page }) => {
     page: expect.stringContaining('localhost'),
   });
 });
+
+test('a node that fails to draw shows an error; the rest goes on', async ({
+  page,
+}) => {
+  await openFresh(page);
+  await typeCode(
+    page,
+    'setcpm(120/4)\npad: n("0 2 4").scale("C:major")\nkick: s("bd*4").gain(0.8)',
+  );
+  await expect(page.locator('.react-flow__node-pad-node')).toHaveCount(1);
+  // Break the pad's data the way a bad save might.
+  await page.evaluate(async () => {
+    const path = '/src/store/app-store.ts';
+    const { useAppStore } = (await import(/* @vite-ignore */ path)) as {
+      useAppStore: {
+        getState: () => {
+          nodes: { id: string; type: string }[];
+          dispatch: (command: unknown) => boolean;
+        };
+      };
+    };
+    const pad = useAppStore
+      .getState()
+      .nodes.find((node) => node.type === 'pad-node')!;
+    useAppStore.getState().dispatch({
+      type: 'setData',
+      updates: { [pad.id]: { notes: 'not notes', pattern: undefined } },
+    });
+  });
+  const failed = page.locator('.react-flow__node-pad-node');
+  await expect(failed.getByRole('alert')).toContainText('could not be drawn');
+  // The other nodes still work: the kick's gain still writes code.
+  const level = page.locator('.react-flow__node-level-node');
+  await level.getByRole('slider', { name: 'gain', exact: true }).focus();
+  await page.keyboard.press('ArrowUp');
+  await expect(editor(page)).toContainText('.gain(0.81)');
+  await expect(failed.getByRole('button', { name: 'Retry' })).toBeVisible();
+});

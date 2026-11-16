@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { getAudioContext, soundMap, superdough } from '@strudel/web';
+import {
+  audioContext as getAudioContext,
+  onSounds,
+  playEvent,
+  sounds,
+} from '@/lib/strudel-internals';
 import { autoTags, kindOf, variantsOf, type SoundKind } from './sound-tags';
 
 export type Sound = {
@@ -14,9 +19,10 @@ const HIDDEN = /^(_|tri$|sqr$|sin$|saw$)/;
 
 /** Every sound Strudel knows now. */
 export function readSounds(): Sound[] {
-  return Object.entries(soundMap.get())
+  return Object.entries(sounds())
     .filter(([name]) => !HIDDEN.test(name))
-    .map(([name, { data = {} }]) => ({
+    .map(([name, entry]) => ({ name, data: entry?.data ?? {} }))
+    .map(({ name, data }) => ({
       name,
       kind: kindOf(name, data),
       variants: variantsOf(data),
@@ -27,13 +33,11 @@ export function readSounds(): Sound[] {
 
 /** The names of every sound Strudel knows (lowercase), kept up to date. */
 export function useSoundNames() {
-  const [names, setNames] = useState(
-    () => new Set(Object.keys(soundMap.get())),
-  );
+  const [names, setNames] = useState(() => new Set(Object.keys(sounds())));
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const update = () => setNames(new Set(Object.keys(soundMap.get())));
-    const stop = soundMap.listen(() => {
+    const update = () => setNames(new Set(Object.keys(sounds())));
+    const stop = onSounds(() => {
       clearTimeout(timer);
       timer = setTimeout(update, 300);
     });
@@ -76,7 +80,7 @@ export function useSounds() {
   useEffect(() => {
     // Packs register thousands of names one by one: update once they settle.
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const stop = soundMap.listen(() => {
+    const stop = onSounds(() => {
       clearTimeout(timer);
       timer = setTimeout(() => setSounds(readSounds()), 300);
     });
@@ -94,7 +98,7 @@ const PITCHED = 0.8;
 
 /** The first file of a sample, as a URL (undefined for synths). */
 function sampleUrl(name: string) {
-  const data = soundMap.get()[name]?.data as
+  const data = sounds()[name]?.data as
     { samples?: unknown; baseUrl?: string } | undefined;
   const { samples } = data ?? {};
   const first = Array.isArray(samples)
@@ -141,7 +145,7 @@ export async function previewSound(sound: Sound) {
   // Strudel fetches a sound the first time it plays, and drops it if that
   // takes past its start time: so load it silently first, then play.
   if (!loaded.has(sound.name)) {
-    await superdough(
+    await playEvent(
       { ...value, gain: 0 },
       context.currentTime + 0.01,
       duration,
@@ -150,7 +154,7 @@ export async function previewSound(sound: Sound) {
   }
   const [seconds] = await Promise.all([
     pitched ? PITCHED : lengthOf(sound.name),
-    superdough({ ...value, gain: 0.8 }, context.currentTime + 0.05, duration),
+    playEvent({ ...value, gain: 0.8 }, context.currentTime + 0.05, duration),
   ]);
   return Math.min(seconds, 30);
 }
@@ -165,6 +169,6 @@ export const lineFor = (sound: Sound) =>
 
 /** A registered sound's tags (none for a name Strudel doesn't know). */
 export function tagsOfSound(name: string) {
-  const entry = soundMap.get()[name.toLowerCase()];
+  const entry = sounds()[name.toLowerCase()];
   return entry ? autoTags(name, entry.data) : [];
 }

@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { chainOf, node, wire } from '@/test/graph';
 import { programOf } from '@/lib/program';
 import { emitProgram } from '@/lib/program/emit';
+import { nodeDefinitions } from '@/components/nodes/registry';
 import {
   apply,
   CommandError,
   commandLog,
   logCommand,
   problemsOf,
+  valueProblem,
   type Command,
   type Song,
 } from './commands';
@@ -198,5 +200,43 @@ describe('commands', () => {
     const log = commandLog();
     expect(log.length).toBe(before + 1);
     expect(log.at(-1)!.command).toContain('"remove"');
+  });
+});
+
+describe('values entering the song', () => {
+  it("accepts every node's own defaults", () => {
+    for (const [type, definition] of Object.entries(nodeDefinitions))
+      for (const [key, value] of Object.entries(definition.defaults))
+        expect(valueProblem(type, key, value), `${type}.${key}`).toBeNull();
+  });
+
+  it('accepts numbers and code in knobs, refuses anything else', () => {
+    expect(valueProblem('level-node', 'gain', '0.5')).toBeNull();
+    expect(valueProblem('level-node', 'gain', 0.5)).toBeNull();
+    expect(valueProblem('level-node', 'gain', '"<0.4 0.8>"')).toBeNull();
+    expect(valueProblem('level-node', 'gain', 'sine.range(0, 1)')).toBeNull();
+    expect(valueProblem('level-node', 'gain', '')).not.toBeNull();
+    expect(valueProblem('level-node', 'gain', NaN)).not.toBeNull();
+    expect(valueProblem('level-node', 'gain', true)).not.toBeNull();
+  });
+
+  it('refuses a select value that is not an option', () => {
+    const [type, key] = Object.entries(nodeDefinitions).flatMap(([t, d]) =>
+      Object.entries(d.parameters)
+        .filter(([, p]) => p.control === 'select')
+        .map(([k]) => [t, k] as const),
+    )[0];
+    expect(valueProblem(type, key, 'not-an-option')).not.toBeNull();
+    expect(() =>
+      apply(song([node(type, 'x')]), {
+        type: 'setData',
+        updates: { x: { [key]: 'not-an-option' } },
+      }),
+    ).toThrow(CommandError);
+  });
+
+  it("leaves a node's own fields (not parameters) alone", () => {
+    expect(valueProblem('pad-node', 'notes', [{ pitch: 0 }])).toBeNull();
+    expect(valueProblem('level-node', 'state', 'paused')).toBeNull();
   });
 });

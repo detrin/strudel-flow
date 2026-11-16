@@ -78,7 +78,7 @@ export function parseExpression(code: string): Expression | null {
   try {
     const program = parseScript(`(${code}\n)`);
     const [statement] = program.body;
-    if (program.body.length !== 1 || statement.type !== 'ExpressionStatement')
+    if (program.body.length !== 1 || statement?.type !== 'ExpressionStatement')
       return null;
     const expression = statement.expression;
     return expression.type === 'ParenthesizedExpression'
@@ -102,8 +102,8 @@ export function valueOf(source: string, node: Node): Value {
       expressions: unknown[];
       quasis: { value: { cooked: string } }[];
     };
-    if (template.expressions.length === 0)
-      return template.quasis[0].value.cooked;
+    const [quasi] = template.quasis;
+    if (template.expressions.length === 0 && quasi) return quasi.value.cooked;
   }
   if (node.type === 'UnaryExpression') {
     const unary = node as Node & { operator: string; argument: Node };

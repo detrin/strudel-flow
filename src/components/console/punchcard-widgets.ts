@@ -19,7 +19,7 @@ class PunchcardWidget extends WidgetType {
   constructor(readonly label: string) {
     super();
   }
-  eq(other: PunchcardWidget) {
+  override eq(other: PunchcardWidget) {
     return other.label === this.label;
   }
   toDOM() {
@@ -33,7 +33,7 @@ class PunchcardWidget extends WidgetType {
     wrap.append(canvas);
     return wrap;
   }
-  get estimatedHeight() {
+  override get estimatedHeight() {
     return HEIGHT + 8;
   }
 }

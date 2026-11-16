@@ -6,6 +6,7 @@ import { compileGraph, flatten } from './compile';
 import type { ParsedProgram } from './parse';
 import { ANONYMOUS, type Line, type ProgramNode } from './types';
 import { groupsOf, type Group } from './groups';
+import { must } from '@/lib/must';
 
 type Graph = { nodes: AppNode[]; edges: Edge[] };
 type Size = { width: number; height: number };
@@ -74,7 +75,7 @@ function nodeData(node: ProgramNode, previous: AppNode | undefined) {
   const parameterDefaults = Object.fromEntries(
     Object.keys(definition?.parameters ?? {}).map((key) => [
       key,
-      definition.defaults[key],
+      definition?.defaults[key],
     ]),
   );
   return {
@@ -181,12 +182,11 @@ function rowPositions(
   members.forEach((node, index) => {
     const { width, height } = size(node);
     // Voices, order-free effects and visuals each stack in a column.
+    const group = groups[index] ?? null;
     const stack =
-      groups[index] === 'shape' ||
-      groups[index] === 'source' ||
-      groups[index] === 'header'
+      group === 'shape' || group === 'source' || group === 'header'
         ? null
-        : groups[index];
+        : group;
     if (
       stack &&
       column?.stack === stack &&
@@ -231,7 +231,7 @@ function treePositions(
     if (node.inputs.length === 0) {
       at = { x, y };
     } else if (node.inputs.length === 1) {
-      const input = place(node.inputs[0], x, y);
+      const input = place(must(node.inputs[0], 'input'), x, y);
       at = { x: input.right + GAP, y: input.y };
     } else {
       const lanes: { right: number; y: number }[] = [];
@@ -242,7 +242,9 @@ function treePositions(
       }
       at = {
         x: Math.max(...lanes.map((lane) => lane.right)) + GAP,
-        y: Math.round((lanes[0].y + lanes.at(-1)!.y) / 2),
+        y: Math.round(
+          (must(lanes[0], 'lane').y + must(lanes.at(-1), 'lane').y) / 2,
+        ),
       };
     }
     positions.set(node.id!, at);
@@ -308,7 +310,7 @@ export function layout(
     const fresh = members.every((node) => !placed.has(node.id));
     const forced = members.some((node) => relayout.has(node.id));
     const chain = isChain(members, edges);
-    const sink = lines[index].sink;
+    const sink = must(lines[index], 'line').sink;
     if ((fresh || forced) && (chain || flatten(sink).every((n) => n.id))) {
       const others = nodes.filter(
         (node) => placed.has(node.id) && !members.includes(node),
@@ -334,7 +336,9 @@ export function layout(
       let row: { bottom: number };
       if (chain) {
         const lane = rowPositions(members, groupsOf(members), origin, size);
-        members.forEach((node, i) => move(node, lane.positions[i]));
+        members.forEach((node, i) =>
+          move(node, must(lane.positions[i], 'position')),
+        );
         row = lane;
       } else {
         const tree = treePositions(sink, origin, (id) => size(byId.get(id)!));

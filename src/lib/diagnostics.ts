@@ -109,6 +109,7 @@ export function isolateListeners(
         return listener(...args);
       } catch (error) {
         report(`${name} listener`, error);
+        return undefined;
       }
     };
   (store as { subscribe: unknown }).subscribe = (...args: unknown[]) => {
