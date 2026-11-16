@@ -19,12 +19,19 @@ import {
 import { DEFAULT_THEME } from '@/themes';
 import { applyTheme } from '@/themes/ui';
 import { isolateListeners, report, setProblem } from '@/lib/diagnostics';
+import { songOf, type Song } from '@/lib/song';
 
 type AppState = {
   name: string;
   author: string;
   description: string;
   graphRevision: number;
+  /**
+   * The model (lib/song): nodes, wires, tempo, prelude, without view
+   * state. Follow it, not `nodes`, for anything about the music: it only
+   * changes when the song does. `nodes`/`edges` are the canvas's view.
+   */
+  song: Song;
   nodes: AppNode[];
   edges: Edge[];
   /** strudel.cc theme name; a per-browser preference, not part of patches. */
@@ -111,6 +118,13 @@ export const useAppStore = create<AppStore>()(
     description: '',
     nodes: initialNodes,
     edges: initialEdges,
+    song: songOf({
+      nodes: initialNodes,
+      edges: initialEdges,
+      cpm: '120',
+      bpc: '4',
+      prelude: '',
+    }),
     theme: savedTheme(),
     cpm: '120',
     bpc: '4',
@@ -143,7 +157,10 @@ export const useAppStore = create<AppStore>()(
         report('command', error, command.type);
         return false;
       }
-      set(change);
+      // The view and the model in one update: the song is rebuilt from
+      // the changed canvas, reusing whatever did not change.
+      const state = get();
+      set({ ...change, song: songOf({ ...state, ...change }, state.song) });
       logCommand(command);
       // In development, a command that broke the song says so at once.
       if (import.meta.env.DEV) {
@@ -198,6 +215,25 @@ export const useAppStore = create<AppStore>()(
 );
 // One failing listener must not stop the others (see diagnostics).
 isolateListeners(useAppStore, 'app store');
+
+/**
+ * The song follows the canvas even when something sets the canvas without
+ * a command (a test, older code): first in line, so every other listener
+ * sees a song that matches.
+ */
+useAppStore.subscribe((state, previous) => {
+  if (
+    state.song === previous.song &&
+    (state.nodes !== previous.nodes ||
+      state.edges !== previous.edges ||
+      state.cpm !== previous.cpm ||
+      state.bpc !== previous.bpc ||
+      state.prelude !== previous.prelude)
+  ) {
+    const song = songOf(state, state.song);
+    if (song !== state.song) useAppStore.setState({ song });
+  }
+});
 
 const unsubscribeTheme = useAppStore.subscribe(
   (state) => state.theme,

@@ -5,5 +5,8 @@ import type { Program } from './types';
 
 /** The program a patch plays: its graph plus tempo and prelude. */
 export const programOf = (
-  patch: { nodes: AppNode[]; edges: Edge[] } & Omit<Program, 'lines'>,
+  patch: {
+    nodes: Pick<AppNode, 'id' | 'type' | 'data' | 'position'>[];
+    edges: Pick<Edge, 'id' | 'source' | 'target'>[];
+  } & Omit<Program, 'lines'>,
 ) => compileGraph(patch.nodes, patch.edges, patch);

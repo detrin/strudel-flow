@@ -106,8 +106,7 @@ const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
 export function startLive(getPattern: () => Pattern | undefined) {
   updateLineNodes();
   const stopGraph = useAppStore.subscribe((state, previous) => {
-    if (state.nodes !== previous.nodes || state.edges !== previous.edges)
-      updateLineNodes();
+    if (state.song !== previous.song) updateLineNodes();
   });
   let frame = 0;
   let last = -Infinity;

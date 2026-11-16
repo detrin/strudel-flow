@@ -29,8 +29,8 @@ export function useGraphHistory() {
         history.current?.reset(graph);
         return;
       }
-      if (state.nodes === previous.nodes && state.edges === previous.edges)
-        return;
+      // A step is a change to the song: selecting or measuring isn't one.
+      if (state.song === previous.song) return;
       if (!batch) {
         batch = {};
         queueMicrotask(() => {

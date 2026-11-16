@@ -194,19 +194,16 @@ export function startCodeSync() {
   sync(useAppStore.getState());
   upgradePatch();
   return useAppStore.subscribe((state, previous) => {
-    if (
-      state.nodes !== previous.nodes ||
-      state.edges !== previous.edges ||
-      state.cpm !== previous.cpm ||
-      state.bpc !== previous.bpc ||
-      state.prelude !== previous.prelude
-    ) {
+    // The code follows the song; the canvas's own changes (a node measured)
+    // may still lay new nodes out, which changes the song in turn.
+    if (state.nodes !== previous.nodes || state.song !== previous.song) {
       // An error here would leave the code silently behind the canvas from
       // now on: catch it, say so, and keep trying on the next change.
       try {
         relayout(state);
         checkLayout(useAppStore.getState());
-        sync(useAppStore.getState());
+        const now = useAppStore.getState();
+        if (now.song !== previous.song) sync(now);
         setProblem('code sync', null);
       } catch (error) {
         report('code sync', error, {

@@ -256,8 +256,17 @@ export function apply(song: Song, command: Command): Partial<Song> {
     case 'setGraph': {
       const problems = problemsOf(command);
       if (problems.length) throw new CommandError(problems.join('; '));
+      // A node the canvas already measured keeps its size (undo, code):
+      // no flash of an unmeasured node, no layout from a wrong size.
+      const before = new Map(song.nodes.map((node) => [node.id, node]));
+      const nodes = command.nodes.map((node) => {
+        const old = before.get(node.id);
+        return !node.measured && old?.measured && old.type === node.type
+          ? { ...node, measured: old.measured }
+          : node;
+      });
       return {
-        nodes: command.nodes,
+        nodes,
         edges: command.edges,
         ...(command.cpm !== undefined ? { cpm: command.cpm } : {}),
         ...(command.bpc !== undefined ? { bpc: command.bpc } : {}),

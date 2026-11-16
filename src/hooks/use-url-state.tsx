@@ -68,11 +68,8 @@ export function useUrlState() {
     const unsubscribe = useAppStore.subscribe((state, previous) => {
       if (
         loading ||
-        (state.nodes === previous.nodes &&
-          state.edges === previous.edges &&
-          state.cpm === previous.cpm &&
-          state.bpc === previous.bpc &&
-          state.prelude === previous.prelude &&
+        // The song, not the canvas: selecting a node saves nothing.
+        (state.song === previous.song &&
           state.name === previous.name &&
           state.author === previous.author &&
           state.description === previous.description)

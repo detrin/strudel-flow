@@ -11,9 +11,13 @@ import { ANONYMOUS, type Line, type Program, type ProgramNode } from './types';
  * inputs (the parts of a `stack`) in the order of their wires in `edges`.
  * Moving a node never reorders the code.
  */
+/** What compiling needs of a node: the model, no view state. */
+type GraphNode = Pick<AppNode, 'id' | 'type' | 'data' | 'position'>;
+type GraphEdge = Pick<Edge, 'id' | 'source' | 'target'>;
+
 export function compileGraph(
-  nodes: AppNode[],
-  edges: Edge[],
+  nodes: GraphNode[],
+  edges: GraphEdge[],
   tempo: Pick<Program, 'cpm' | 'bpc' | 'prelude' | 'tempoName'>,
 ): Program {
   const byId = new Map(nodes.map((node) => [node.id, node]));

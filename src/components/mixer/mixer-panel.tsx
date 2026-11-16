@@ -108,15 +108,8 @@ function ChannelStrip({ strip }: { strip: Strip }) {
 export function MixerPanel() {
   const open = useMixer((state) => state.open);
   const toggle = useMixer((state) => state.toggle);
-  const nodes = useAppStore((state) => state.nodes);
-  const edges = useAppStore((state) => state.edges);
-  const strips = useMemo(
-    () =>
-      stripsOf(
-        programOf({ nodes, edges, cpm: '1', bpc: '1', prelude: '' }).lines,
-      ),
-    [nodes, edges],
-  );
+  const song = useAppStore((state) => state.song);
+  const strips = useMemo(() => stripsOf(programOf(song).lines), [song]);
   if (!open) return null;
   return (
     <Panel

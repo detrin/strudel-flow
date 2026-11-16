@@ -138,18 +138,16 @@ function createPlaybackEngine(adapter: PlaybackAdapter) {
 }
 export function useWorkflowRunner() {
   const engine = useRef<ReturnType<typeof createPlaybackEngine> | null>(null);
-  const nodes = useAppStore((state) => state.nodes);
-  const edges = useAppStore((state) => state.edges);
-  const cpm = useAppStore((state) => state.cpm);
-  const bpc = useAppStore((state) => state.bpc);
+  // The song, not the canvas: selecting or measuring nodes plays nothing.
+  const song = useAppStore((state) => state.song);
+  const tempoName = useAppStore((state) => state.tempoName);
   const isPlaying = useAppStore((state) => state.isPlaying);
   const preview = useAppStore((state) => state.preview);
-  const prelude = useAppStore((state) => state.prelude);
   const setError = useAppStore((state) => state.setError);
 
   const compiled = useMemo(() => {
     try {
-      const program = programOf({ nodes, edges, cpm, bpc, prelude });
+      const program = programOf({ ...song, tempoName });
       return {
         pattern: emitProgram(program),
         audible: isAudible(program),
@@ -162,7 +160,7 @@ export function useWorkflowRunner() {
         error: error instanceof Error ? error.message : String(error),
       };
     }
-  }, [nodes, edges, cpm, bpc, prelude]);
+  }, [song, tempoName]);
 
   useEffect(() => {
     const instance = createPlaybackEngine({

@@ -60,6 +60,15 @@ feature with an app action gets a tool here too.
 `STRUDELTON_LOCAL` in `.env.local` serves a folder read-only at `/local/`
 (here `../tidalcycles`), e.g. for samples.
 
+## The song model
+
+`state.song` (`src/lib/song.ts`) is the model: nodes (id, type, position,
+data), wires in order, tempo, prelude, no view state. `state.nodes` and
+`state.edges` are the canvas's view of it (selection, measured sizes,
+dragging). Anything about the music (code sync, playback, autosave, undo,
+the live view, the mixer) follows `song`, which keeps its identity until
+the song really changes. `dispatch` updates both in one step.
+
 ## Changing the song: commands
 
 Every change to the song's nodes, wires, tempo or prelude is a command
