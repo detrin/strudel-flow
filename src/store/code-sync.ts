@@ -22,7 +22,7 @@ let unmeasured = new Set<string>();
  * Applies code typed in the console: parse, reconcile with the canvas, keep
  * the user's text as typed. Invalid code only records the error.
  */
-export function setCode(code: string) {
+export function setCode(code: string, { typing = false } = {}) {
   const state = useAppStore.getState();
   const result = parseProgram(code, knownSources(state.nodes));
   if (!result.ok) {
@@ -48,6 +48,22 @@ export function setCode(code: string) {
     codeError: null,
     fitRequest: created.length ? state.fitRequest + 1 : state.fitRequest,
   });
+  // Code from anywhere but the keyboard (Insert, a file, Claude) gets its
+  // lines' `// @layout` comments now; typed code when the console is left,
+  // never under the cursor.
+  if (!typing) writeLayout();
+}
+
+/**
+ * Writes the `// @layout` comments the code is missing (or that are out of
+ * date), keeping everything else as written: the code then holds every
+ * node's place, so saving it never loses them.
+ */
+export function writeLayout() {
+  const state = useAppStore.getState();
+  if (state.codeError) return;
+  const laid = updateLayout(state.code, programOf(state));
+  if (laid && laid !== state.code) useAppStore.setState({ code: laid });
 }
 
 /** The patch as a complete Strudel file: code, tempo and node positions. */

@@ -22,7 +22,7 @@ afterEach(() => stop());
 describe('code ↔ canvas sync', () => {
   it('typing code builds the graph and keeps the text as typed', () => {
     const code = '$: s("bd*4")   .gain( 0.5 )';
-    setCode(code);
+    setCode(code, { typing: true });
     expect(types()).toEqual(['sound-node', 'level-node']);
     expect(state().edges).toHaveLength(1);
     expect(state().code).toBe(code);
@@ -49,7 +49,7 @@ describe('code ↔ canvas sync', () => {
 
   it('measuring nodes does not overwrite what the user typed', () => {
     const code = '$: s("bd")  // my kick';
-    setCode(code);
+    setCode(code, { typing: true });
     useAppStore.setState({
       nodes: state().nodes.map((node) => ({
         ...node,
@@ -57,6 +57,13 @@ describe('code ↔ canvas sync', () => {
       })),
     });
     expect(state().code).toBe(code);
+  });
+
+  it('code from Insert, a file or Claude gets its layout comments at once', () => {
+    setCode('kick: s("bd").gain(1)');
+    expect(state().code).toMatch(
+      /^\/\/ @layout [\d,]+ [\d,]+\nkick: s\("bd"\)\.gain\(1\)$/,
+    );
   });
 
   it('moving a node only updates its layout comment', () => {

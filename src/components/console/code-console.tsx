@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { CircleAlert, PanelLeftClose, Play, Square } from 'lucide-react';
 import { useAppStore } from '@/store/app-store';
-import { setCode } from '@/store/code-sync';
+import { setCode, writeLayout } from '@/store/code-sync';
 import { themeByName } from '@/themes';
 import { CodeEditor } from './code-editor';
 import { punchcardWidgets } from './punchcard-widgets';
@@ -27,7 +27,7 @@ export function CodeConsole({ onClose }: { onClose: () => void }) {
     const code = pending.current;
     pending.current = null;
     if (code === null) return false;
-    setCode(code);
+    setCode(code, { typing: true });
     return true;
   }, []);
   const play = useCallback(() => {
@@ -97,7 +97,15 @@ export function CodeConsole({ onClose }: { onClose: () => void }) {
           <PanelLeftClose className="size-4" />
         </button>
       </header>
-      <div className="min-h-0 flex-1">
+      <div
+        className="min-h-0 flex-1"
+        // Leaving the console: apply what was typed, and write the layout
+        // comments its new lines are missing.
+        onBlur={() => {
+          flush();
+          writeLayout();
+        }}
+      >
         <CodeEditor
           extensions={consoleExtensions}
           label="Strudel code"

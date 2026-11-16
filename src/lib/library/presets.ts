@@ -209,13 +209,33 @@ export function insertLine(
   const label = freeLabel(code, line.label);
   const present = declarationsOf(code);
   const names = new Set(present.map((d) => d.name).filter(Boolean));
-  const texts = new Set(present.map((d) => d.text.trim()));
+  // `samples('…') // a comment` is the same load as without the comment.
+  const bare = (text: string) =>
+    text
+      .split('\n')
+      .map((row) => row.replace(/\s*\/\/.*$/, ''))
+      .join('\n')
+      .trim();
+  const texts = new Set(present.map((d) => bare(d.text)));
   const missing = (line.needs ?? []).filter((text) => {
     const [own] = declarationsOf(text);
-    return own?.name ? !names.has(own.name) : !texts.has(text.trim());
+    if (own?.name ? names.has(own.name) : texts.has(bare(text))) return false;
+    texts.add(bare(text));
+    return true;
   });
-  const parts = [code.trimEnd(), ...missing, `${label}: ${line.body}`];
-  return { code: `${parts.filter(Boolean).join('\n')}\n`, label };
+  // Declarations go with the song's others, before its first line (where
+  // they are written anyway); the line goes last, a blank line apart.
+  // The first line starts at its `// @layout` comment, if it has one.
+  let start = regionsOf(code)[0]?.start ?? -1;
+  if (start > 0) {
+    const above = code.lastIndexOf('\n', start - 2) + 1;
+    if (LAYOUT.test(code.slice(above, start - 1))) start = above;
+  }
+  const head = start >= 0 ? code.slice(0, start).trimEnd() : code.trimEnd();
+  const rest = start >= 0 ? code.slice(start).trimEnd() : '';
+  const prelude = [head, ...missing].filter(Boolean).join('\n');
+  const parts = [prelude, rest, `${label}: ${line.body}`].filter(Boolean);
+  return { code: `${parts.join('\n\n')}\n`, label };
 }
 
 /** Tags a line suggests: from its label and the names of what it plays. */

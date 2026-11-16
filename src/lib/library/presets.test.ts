@@ -59,7 +59,18 @@ describe('presets', () => {
     expect(into.code.match(/const cutoff/g)).toHaveLength(1);
     const fresh = insertLine('setcpm(30)', bass);
     expect(fresh.code).toBe(
-      `setcpm(30)\nconst cutoff = slider(800, 200, 4000)\nconst pump = "1 0.5"\nbass: ${bass.body}\n`,
+      `setcpm(30)\nconst cutoff = slider(800, 200, 4000)\nconst pump = "1 0.5"\n\nbass: ${bass.body}\n`,
+    );
+    // Declarations join the song's others, before its first line; a pack
+    // already loaded (with another comment) isn't loaded twice.
+    const song = 'samples(\'github:x/y\') // drums\n\nkick: s("bd")\n';
+    const added = insertLine(song, {
+      label: 'hat',
+      body: 's("hh")',
+      needs: ["samples('github:x/y') // hats", 'const g = 0.5'],
+    });
+    expect(added.code).toBe(
+      'samples(\'github:x/y\') // drums\nconst g = 0.5\n\nkick: s("bd")\n\nhat: s("hh")\n',
     );
     expect(freeLabel(SONG, 'Acid bass!')).toBe('Acid_bass');
   });

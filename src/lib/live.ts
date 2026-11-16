@@ -69,15 +69,15 @@ function updateLineNodes() {
   const parts = new Map<string, string[]>();
   setLineNodes(
     new Map(
-      programOf(state)
-        .lines.filter((line) => !line.muted)
-        .map((line) => {
-          const label = line.label === '$' ? `$${anonymous++}` : line.label;
-          partsOf(line.sink).forEach((part, index) =>
-            parts.set(`${label}#${index}`, idsOf(part)),
-          );
-          return [label, idsOf(line.sink)];
-        }),
+      // Every line, muted ones too (a muted line's header keeps its name),
+      // `$:` lines numbered as regionsOf numbers them in the code.
+      programOf(state).lines.map((line) => {
+        const label = line.label === '$' ? `$${anonymous++}` : line.label;
+        partsOf(line.sink).forEach((part, index) =>
+          parts.set(`${label}#${index}`, idsOf(part)),
+        );
+        return [label, idsOf(line.sink)];
+      }),
     ),
   );
   setPartNodes(parts);
