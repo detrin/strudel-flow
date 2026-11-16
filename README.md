@@ -1,3 +1,5 @@
+<img src="public/logo.svg" alt="" width="96" align="right" />
+
 # Strudelton
 
 A visual editor for [Strudel](https://strudel.cc) live coding where **code and

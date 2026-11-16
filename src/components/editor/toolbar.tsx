@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/popover';
 import { radialMenuItems } from '@/data/radial-menu';
 import { AddMenu } from './add-menu';
+import { Logo } from './logo';
 
 export function EditorToolbar() {
   const cpm = useAppStore((state) => state.cpm);
@@ -36,6 +37,15 @@ export function EditorToolbar() {
   return (
     <>
       <Panel position="top-left" className="m-2! flex items-center gap-2">
+        <div
+          className="pointer-events-none flex items-center gap-1.5 px-1 text-foreground select-none"
+          title="Strudelton"
+        >
+          <Logo className="size-6" />
+          <span className="text-sm font-semibold tracking-tight">
+            strudelton
+          </span>
+        </div>
         {!consoleOpen && (
           <ControlButton
             title="Show code console (Ctrl+B)"

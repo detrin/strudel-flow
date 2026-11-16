@@ -5,6 +5,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ControlButton } from './control-button';
+import { Logo } from './logo';
 
 export function AppInfoPopover() {
   return (
@@ -19,7 +20,10 @@ export function AppInfoPopover() {
         align="end"
         className="w-72 rounded-lg text-xs leading-relaxed"
       >
-        <h3 className="mb-2 text-sm font-semibold">Strudelton</h3>
+        <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+          <Logo className="size-7" />
+          Strudelton
+        </h3>
         <p className="mb-3 text-muted-foreground">
           Connect instruments, sounds, and effects to build repeating patterns,
           then change them while they play.
