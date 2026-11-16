@@ -81,7 +81,9 @@ export function tidyLines(only?: string | string[], reorder = true) {
     relayout,
   );
   if (!wanted) alignLeft(programOf({ ...state, nodes, edges }).lines, nodes);
-  useAppStore.setState({ nodes, edges });
+  useAppStore
+    .getState()
+    .dispatch({ type: 'setGraph', nodes, edges, reason: 'arrange' });
   return kept;
 }
 

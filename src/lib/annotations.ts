@@ -130,7 +130,8 @@ useAppStore.subscribe((state, previous) => {
 const write = (next: Annotation[]) => {
   const { prelude } = useAppStore.getState();
   const updated = withAnnotations(prelude, next);
-  if (updated !== prelude) useAppStore.setState({ prelude: updated });
+  if (updated !== prelude)
+    useAppStore.getState().dispatch({ type: 'setPrelude', prelude: updated });
 };
 
 /** Applies canvas changes (move, resize, select, delete) to annotations. */

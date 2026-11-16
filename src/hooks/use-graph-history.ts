@@ -58,13 +58,15 @@ export function useGraphHistory() {
     if (!graph) return;
     restoring.current = true;
     try {
-      useAppStore.setState({
+      useAppStore.getState().dispatch({
+        type: 'setGraph',
         nodes: graph.nodes.map((node) => ({
           ...node,
           dragging: false,
           resizing: false,
         })),
         edges: graph.edges,
+        reason: direction,
       });
     } finally {
       restoring.current = false;

@@ -40,17 +40,24 @@ export function applyPatch(state: ProjectState): boolean {
   )
     return false;
   useAppStore.setState({
-    graphRevision: useAppStore.getState().graphRevision + 1,
     name: state.name ?? 'Untitled patch',
     author: state.author ?? '',
     description: state.description ?? '',
+    isPlaying: false,
+    error: null,
+  });
+  const opened = useAppStore.getState().dispatch({
+    type: 'setGraph',
     nodes: state.nodes as AppNode[],
     edges: state.edges,
     cpm: state.cpm,
     bpc: state.bpc ?? '4',
     prelude: state.prelude ?? '',
-    isPlaying: false,
-    error: null,
+    reason: 'open patch',
   });
-  return true;
+  // A fresh patch starts a fresh undo history.
+  useAppStore.setState({
+    graphRevision: useAppStore.getState().graphRevision + 1,
+  });
+  return opened;
 }

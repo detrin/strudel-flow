@@ -1,7 +1,5 @@
 import { useEffect, useRef, type ReactElement } from 'react';
 import {
-  addEdge,
-  reconnectEdge,
   useReactFlow,
   type Edge,
   type Connection,
@@ -24,7 +22,7 @@ import { iconMapping } from '@/data/icon-mapping';
 import { radialMenuItems } from '@/data/radial-menu';
 import { useAppStore } from '@/store/app-store';
 import { getMenuSize } from '@/components/ui/radial-menu/geometry';
-import { dropPosition, insertNodeAfter } from '@/lib/node-placement';
+import { dropPosition } from '@/lib/node-placement';
 import { AddAfterContext, NODE_DRAG_TYPE } from './add-node-context';
 
 type ConnectionHandlers = Pick<
@@ -61,14 +59,9 @@ export function NodeContextMenu({
       type,
       position: dropPosition(screenToFlowPosition(point)),
     });
-    useAppStore.setState((state) => ({
-      nodes: [
-        ...state.nodes.map((node) =>
-          node.selected ? { ...node, selected: false } : node,
-        ),
-        { ...newNode, selected: true },
-      ],
-    }));
+    useAppStore
+      .getState()
+      .dispatch({ type: 'add', nodes: [newNode], select: true });
   };
 
   const openFromHandle: OnConnectEnd = (event, state) => {
@@ -114,9 +107,9 @@ export function NodeContextMenu({
   const handlers: ConnectionHandlers = {
     onConnectEnd: openFromHandle,
     onReconnect: (edge, connection) =>
-      useAppStore.setState((state) => ({
-        edges: reconnectEdge(edge, connection, state.edges),
-      })),
+      void useAppStore
+        .getState()
+        .dispatch({ type: 'reconnect', edge, connection }),
     onReconnectEnd: (event, edge, _type, state) => {
       openFromHandle(event, state);
       if (pending.current) pending.current.edge = edge;
@@ -183,18 +176,11 @@ export function NodeContextMenu({
     pending.current = null;
     if (origin?.insertAfter) {
       const newNode = createNodeByType({ type });
-      useAppStore.setState((state) => {
-        const graph = insertNodeAfter(state, origin.nodeId, newNode);
-        return {
-          edges: graph.edges,
-          nodes: graph.nodes.map((node) =>
-            node.id === newNode.id
-              ? { ...node, selected: true }
-              : node.selected
-                ? { ...node, selected: false }
-                : node,
-          ),
-        };
+      useAppStore.getState().dispatch({
+        type: 'insertAfter',
+        after: origin.nodeId,
+        node: newNode,
+        select: true,
       });
       return;
     }
@@ -223,15 +209,32 @@ export function NodeContextMenu({
       type,
       position: screenToFlowPosition(spawn),
     });
-    useAppStore.setState((state) => {
-      let edges = state.edges;
-      if (origin && state.nodes.some((node) => node.id === origin.nodeId)) {
-        const connection = connectionToNode(origin, newNode.id);
-        edges = origin.edge
-          ? reconnectEdge(origin.edge, connection, edges)
-          : addEdge({ ...connection, type: 'default' }, edges);
-      }
-      return { nodes: [...state.nodes, newNode], edges };
+    const { nodes, dispatch } = useAppStore.getState();
+    const wired =
+      origin && nodes.some((node) => node.id === origin.nodeId)
+        ? connectionToNode(origin, newNode.id)
+        : null;
+    // One change: the node, its wire, and the wire it re-routes, if any.
+    dispatch({
+      type: 'add',
+      nodes: [newNode],
+      edges: wired
+        ? [
+            {
+              id: `${wired.source}-${wired.target}`,
+              source: wired.source,
+              target: wired.target,
+              type: 'default',
+              ...(wired.sourceHandle
+                ? { sourceHandle: wired.sourceHandle }
+                : {}),
+              ...(wired.targetHandle
+                ? { targetHandle: wired.targetHandle }
+                : {}),
+            },
+          ]
+        : [],
+      removeEdges: wired && origin?.edge ? [origin.edge.id] : [],
     });
   };
 

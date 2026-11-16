@@ -42,8 +42,17 @@ export function setCode(code: string, { typing = false } = {}) {
   const created = graph.nodes.filter((node) => !before.has(node.id));
   for (const id of autoPlaced) unmeasured.add(id);
   lastGraphCode = graphCode(next);
+  useAppStore.setState({ tempoName: program.tempoName });
+  useAppStore.getState().dispatch({
+    type: 'setGraph',
+    nodes: next.nodes,
+    edges: next.edges,
+    cpm: next.cpm,
+    bpc: next.bpc,
+    prelude: next.prelude,
+    reason: typing ? 'code typed' : 'code',
+  });
   useAppStore.setState({
-    ...next,
     code,
     codeError: null,
     fitRequest: created.length ? state.fitRequest + 1 : state.fitRequest,
@@ -74,13 +83,13 @@ export function loadCode(
   code: string,
   meta: { name: string; author: string; description: string },
 ) {
-  useAppStore.setState({
+  useAppStore.setState({ isPlaying: false, error: null, ...meta });
+  useAppStore.getState().dispatch({
+    type: 'setGraph',
     nodes: [],
     edges: [],
     prelude: '',
-    isPlaying: false,
-    error: null,
-    ...meta,
+    reason: 'new patch',
   });
   setCode(code);
   requestLayoutCheck();
@@ -138,7 +147,13 @@ function relayout(state: State) {
     lines,
     new Set(pending.map((node) => node.id)),
   );
-  useAppStore.setState({ nodes, fitRequest: state.fitRequest + 1 });
+  useAppStore.getState().dispatch({
+    type: 'setGraph',
+    nodes,
+    edges: state.edges,
+    reason: 'layout',
+  });
+  useAppStore.setState({ fitRequest: state.fitRequest + 1 });
 }
 
 /**

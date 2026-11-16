@@ -16,24 +16,20 @@ export function useNodeClipboard() {
   const cut = useCallback(() => {
     if (!copy()) return false;
     const ids = new Set(clipboard.current!.nodes.map((node) => node.id));
-    useAppStore.setState((state) => ({
-      nodes: state.nodes.filter((node) => !ids.has(node.id)),
-      edges: state.edges.filter(
-        (edge) => !ids.has(edge.source) && !ids.has(edge.target),
-      ),
-    }));
+    useAppStore.getState().dispatch({ type: 'remove', ids: [...ids] });
     return true;
   }, [copy]);
   const paste = useCallback(() => {
     if (!clipboard.current) return false;
     pasteCount.current += 1;
-    useAppStore.setState(
-      pasteNodes(
-        useAppStore.getState(),
-        clipboard.current,
-        pasteCount.current * 40,
-      ),
+    const pasted = pasteNodes(
+      useAppStore.getState(),
+      clipboard.current,
+      pasteCount.current * 40,
     );
+    useAppStore
+      .getState()
+      .dispatch({ type: 'setGraph', ...pasted, reason: 'paste' });
     return true;
   }, []);
   return { copy, cut, paste };

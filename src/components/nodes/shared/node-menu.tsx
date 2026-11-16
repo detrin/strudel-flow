@@ -22,13 +22,7 @@ export function NodeMenu({ id, items }: { id: string; items: NodeMenuItem[] }) {
   useEffect(() => {
     if (!open) return;
     // Selected nodes are drawn above the others, so the menu is not hidden.
-    useAppStore.setState((state) => ({
-      nodes: state.nodes.map((node) =>
-        node.selected === (node.id === id)
-          ? node
-          : { ...node, selected: node.id === id },
-      ),
-    }));
+    useAppStore.getState().dispatch({ type: 'select', ids: [id] });
     root.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     const close = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);

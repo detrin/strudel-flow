@@ -1,9 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import {
-  addEdge,
-  applyEdgeChanges,
-  applyNodeChanges,
+import type {
   OnConnect,
   OnEdgesChange,
   OnNodesChange,
@@ -12,11 +9,16 @@ import {
 
 import type { AppNode } from '@/components/nodes/registry';
 import { initialEdges, initialNodes } from '@/data/workflow-data';
-import { programOf } from '@/lib/program';
-import { flatten } from '@/lib/program/compile';
+import {
+  apply,
+  CommandError,
+  logCommand,
+  problemsOf,
+  type Command,
+} from '@/lib/commands';
 import { DEFAULT_THEME } from '@/themes';
 import { applyTheme } from '@/themes/ui';
-import { isolateListeners } from '@/lib/diagnostics';
+import { isolateListeners, report, setProblem } from '@/lib/diagnostics';
 
 type AppState = {
   name: string;
@@ -78,6 +80,11 @@ function savedTheme() {
 }
 
 type AppActions = {
+  /**
+   * Applies a change to the song (see lib/commands): the one way to change
+   * its nodes, wires and tempo. Returns false when the command is refused.
+   */
+  dispatch: (command: Command) => boolean;
   setConsole: (layout: Partial<ConsoleLayout>) => void;
   setCpm: (cpm: string) => void;
   setBpc: (bpc: string) => void;
@@ -127,8 +134,31 @@ export const useAppStore = create<AppStore>()(
         // Not remembered; still applied.
       }
     },
-    setCpm: (cpm) => set({ cpm }),
-    setBpc: (bpc) => set({ bpc }),
+    dispatch: (command) => {
+      let change;
+      try {
+        change = apply(get(), command);
+      } catch (error) {
+        if (!(error instanceof CommandError)) throw error;
+        report('command', error, command.type);
+        return false;
+      }
+      set(change);
+      logCommand(command);
+      // In development, a command that broke the song says so at once.
+      if (import.meta.env.DEV) {
+        const problems = problemsOf(get());
+        setProblem(
+          'song',
+          problems.length
+            ? `The song is inconsistent after ${command.type}: ${problems.join('; ')}`
+            : null,
+        );
+      }
+      return true;
+    },
+    setCpm: (cpm) => void get().dispatch({ type: 'setTempo', cpm }),
+    setBpc: (bpc) => void get().dispatch({ type: 'setTempo', bpc }),
     toggle: () =>
       set((state) => ({
         isPlaying: !state.isPlaying,
@@ -138,57 +168,20 @@ export const useAppStore = create<AppStore>()(
     setError: (error) =>
       set({ error, ...(error ? { isPlaying: false, preview: null } : {}) }),
 
-    onNodesChange: (changes) => {
-      set({ nodes: applyNodeChanges(changes, get().nodes) });
-    },
+    onNodesChange: (changes) =>
+      void get().dispatch({ type: 'nodeChanges', changes }),
 
     removeNode: (nodeId) =>
-      set((state) => ({
-        nodes: state.nodes.filter((node) => node.id !== nodeId),
-        edges: state.edges.filter(
-          (edge) => edge.source !== nodeId && edge.target !== nodeId,
-        ),
-      })),
+      void get().dispatch({ type: 'remove', ids: [nodeId] }),
 
     setMuted: (nodeId, muted) =>
-      set((state) => {
-        const line = new Set(
-          programOf(state)
-            .lines.map((line) => flatten(line.sink).map((node) => node.id))
-            .find((ids) => ids.includes(nodeId)) ?? [nodeId],
-        );
-        return {
-          nodes: state.nodes.map((node) =>
-            line.has(node.id)
-              ? {
-                  ...node,
-                  data: { ...node.data, state: muted ? 'paused' : 'running' },
-                }
-              : node,
-          ),
-        };
-      }),
+      void get().dispatch({ type: 'setMuted', id: nodeId, muted }),
 
     onEdgesChange: (changes) =>
-      set({ edges: applyEdgeChanges(changes, get().edges) }),
+      void get().dispatch({ type: 'edgeChanges', changes }),
 
-    onConnect: (connection) => {
-      if (connection.source === connection.target) return;
-      const { source, target, sourceHandle, targetHandle } = connection;
-      set({
-        edges: addEdge(
-          {
-            id: `${source}-${target}`,
-            source,
-            target,
-            type: 'default',
-            ...(sourceHandle ? { sourceHandle } : {}),
-            ...(targetHandle ? { targetHandle } : {}),
-          },
-          get().edges,
-        ),
-      });
-    },
+    onConnect: (connection) =>
+      void get().dispatch({ type: 'connect', connection }),
 
     setTheme: (theme) => {
       set({ theme });
@@ -200,13 +193,7 @@ export const useAppStore = create<AppStore>()(
     },
 
     updateNodeData: (nodeId, updates) =>
-      set((state) => ({
-        nodes: state.nodes.map((node) =>
-          node.id === nodeId
-            ? { ...node, data: { ...node.data, ...updates } }
-            : node,
-        ),
-      })),
+      void get().dispatch({ type: 'setData', updates: { [nodeId]: updates } }),
   })),
 );
 // One failing listener must not stop the others (see diagnostics).

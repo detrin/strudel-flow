@@ -60,6 +60,16 @@ feature with an app action gets a tool here too.
 `STRUDELTON_LOCAL` in `.env.local` serves a folder read-only at `/local/`
 (here `../tidalcycles`), e.g. for samples.
 
+## Changing the song: commands
+
+Every change to the song's nodes, wires, tempo or prelude is a command
+(`src/lib/commands.ts`): `useAppStore.getState().dispatch(command)`, or a
+store action that dispatches. `apply` is pure, validates (no duplicate
+ids, wires to missing nodes, self-wires or loops) and is unit-tested; the
+last commands are logged (`get_diagnostics`, `__strudelton.commands()`).
+Never `setState` nodes, edges, cpm, bpc or prelude directly; add a command
+instead. In development, a song left inconsistent shows as a problem.
+
 ## How the code becomes nodes
 
 `src/lib/program/`: `parse.ts` (code → Program of lines; each line a chain of

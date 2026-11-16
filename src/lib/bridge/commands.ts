@@ -3,6 +3,7 @@ import { isSource } from '@/components/nodes/define-node';
 import { programOf } from '@/lib/program';
 import { flatten } from '@/lib/program/compile';
 import { useAppStore } from '@/store/app-store';
+import { commandLog } from '@/lib/commands';
 import { loadCode, setCode } from '@/store/code-sync';
 import { codeMeta } from '@/lib/community-patches';
 import { tidyLines } from '@/lib/tidy';
@@ -175,14 +176,8 @@ export const commands: Record<string, (params: Params) => unknown> = {
     const id = requireString(params, 'id');
     if (!state().nodes.some((node) => node.id === id))
       throw new Error(`No node with id "${id}". Call get_patch for ids.`);
-    useAppStore.setState((current) => ({
-      nodes: current.nodes.map((node) =>
-        node.selected === (node.id === id)
-          ? node
-          : { ...node, selected: node.id === id },
-      ),
-      focusRequest: { id, at: Date.now() },
-    }));
+    state().dispatch({ type: 'select', ids: [id] });
+    useAppStore.setState({ focusRequest: { id, at: Date.now() } });
     return describeNode(id, true);
   },
 
@@ -285,6 +280,8 @@ export const commands: Record<string, (params: Params) => unknown> = {
       // What Strudel last played (head), to compare with the code.
       evaluated: evaluatedCode().slice(0, 2000),
       log: diagnostics().slice(-limit),
+      // The last changes to the song, to replay what led here.
+      commands: commandLog().slice(-limit),
     };
   },
 
