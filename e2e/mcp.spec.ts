@@ -96,6 +96,7 @@ test('Claude Code edits the open patch over MCP', async ({ page, baseURL }) => {
     const level = opened.lines[0].nodes[1];
     await call('select_node', { id: level.id });
     await expect(page.locator('.cm-node-focus')).toHaveText('gain(0.4)');
+    expect((await call('auto_arrange')).error).toBeFalsy();
     expect((await call('tidy')).error).toBeFalsy();
 
     // get_patch is compact unless asked for everything.

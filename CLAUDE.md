@@ -73,7 +73,7 @@ Adding a node: a `*.node.ts` with `defineNode` (parameters, `generate`,
 hub from the page's origin. Commands go to the newest open tab; a request
 outlives a reload. Tools: `get_patch` (compact by default), `set_code`,
 `open_file` (reads the song server-side: use it for songs with embedded
-samples instead of pasting them), `new_patch`, `tidy`, `select_node`,
+samples instead of pasting them), `new_patch`, `auto_arrange` (old name `tidy`), `select_node`,
 `set_node`, `set_enabled`, `set_muted`, `set_solo`, `set_tempo`,
 `set_launch`, `play`, `stop`, `record_start`, `record_stop` (the tab sends
 the WAV as base64; the server writes it, default

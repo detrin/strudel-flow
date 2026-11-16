@@ -171,16 +171,20 @@ tool(
   { code: z.string().optional() },
   ({ code }) => call('open_code', { code: code ?? 'setcpm(120/4)\n' }),
 );
+const arrangeShape = {
+  node: z
+    .string()
+    .optional()
+    .describe('A node id: arrange only its line, in place.'),
+};
 tool(
-  'tidy',
+  'auto_arrange',
   "Auto-arrange the canvas (the app's Auto-arrange button): every line laid out as a track (order-free effects stacked; a stack(...) as lanes merging into one column), then all lines aligned left, top to bottom in code order. A line is only reordered when it provably sounds the same. With node: only that node's line, where it is.",
-  {
-    node: z
-      .string()
-      .optional()
-      .describe('A node id: arrange only its line, in place.'),
-  },
+  arrangeShape,
+  (input) => call('tidy', input),
 );
+// The old name, kept so existing prompts and scripts still work.
+tool('tidy', 'Same as auto_arrange (its old name).', arrangeShape);
 tool(
   'select_node',
   'Select a node and bring it into view; the code console shows its code. Use it to point the user at something.',

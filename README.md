@@ -114,7 +114,7 @@ preview` builds too, with `?bridge`; `?bridge=off` opts out). The
 
 Tools: `get_patch` (compact; `detail: "full"` for everything), `set_code`,
 `open_file` (a song from disk, read by the server: embedded samples never
-pass through the conversation), `new_patch`, `tidy`, `select_node`,
+pass through the conversation), `new_patch`, `auto_arrange` (old name `tidy`), `select_node`,
 `set_node`, `set_enabled` (a node's power button), `set_muted`, `set_solo`,
 `set_tempo`, `set_launch` (edits wait 0, 1 or 4 bars), `play`, `stop`,
 `record_start`/`record_stop` (a WAV saved on disk, by default in

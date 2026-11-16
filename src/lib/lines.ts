@@ -97,6 +97,12 @@ export const setLineNodes = (lines: Map<string, string[]>) => {
 export const lineLabelOf = (nodeId: string) =>
   [...lineNodes].find(([, ids]) => ids.includes(nodeId))?.[0];
 
+/** Each line's first node in code: the instrument of its first part. */
+export let lineHeads = new Map<string, string>();
+export const setLineHeads = (heads: Map<string, string>) => {
+  lineHeads = heads;
+};
+
 /**
  * Node ids by part: in a line that merges parts (`stack(a, b).fx()`), the
  * nodes of each part, keyed `<label>#<index>` in code order.

@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAddAfter } from '@/components/editor/add-node-context';
 import { lineLabelOf, useLive } from '@/lib/live';
+import { lineHeads, lineNodes, partNodes } from '@/lib/lines';
 import { tidyLines } from '@/lib/tidy';
 import { useLibrary } from '@/store/library-store';
 import { TrackButtons } from './track-buttons';
@@ -47,6 +48,28 @@ function WorkflowNode({
   const label = type === 'arrange-node' ? lineLabelOf(id) : undefined;
   const isHeader = label !== undefined;
   const isPaused = data.state === 'paused';
+  // Another line is soloed and this one isn't: silent, so gray like muted.
+  const soloedOut = useAppStore(
+    (state) => !data.solo && state.nodes.some((node) => node.data.solo),
+  );
+  // A line with no Arrange header gets its M and S on its first node.
+  const lineLabel = lineLabelOf(id);
+  const lineIds = lineLabel ? lineNodes.get(lineLabel) : undefined;
+  const lineHasHeader = useAppStore((state) =>
+    Boolean(
+      lineIds?.some(
+        (nodeId) =>
+          state.nodes.find((node) => node.id === nodeId)?.type ===
+          'arrange-node',
+      ),
+    ),
+  );
+  const isLineHead =
+    !lineHasHeader &&
+    lineLabel !== undefined &&
+    lineHeads.get(lineLabel) === id;
+  // In a stack, an instrument heads one part, not the line.
+  const inPart = [...partNodes.values()].some((ids) => ids.includes(id));
   const updateNodeData = useAppStore((state) => state.updateNodeData);
   const disabled = Boolean(data.disabled);
   const isSource = isInstrument;
@@ -59,7 +82,7 @@ function WorkflowNode({
       data-disabled={disabled || lineOff || undefined}
       // Muted lines look like switched-off ones: gray, no banner. The
       // line's header keeps its colour so its M button stays readable.
-      data-muted={(isPaused && !isHeader) || undefined}
+      data-muted={((isPaused || soloedOut) && !isHeader) || undefined}
     >
       <BaseHandle
         position={Position.Left}
@@ -109,8 +132,14 @@ function WorkflowNode({
             name={label.startsWith('$') ? 'line' : label}
           />
         )}
+        {isLineHead && (
+          <TrackButtons
+            nodeId={id}
+            name={lineLabel!.startsWith('$') ? 'line' : lineLabel!}
+          />
+        )}
         <div className="flex items-center gap-1">
-          {isPaused && !isHeader && (
+          {isPaused && !isHeader && !isLineHead && (
             <button
               type="button"
               aria-label={`Unmute ${data.title} line`}
@@ -128,9 +157,11 @@ function WorkflowNode({
             title={
               disabled
                 ? 'Enable: its code is uncommented'
-                : isSource
-                  ? 'Disable the whole line: its code is commented out'
-                  : 'Disable: its code is commented out'
+                : isSource && inPart
+                  ? 'Disable this part of the stack: its code is switched off'
+                  : isSource
+                    ? 'Disable the whole line: its code is commented out'
+                    : 'Disable: its code is commented out'
             }
             onClick={() => updateNodeData(id, { disabled: !disabled })}
             className={cn(

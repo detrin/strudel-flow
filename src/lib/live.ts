@@ -5,7 +5,13 @@ import { programOf } from '@/lib/program';
 import { flatten } from '@/lib/program/compile';
 import { isOff } from '@/lib/program/emit';
 import { getSchedulerNow } from '@/lib/strudel-clock';
-import { lineNodes, regionsOf, setLineNodes, setPartNodes } from '@/lib/lines';
+import {
+  lineNodes,
+  regionsOf,
+  setLineHeads,
+  setLineNodes,
+  setPartNodes,
+} from '@/lib/lines';
 import type { ProgramNode } from '@/lib/program/types';
 import { isolateListeners } from '@/lib/diagnostics';
 
@@ -67,12 +73,16 @@ function updateLineNodes() {
   if (!sameSet(off, useLive.getState().off)) useLive.setState({ off });
   let anonymous = 0;
   const parts = new Map<string, string[]>();
+  const heads = new Map<string, string>();
   setLineNodes(
     new Map(
       // Every line, muted ones too (a muted line's header keeps its name),
       // `$:` lines numbered as regionsOf numbers them in the code.
       programOf(state).lines.map((line) => {
         const label = line.label === '$' ? `$${anonymous++}` : line.label;
+        let head = line.sink;
+        while (head.inputs[0]) head = head.inputs[0];
+        if (head.id) heads.set(label, head.id);
         partsOf(line.sink).forEach((part, index) =>
           parts.set(`${label}#${index}`, idsOf(part)),
         );
@@ -81,6 +91,7 @@ function updateLineNodes() {
     ),
   );
   setPartNodes(parts);
+  setLineHeads(heads);
 }
 
 const idsOf = (node: ProgramNode) =>
