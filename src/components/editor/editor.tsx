@@ -1,6 +1,6 @@
 import { NodeContextMenu } from './node-context-menu';
 import { ReactFlow, SelectionMode, useReactFlow } from '@xyflow/react';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { nodeTypes } from '@/components/nodes/node-types';
@@ -24,6 +24,7 @@ import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { themeByName } from '@/themes';
 import { startCodeSync } from '@/store/code-sync';
 import { startBridge } from '@/lib/bridge/connect';
+import { installWheelPassthrough } from '@/lib/wheel-passthrough';
 
 const edgeTypes = { default: deleteEdge };
 const allNodeTypes = {
@@ -76,6 +77,12 @@ export default function Editor() {
   );
   useEffect(startCodeSync, []);
   useEffect(startBridge, []);
+  // Scrolling over a node part with nothing to scroll still pans.
+  const wrapper = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = wrapper.current;
+    return root ? installWheelPassthrough(root) : undefined;
+  }, []);
 
   // Nodes created from code may land off screen; bring them into view.
   const fitRequest = useAppStore((state) => state.fitRequest);
@@ -103,6 +110,7 @@ export default function Editor() {
     <NodeContextMenu>
       {(connectionHandlers) => (
         <div
+          ref={wrapper}
           className="reactflow-wrapper"
           tabIndex={0}
           data-placing={placing ? '' : undefined}

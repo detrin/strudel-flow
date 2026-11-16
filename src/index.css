@@ -84,6 +84,13 @@
 }
 
 html,
+body {
+  /* A scroll that reaches its end never moves or navigates the page (on a
+     Mac a sideways swipe would go back). */
+  overscroll-behavior: none;
+}
+
+html,
 body,
 #root,
 .reactflow-wrapper {
