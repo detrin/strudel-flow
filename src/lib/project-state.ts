@@ -5,8 +5,11 @@ const {
   decompressFromBase64,
 } = LZString;
 import type { Node, Edge } from '@xyflow/react';
+import { NewerFormatError, upgradeState } from './save-format';
 
 export interface ProjectState {
+  /** The save format (lib/save-format); none means 1. */
+  version?: number;
   name?: string;
   author?: string;
   description?: string;
@@ -106,7 +109,12 @@ function validateState(value: unknown): ProjectState | null {
     )
   )
     return null;
-  return { ...state, cpm: String(state.cpm), bpc: String(state.bpc ?? '4') };
+  // Opened as the current format: older ones are upgraded.
+  return upgradeState({
+    ...state,
+    cpm: String(state.cpm),
+    bpc: String(state.bpc ?? '4'),
+  });
 }
 
 function stateToJson(state: ProjectState): string {
@@ -117,6 +125,8 @@ export function stateFromJson(json: string): ProjectState | null {
   try {
     return validateState(JSON.parse(json));
   } catch (error) {
+    // A song from a newer app says so; anything else just doesn't open.
+    if (error instanceof NewerFormatError) throw error;
     console.error('Failed to parse state from JSON:', error);
     return null;
   }

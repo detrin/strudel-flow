@@ -19,6 +19,7 @@ import { PatchGallery } from './patch-gallery';
 import { ControlButton } from './control-button';
 import { useAppStore } from '@/store/app-store';
 import { loadCode, patchCode } from '@/store/code-sync';
+import { NewerFormatError, strudelFile } from '@/lib/save-format';
 import { codeMeta } from '@/lib/community-patches';
 import type { CommunityPatch } from '@/lib/community-patches';
 
@@ -113,7 +114,7 @@ export function PresetPopover() {
             title="The code with every node's position: a complete save"
             onClick={() =>
               downloadText(
-                patchCode(),
+                strudelFile(patchCode()),
                 `${fileName(name)}.strudel`,
                 'text/javascript',
               )
@@ -160,8 +161,12 @@ export function PresetPopover() {
                     name: state.name ?? file.name.replace(/\.json$/i, ''),
                   },
                 );
-              } catch {
-                setStatus('Could not read this patch file.');
+              } catch (error) {
+                setStatus(
+                  error instanceof NewerFormatError
+                    ? error.message
+                    : 'Could not read this patch file.',
+                );
               }
             }}
           />

@@ -69,6 +69,18 @@ dragging). Anything about the music (code sync, playback, autosave, undo,
 the live view, the mixer) follows `song`, which keeps its identity until
 the song really changes. `dispatch` updates both in one step.
 
+## Code in, saved songs
+
+- Code in (typed, inserted, opened, from Claude) goes through
+  `mergeCode` (`lib/program/merge.ts`): parse, keep every node that still
+  writes the same code (sources matched in code order), lay out the rest.
+  Typed text is kept as typed; the `// @layout` comments it lacks are
+  written when the console is left (other code gets them at once).
+- Saved songs are versioned (`lib/save-format.ts`): JSON has `version`,
+  `.strudel` files start with `// @strudelton 2`. Changing what a saved
+  song means needs a new version and an upgrade in `upgradeState`, with a
+  test that opens the old format.
+
 ## Changing the song: commands
 
 Every change to the song's nodes, wires, tempo or prelude is a command

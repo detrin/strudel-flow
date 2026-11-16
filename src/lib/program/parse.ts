@@ -601,18 +601,11 @@ export function knownSources(
     id: string;
     type: string;
     data: Record<string, unknown>;
-    position?: { x: number; y: number };
   }[],
 ): Known[] {
-  // In canvas order (top to bottom, then left to right), which is code
-  // order: two sources with the same code (`bassline` in two parts of a
-  // stack) are matched to their own nodes, not swapped.
-  const byPlace = [...nodes].sort(
-    (a, b) =>
-      (a.position?.y ?? 0) - (b.position?.y ?? 0) ||
-      (a.position?.x ?? 0) - (b.position?.x ?? 0),
-  );
-  return byPlace.flatMap(({ id, type, data }) => {
+  // In the order given: code order (mergeCode), so two sources with the
+  // same code (`bassline` in two parts of a stack) keep their own nodes.
+  return nodes.flatMap(({ id, type, data }) => {
     const definition = nodeDefinitions[type];
     if (!definition || !isSource(definition)) return [];
     const text = definition.generate(data, { id });

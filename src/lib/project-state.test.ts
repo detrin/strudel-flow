@@ -12,7 +12,8 @@ const state: ProjectState = {
 describe('project-state', () => {
   it('round-trips a patch through a share URL', () => {
     const url = getShareUrl(state, 'http://localhost/');
-    expect(loadFromUrl(url)).toEqual(state);
+    // Opened in the current save format.
+    expect(loadFromUrl(url)).toEqual({ ...state, version: 2 });
   });
 
   it('rejects edges pointing at unknown nodes', () => {

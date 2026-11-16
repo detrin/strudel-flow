@@ -1,11 +1,13 @@
 import { useAppStore } from '@/store/app-store';
 import { nodeTypes, type AppNode } from '@/components/nodes/registry';
 import type { ProjectState } from './project-state';
+import { FORMAT_VERSION } from './save-format';
 
 export function capturePatch(): ProjectState {
   const { name, author, description, nodes, edges, cpm, bpc, prelude } =
     useAppStore.getState();
   return {
+    version: FORMAT_VERSION,
     name: name.trim() || 'Untitled patch',
     author: author.trim(),
     description: description.trim(),

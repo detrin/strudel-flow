@@ -24,8 +24,7 @@ import { previewCode } from '@/lib/library/preview';
 import { programOf } from '.';
 import { flatten } from './compile';
 import { emitProgram } from './emit';
-import { knownSources, parseProgram } from './parse';
-import { reconcile } from './reconcile';
+import { mergeCode } from './merge';
 
 type Song = { name: string; code: string };
 
@@ -82,16 +81,18 @@ const createId = () => `n${++ids}`;
 
 /** What the app does when code is typed into an empty or an open canvas. */
 function typeInto(code: string, graph?: Graph): Graph {
-  const result = parseProgram(code, knownSources(graph?.nodes ?? []));
-  if (!result.ok) throw new Error(`does not parse: ${result.error}`);
-  const { program } = result;
-  const next = reconcile(program, graph ?? { nodes: [], edges: [] }, createId);
+  const merged = mergeCode(
+    code,
+    graph ?? { nodes: [], edges: [], cpm: '120', bpc: '4', prelude: '' },
+    createId,
+  );
+  if (!merged.ok) throw new Error(`does not parse: ${merged.error}`);
   return {
-    nodes: next.nodes,
-    edges: next.edges,
-    cpm: program.cpm ?? graph?.cpm ?? '120',
-    bpc: program.bpc ?? graph?.bpc ?? '4',
-    prelude: program.prelude,
+    nodes: merged.nodes,
+    edges: merged.edges,
+    cpm: merged.program.cpm,
+    bpc: merged.program.bpc,
+    prelude: merged.program.prelude,
   };
 }
 const codeOf = (graph: Graph) => emitProgram(programOf(graph));

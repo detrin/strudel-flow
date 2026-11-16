@@ -1,9 +1,10 @@
 import { programOf } from '@/lib/program';
 import { flatten } from '@/lib/program/compile';
 import { emitProgram } from '@/lib/program/emit';
-import { knownSources, parseProgram } from '@/lib/program/parse';
-import { layout, reconcile } from '@/lib/program/reconcile';
+import { layout } from '@/lib/program/reconcile';
 import { updateLayout, withoutLayout } from '@/lib/program/layout-comments';
+import { mergeCode } from '@/lib/program/merge';
+import { readStrudelFile } from '@/lib/save-format';
 import { useAppStore } from './app-store';
 import { tidyLines } from '@/lib/tidy';
 import { report, setProblem } from '@/lib/diagnostics';
@@ -24,22 +25,20 @@ let unmeasured = new Set<string>();
  */
 export function setCode(code: string, { typing = false } = {}) {
   const state = useAppStore.getState();
-  const result = parseProgram(code, knownSources(state.nodes));
-  if (!result.ok) {
-    useAppStore.setState({ code, codeError: result.error });
+  const merged = mergeCode(code, state);
+  if (!merged.ok) {
+    useAppStore.setState({ code, codeError: merged.error });
     return;
   }
-  const { program } = result;
-  const { autoPlaced, ...graph } = reconcile(program, state);
+  const { program, autoPlaced, created } = merged;
   const next = {
-    ...graph,
-    cpm: program.cpm ?? state.cpm,
-    bpc: program.bpc ?? state.bpc,
+    nodes: merged.nodes,
+    edges: merged.edges,
+    cpm: program.cpm,
+    bpc: program.bpc,
     prelude: program.prelude,
     tempoName: program.tempoName,
   };
-  const before = new Set(state.nodes.map((node) => node.id));
-  const created = graph.nodes.filter((node) => !before.has(node.id));
   for (const id of autoPlaced) unmeasured.add(id);
   lastGraphCode = graphCode(next);
   useAppStore.setState({ tempoName: program.tempoName });
@@ -80,9 +79,11 @@ export const patchCode = () => graphCode(useAppStore.getState());
 
 /** Replaces the whole patch with code, e.g. a code patch from the gallery. */
 export function loadCode(
-  code: string,
+  file: string,
   meta: { name: string; author: string; description: string },
 ) {
+  // A saved .strudel file starts with its format's version.
+  const code = readStrudelFile(file);
   useAppStore.setState({ isPlaying: false, error: null, ...meta });
   useAppStore.getState().dispatch({
     type: 'setGraph',
@@ -165,12 +166,12 @@ export function upgradePatch() {
   const state = useAppStore.getState();
   if (!state.nodes.length) return;
   const code = graphCode(state);
-  const result = parseProgram(code, knownSources(state.nodes));
-  if (!result.ok) return;
+  const merged = mergeCode(code, state);
+  if (!merged.ok) return;
   const types = (lines: { sink: Parameters<typeof flatten>[0] }[]) =>
     lines.flatMap((line) => flatten(line.sink).map((node) => node.type));
   if (
-    types(result.program.lines).join() !== types(programOf(state).lines).join()
+    types(merged.program.lines).join() !== types(programOf(state).lines).join()
   ) {
     setCode(code);
     // Its layout was made for the old nodes; check it once they're measured.
