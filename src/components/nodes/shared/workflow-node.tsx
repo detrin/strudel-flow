@@ -7,7 +7,6 @@ import {
   PowerOff,
   Rows3,
   Trash2,
-  VolumeX,
 } from 'lucide-react';
 import { Position } from '@xyflow/react';
 import { WorkflowNodeData, AppNodeType } from '@/components/nodes/registry';
@@ -56,12 +55,11 @@ function WorkflowNode({
 
   return (
     <BaseNode
-      data-muted={isPaused || undefined}
       data-sounding={sounding || undefined}
       data-disabled={disabled || lineOff || undefined}
-      className={
-        isPaused ? 'border-amber-500/70 ring-1 ring-amber-500/25' : undefined
-      }
+      // Muted lines look like switched-off ones: gray, no banner. The
+      // line's header keeps its colour so its M button stays readable.
+      data-muted={(isPaused && !isHeader) || undefined}
     >
       <BaseHandle
         position={Position.Left}
@@ -112,6 +110,17 @@ function WorkflowNode({
           />
         )}
         <div className="flex items-center gap-1">
+          {isPaused && !isHeader && (
+            <button
+              type="button"
+              aria-label={`Unmute ${data.title} line`}
+              title="Muted: this line is silent. Click to unmute"
+              onClick={() => setMuted(id, false)}
+              className="nodrag flex size-7 items-center justify-center rounded-md text-[11px] font-bold text-muted-foreground hover:bg-accent"
+            >
+              M
+            </button>
+          )}
           <Button
             variant="ghost"
             aria-label={`${disabled ? 'Enable' : 'Disable'} ${data.title}`}
@@ -166,25 +175,6 @@ function WorkflowNode({
           />
         </div>
       </header>
-      {isPaused && (
-        <div
-          role="status"
-          className="mx-2 mb-4 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-2 text-amber-800 dark:text-amber-200"
-        >
-          <VolumeX className="size-4 shrink-0" aria-hidden="true" />
-          <div className="flex-1">
-            <p className="text-xs font-semibold">Muted</p>
-            <p className="text-[10px] opacity-80">This line is silent</p>
-          </div>
-          <button
-            aria-label={`Unmute ${data.title} line`}
-            onClick={() => setMuted(id, false)}
-            className="nodrag rounded-md border border-amber-600/30 bg-background/70 px-2 py-1.5 text-xs font-semibold hover:bg-background"
-          >
-            Unmute
-          </button>
-        </div>
-      )}
       {children}
       {showCode && <PatternPopup id={id} />}
     </BaseNode>

@@ -153,8 +153,10 @@ body,
   transition: box-shadow 40ms;
 }
 
-/* A disabled node (its code commented out), or one in a disabled line. */
-.react-flow__node > div[data-disabled] {
+/* A disabled node (its code commented out), one in a disabled line, or
+   one in a muted line. */
+.react-flow__node > div[data-disabled],
+.react-flow__node > div[data-muted] {
   opacity: 0.45;
   filter: grayscale(0.9);
 }

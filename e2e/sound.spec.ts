@@ -72,11 +72,12 @@ test('a muted line comes back every time it is unmuted', async ({ page }) => {
     await header(page, 'low').getByRole('button', { name: 'Mute low' }).click();
     await silent(page, 'low');
     await sounds(page, 'high');
-    // A muted line is covered; its header keeps its name and the way back.
+    // A muted line is gray like a switched-off one, no banner; its header
+    // keeps its colour and its M button, the way back.
     await expect(header(page, 'low')).toBeVisible();
-    await header(page, 'low')
-      .getByRole('button', { name: /^Unmute/ })
-      .click();
+    await expect(page.locator('[data-muted]').first()).toBeVisible();
+    await expect(page.getByText('This line is silent')).toHaveCount(0);
+    await header(page, 'low').getByRole('button', { name: 'Mute low' }).click();
     await sounds(page, 'low');
   }
 });
