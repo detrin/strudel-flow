@@ -30,3 +30,7 @@ playwright-report
 
 # pnpm shot output
 shots/
+
+# Python caches (skill scripts)
+__pycache__/
+*.pyc
