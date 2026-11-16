@@ -83,6 +83,11 @@ the WAV as base64; the server writes it, default
 App-side handlers: `src/lib/bridge/commands.ts` (may be async). A new
 feature with an app action gets a tool here too.
 
+To find out what a sound in a song is and remake it (a YouTube link, "that
+glitchy sound at 0:18"), use the `match-sound` skill
+(`.claude/skills/match-sound/`): it measures the original and recordings
+of the remake with `sound_match.py`.
+
 `STRUDELTON_LOCAL` in `.env.local` serves a folder read-only at `/local/`
 (here `../tidalcycles`), e.g. for samples.
 
@@ -210,6 +215,12 @@ rest goes on.
   machine (Node 25+ has no corepack): `npm install -g pnpm@10`.
 - The Bash tool's safety check may refuse heredocs with `$`-templates;
   write the edit script to a file first.
+- After a reload a tab plays nothing until it gets a click (the browser's
+  autoplay rule): `play` then evaluates nothing and `record_stop` says
+  "Nothing was recorded". Open the app in Playwright and click "Play
+  code"; commands go to that newest tab.
+- Notes ring about 20 ms past their written end (release, room); `gm_*`
+  voices can be silent the first time they play (soundfont loading).
 
 ## Conventions
 

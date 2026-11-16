@@ -1,0 +1,343 @@
+"""Measure a reference track and a Strudelton recording of a sound remade from it.
+
+Run with a Python that has numpy and scipy, isolated from the working dir:
+  python3 -I sound_match.py <command> ...
+
+Commands (times in seconds, --bpm and --t0 give the beat grid):
+  fetch URL DIR                 download audio as DIR/song.wav (yt-dlp)
+  tempo FILE A B                tempo candidates between A and B
+  spectro FILE A DUR OUT.png    spectrogram (--side, --fmin, --fmax, --lin)
+  sidediff FILE A B C           which bands get louder from [A,B) to [B,C)
+  bars FILE N                   per-bar level and 32nd map (--band LO,HI, --side)
+  blocks FILE A B               gated blocks: grid position, length, pitches
+  harmonics FILE F0 T...        harmonic profile at times T (gains for Strudel)
+  compare ORIG REPRO A B        blocks and pitches side by side, aligned
+  peaks FILE A B                tonal peaks (--side, --fmin, --fmax)
+"""
+
+import argparse
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import numpy as np
+from scipy.io import wavfile
+from scipy.signal import butter, find_peaks, sosfiltfilt, stft, welch
+
+NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+SHADES = ' .:-=+*#%@'
+
+
+def note_name(midi):
+    n = int(round(midi))
+    return f'{NAMES[n % 12]}{n // 12 - 1}'
+
+
+def load(path, channel='mid'):
+    sr, raw = wavfile.read(path)
+    x = raw.astype(float)
+    if raw.dtype.kind == 'i':
+        x = x / np.iinfo(raw.dtype).max
+    if x.ndim == 1:
+        return sr, x
+    if channel == 'side':
+        return sr, (x[:, 0] - x[:, 1]) / 2
+    if channel == 'left':
+        return sr, x[:, 0]
+    if channel == 'right':
+        return sr, x[:, 1]
+    return sr, x.mean(1)
+
+
+def bandpass(sr, x, band):
+    if not band:
+        return x
+    lo, hi = band
+    sos = butter(4, [lo, min(hi, sr / 2 - 100)], 'bandpass', fs=sr, output='sos')
+    return sosfiltfilt(sos, x)
+
+
+def db(v):
+    return 20 * np.log10(np.asarray(v) + 1e-12)
+
+
+def rms_frames(x, sr, a, b, hop, win):
+    seg = x[int(a * sr) : int(b * sr)]
+    h, w = int(sr * hop), int(sr * win)
+    return np.array(
+        [np.sqrt(np.mean(seg[i : i + w] ** 2)) for i in range(0, len(seg) - w, h)]
+    )
+
+
+def blocks_of(sr, x, a, b, floor=20):
+    """Sound blocks between a and b: [start, end] where the level is within
+    `floor` dB of the window's 90th percentile (not its peak, so one loud hit
+    at the edge does not shorten every block), release tails merged."""
+    e = db(rms_frames(x, sr, a, b, 0.001, 0.004))
+    on = e > np.percentile(e, 90) - floor
+    on = np.convolve(on, np.ones(5), 'same') >= 3
+    edges = np.flatnonzero(np.diff(on.astype(int)))
+    events = [(a + (i + 1) * 0.001, bool(on[i + 1])) for i in edges]
+    if on[0]:
+        events.insert(0, (a, True))
+    out = []
+    for (ta, up), (tb, down) in zip(events, events[1:]):
+        if up and not down and tb - ta > 0.05:
+            out.append([ta, tb])
+    if events and events[-1][1] and b - events[-1][0] > 0.05:
+        out.append([events[-1][0], b])
+    merged = []
+    for blk in out:
+        if merged and blk[0] - merged[-1][1] < 0.02:
+            merged[-1][1] = blk[1]
+        else:
+            merged.append(blk)
+    return merged
+
+
+def pitch_track(sr, x, a, b, lo=48, hi=84, hop=0.004, n=2048):
+    """Pitch segments (start offset, midi) inside [a, b] by harmonic sum."""
+    cand = np.arange(lo, hi + 0.01, 0.25)
+    f0s = 440 * 2 ** ((cand - 69) / 12)
+    fr = np.fft.rfftfreq(n * 4, 1 / sr)
+    segs = []
+    for t in np.arange(a + 0.01, b - 0.01, hop):
+        c = int(t * sr)
+        s = x[max(0, c - n // 2) : c + n // 2]
+        if len(s) < n:
+            continue
+        spec = np.abs(np.fft.rfft(s * np.hanning(n), n * 4))
+        score = [
+            sum(np.interp(f * k, fr, spec) / k**0.3 for k in range(1, 8))
+            - 0.5 * np.interp(f * 0.5, fr, spec)
+            for f in f0s
+        ]
+        m = int(round(cand[int(np.argmax(score))]))
+        if segs and segs[-1][1] == m:
+            segs[-1][2] = t
+        else:
+            segs.append([t, m, t])
+    return [(s - a, m) for s, m, e in segs if e - s >= 0.012]
+
+
+def cmd_fetch(args):
+    out = Path(args.dir)
+    out.mkdir(parents=True, exist_ok=True)
+    if not shutil.which('yt-dlp'):
+        sys.exit('yt-dlp not found')
+    cmd = ['yt-dlp', '--js-runtimes', 'node', '-f', 'bestaudio', '-x']
+    cmd += ['--audio-format', 'wav', '-o', str(out / 'song.%(ext)s'), args.url]
+    if subprocess.run(cmd).returncode:
+        sys.exit('download failed: update yt-dlp first (see SKILL.md)')
+    print(out / 'song.wav')
+
+
+def cmd_tempo(args):
+    sr, x = load(args.file)
+    seg = x[int(args.a * sr) : int(args.b * sr)]
+    _, _, z = stft(seg, sr, nperseg=1024, noverlap=768)
+    flux = np.maximum(0, np.diff(np.log1p(np.abs(z) * 100), axis=1)).sum(0)
+    flux -= flux.mean()
+    ac = np.correlate(flux, flux, 'full')[len(flux) - 1 :]
+    fps = sr / 256
+    scores = []
+    for bpm in np.arange(60, 200, 0.5):
+        lag = 60 / bpm * fps
+        s = sum(np.interp(lag * k, np.arange(len(ac)), ac) for k in (1, 2, 4))
+        scores.append((s, bpm))
+    scores.sort(reverse=True)
+    print('best bpm:', ', '.join(f'{b:g}' for _, b in scores[:6]))
+
+
+def cmd_spectro(args):
+    chain = '0.5*c0-0.5*c1' if args.side else '0.5*c0+0.5*c1'
+    scale = 'lin' if args.lin else 'log'
+    lavfi = (
+        f'showspectrumpic=s=2000x700:legend=1:scale=log:fscale={scale}'
+        f':color=intensity:start={args.fmin}:stop={args.fmax}'
+    )
+    cmd = ['ffmpeg', '-loglevel', 'error', '-y', '-ss', str(args.a)]
+    cmd += ['-t', str(args.dur), '-i', args.file, '-af', f'pan=mono|c0={chain}']
+    cmd += ['-lavfi', lavfi, args.out]
+    subprocess.run(cmd, check=True)
+    print(args.out)
+
+
+def cmd_sidediff(args):
+    sr, stereo = wavfile.read(args.file)
+    stereo = stereo.astype(float)
+    edges = [100, 400, 1000, 2000, 4000, 6000, 8000, 10000, 12000, 16000, 20000]
+    for name, sig in (
+        ('mid', stereo.mean(1)),
+        ('side', (stereo[:, 0] - stereo[:, 1]) / 2),
+    ):
+        f, p1 = welch(sig[int(args.a * sr) : int(args.b * sr)], sr, nperseg=8192)
+        _, p2 = welch(sig[int(args.b * sr) : int(args.c * sr)], sr, nperseg=8192)
+        d = 10 * np.log10(p2 + 1e-15) - 10 * np.log10(p1 + 1e-15)
+        cells = [
+            f'{lo // 1000}-{hi // 1000}k:{np.mean(d[(f >= lo) & (f < hi)]):+.1f}'
+            for lo, hi in zip(edges, edges[1:])
+        ]
+        print(f'{name:4s}', ' '.join(cells))
+
+
+def cmd_bars(args):
+    sr, x = load(args.file, 'side' if args.side else 'mid')
+    x = bandpass(sr, x, args.band)
+    bar = 60 / args.bpm * 4
+    step = bar / 32
+    rows = []
+    for b in range(args.n):
+        t = args.t0 + b * bar
+        v = [
+            np.sqrt(np.mean(x[int((t + i * step) * sr) : int((t + (i + 1) * step) * sr)] ** 2))
+            for i in range(32)
+        ]
+        rows.append(db(v))
+    top = max(r.max() for r in rows)
+    for b, r in enumerate(rows):
+        r = r - top
+        shade = ''.join(SHADES[min(9, max(0, int((v + 40) / 4)))] for v in r)
+        gaps = [i for i in range(32) if r[i] < np.median(r) - 15]
+        t = args.t0 + b * bar
+        print(f'bar{b + 1:4d} {t:7.2f}s |{shade}| {r.mean():6.1f} dB  gaps {gaps}')
+
+
+def grid_pos(t, t0, bpm):
+    return (t - t0) / (60 / bpm / 16)
+
+
+def cmd_blocks(args):
+    sr, x = load(args.file)
+    t0 = args.t0 if args.t0 is not None else None
+    found = blocks_of(sr, x, args.a, args.b)
+    if not found:
+        sys.exit('no blocks found')
+    t0 = found[0][0] if t0 is None else t0
+    sixty4 = 60 / args.bpm / 16
+    print(f'grid: 64th = {sixty4 * 1000:.2f} ms, beat 1 at {t0:.3f}s')
+    for a, b in found:
+        segs = pitch_track(sr, x, a, b)
+        notes = ' '.join(
+            f'{note_name(m)}@{grid_pos(a + s, t0, args.bpm):.1f}' for s, m in segs
+        )
+        print(
+            f'{a:7.3f}-{b:7.3f}s  64th {grid_pos(a, t0, args.bpm):6.1f}'
+            f'  len {(b - a) * 1000:5.0f} ms = {(b - a) / sixty4:4.1f} 64ths  {notes}'
+        )
+
+
+def cmd_harmonics(args):
+    sr, x = load(args.file)
+    n = 8192
+    fr = np.fft.rfftfreq(n, 1 / sr)
+    profiles = []
+    for t in args.times:
+        s = x[int(t * sr) : int(t * sr) + n]
+        spec = np.abs(np.fft.rfft(s * np.hanning(n)))
+        h = np.array(
+            [
+                spec[(fr > args.f0 * k * 0.97) & (fr < args.f0 * k * 1.03)].max()
+                for k in range(1, args.count + 1)
+            ]
+        )
+        profiles.append(db(h / h.max()))
+    p = np.median(profiles, 0)
+    print('dB  ', ' '.join(f'{v:4.0f}' for v in p))
+    gains = ', '.join(f'{10 ** (v / 20):.2g}' for v in p)
+    print(f'const HARM = [{gains}]')
+    print('vox: stack(...HARM.map((g, i) => note(MEL).add(note(12 * Math.log2(i + 1))).gain(g))).sound("sine")')
+
+
+def first_onset(sr, x):
+    e = rms_frames(x, sr, 0, min(len(x) / sr, 10), 0.001, 0.004)
+    return np.flatnonzero(e > e.max() * 0.05)[0] * 0.001
+
+
+def fall_times(sr, x, a, b, drops=(6, 12, 20)):
+    """Milliseconds after `a` where the level last sits within each drop (dB)
+    of the block's peak: -6 is the body, -20 the tail."""
+    e = db(rms_frames(x, sr, a, b, 0.001, 0.004))
+    return [
+        (np.flatnonzero(e > e.max() - d)[-1] + 1) if (e > e.max() - d).any() else 0
+        for d in drops
+    ]
+
+
+def cmd_compare(args):
+    sra, xa = load(args.orig)
+    srb, xb = load(args.repro)
+    oa = blocks_of(sra, xa, args.a, args.b)
+    rb = first_onset(srb, xb)
+    ob = blocks_of(srb, xb, rb - 0.005, rb + (args.b - oa[0][0]) + 0.2)
+    print('start (ms from first block), end where the level is 6/12/20 dB under the block peak')
+    print('   orig start  -6 -12 -20 | repro start  -6 -12 -20 | d_start  d-6 d-12 d-20')
+    for (a1, a2), (b1, b2) in zip(oa, ob):
+        ds = ((b1 - ob[0][0]) - (a1 - oa[0][0])) * 1000
+        fa = fall_times(sra, xa, a1, a2 + 0.03)
+        fb = fall_times(srb, xb, b1, b2 + 0.03)
+        diff = ' '.join(f'{q - p:+4d}' for p, q in zip(fa, fb))
+        print(
+            f'  {(a1 - oa[0][0]) * 1000:10.0f} {fa[0]:3d} {fa[1]:3d} {fa[2]:3d} |'
+            f' {(b1 - ob[0][0]) * 1000:11.0f} {fb[0]:3d} {fb[1]:3d} {fb[2]:3d} |'
+            f' {ds:+7.0f} {diff}'
+        )
+        for name, sr, x, s, e in (('orig', sra, xa, a1, a2), ('repro', srb, xb, b1, b2)):
+            segs = pitch_track(sr, x, s, e)
+            print(f'      {name:5s}', ' '.join(f'{note_name(m)}@{t * 1000:.0f}' for t, m in segs))
+    if len(oa) != len(ob):
+        print(f'block count differs: orig {len(oa)}, repro {len(ob)}')
+
+
+def cmd_peaks(args):
+    sr, x = load(args.file, 'side' if args.side else 'mid')
+    f, p = welch(x[int(args.a * sr) : int(args.b * sr)], sr, nperseg=32768)
+    w = (f > args.fmin) & (f < args.fmax)
+    pk, props = find_peaks(10 * np.log10(p[w] + 1e-15), prominence=6)
+    top = sorted(zip(props['prominences'], f[w][pk]), reverse=True)[:10]
+    for prom, freq in sorted(top, key=lambda v: v[1]):
+        midi = 69 + 12 * np.log2(freq / 440)
+        print(f'{freq:8.0f} Hz  {note_name(midi):5s} prominence {prom:4.1f} dB')
+    if len(top) > 2:
+        fs = np.sort([v for _, v in top])
+        print('spacings:', ' '.join(f'{d:.0f}' for d in np.diff(fs)))
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = p.add_subparsers(dest='cmd', required=True)
+
+    def grid(sp):
+        sp.add_argument('--bpm', type=float, default=120)
+        sp.add_argument('--t0', type=float, default=None)
+
+    s = sub.add_parser('fetch'); s.add_argument('url'); s.add_argument('dir')
+    s = sub.add_parser('tempo'); s.add_argument('file'); s.add_argument('a', type=float); s.add_argument('b', type=float)
+    s = sub.add_parser('spectro')
+    s.add_argument('file'); s.add_argument('a', type=float); s.add_argument('dur', type=float); s.add_argument('out')
+    s.add_argument('--side', action='store_true'); s.add_argument('--lin', action='store_true')
+    s.add_argument('--fmin', type=float, default=20); s.add_argument('--fmax', type=float, default=20000)
+    s = sub.add_parser('sidediff')
+    s.add_argument('file'); s.add_argument('a', type=float); s.add_argument('b', type=float); s.add_argument('c', type=float)
+    s = sub.add_parser('bars'); s.add_argument('file'); s.add_argument('n', type=int); grid(s)
+    s.add_argument('--side', action='store_true')
+    s.add_argument('--band', type=lambda v: [float(k) for k in v.split(',')], default=None)
+    s = sub.add_parser('blocks'); s.add_argument('file'); s.add_argument('a', type=float); s.add_argument('b', type=float); grid(s)
+    s = sub.add_parser('harmonics')
+    s.add_argument('file'); s.add_argument('f0', type=float); s.add_argument('times', type=float, nargs='+')
+    s.add_argument('--count', type=int, default=16)
+    s = sub.add_parser('compare')
+    s.add_argument('orig'); s.add_argument('repro'); s.add_argument('a', type=float); s.add_argument('b', type=float)
+    s = sub.add_parser('peaks'); s.add_argument('file'); s.add_argument('a', type=float); s.add_argument('b', type=float)
+    s.add_argument('--side', action='store_true')
+    s.add_argument('--fmin', type=float, default=2000); s.add_argument('--fmax', type=float, default=20000)
+
+    args = p.parse_args()
+    if getattr(args, 't0', 0) is None and args.cmd == 'bars':
+        args.t0 = 0.0
+    globals()[f'cmd_{args.cmd}'](args)
+
+
+if __name__ == '__main__':
+    main()
