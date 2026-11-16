@@ -230,15 +230,17 @@ def cmd_blocks(args):
 
 def cmd_harmonics(args):
     sr, x = load(args.file)
-    n = 8192
-    fr = np.fft.rfftfreq(n, 1 / sr)
+    # low notes need a longer window; pad to resolve each harmonic
+    n = 8192 if args.f0 > 150 else 16384
+    pad = 1 << 18
+    fr = np.fft.rfftfreq(pad, 1 / sr)
     profiles = []
     for t in args.times:
         s = x[int(t * sr) : int(t * sr) + n]
-        spec = np.abs(np.fft.rfft(s * np.hanning(n)))
+        spec = np.abs(np.fft.rfft(s * np.hanning(len(s)), pad))
         h = np.array(
             [
-                spec[(fr > args.f0 * k * 0.97) & (fr < args.f0 * k * 1.03)].max()
+                spec[np.abs(fr - args.f0 * k) <= max(0.03 * args.f0 * k, 2 * sr / n)].max()
                 for k in range(1, args.count + 1)
             ]
         )
@@ -290,6 +292,105 @@ def cmd_compare(args):
         print(f'block count differs: orig {len(oa)}, repro {len(ob)}')
 
 
+def band_env(sr, x, lo, hi, hop=0.005):
+    y = bandpass(sr, x, (lo, hi))
+    h = int(sr * hop)
+    e = np.log(np.array([np.sqrt(np.mean(y[i : i + h] ** 2)) for i in range(0, len(y) - h, h)]) + 1e-6)
+    return (e - e.mean()) / (e.std() + 1e-9)
+
+
+def find_offset(orig, repro, bars, bpm):
+    """Seconds into `repro` where the original's bar 1 lines up, searched over
+    one loop of `bars` bars (playback does not restart at cycle 0)."""
+    sra, xa = load(orig)
+    srb, xb = load(repro)
+    period = bars * 60 / bpm * 4
+    n = int(period / 0.005)
+    ea = [band_env(sra, xa, lo, hi)[:n] for lo, hi in ((25, 60), (600, 2500), (6000, 12000))]
+    eb = [band_env(srb, xb, lo, hi) for lo, hi in ((25, 60), (600, 2500), (6000, 12000))]
+    best = (-9, 0)
+    for lag in range(0, n):
+        if lag + n > len(eb[0]):
+            break
+        c = sum(np.dot(a, b[lag : lag + n]) for a, b in zip(ea, eb)) / n / len(ea)
+        best = max(best, (c, lag))
+    return best[1] * 0.005, best[0]
+
+
+def cmd_align(args):
+    off, corr = find_offset(args.orig, args.repro, args.bars, args.bpm)
+    print(f'{off:.3f}')
+    print(f'correlation {corr:.2f} (record at least two loops)', file=sys.stderr)
+
+
+BANDS = {
+    'sub 25-60': (25, 60),
+    'low 60-250': (60, 250),
+    'mid 600-2.5k': (600, 2500),
+    'snare 1.5-4k': (1500, 4000),
+    'hats 8-12k': (8000, 12000),
+    'air 12-16k': (12000, 16000),
+}
+
+
+def cmd_bands(args):
+    """Level per bar in fixed bands, original vs take aligned with `align`."""
+    sra, xa = load(args.orig)
+    srb, xb = load(args.repro)
+    off = args.offset
+    if off is None:
+        off, _ = find_offset(args.orig, args.repro, args.bars, args.bpm)
+    bar = 60 / args.bpm * 4
+    bands = dict(BANDS)
+    for spec in args.band or []:
+        lo, hi = (float(v) for v in spec.split(','))
+        bands[f'{lo:g}-{hi:g}'] = (lo, hi)
+    print(f'take bar 1 at {off:.3f}s; dB per bar, then take minus original')
+    for name, (lo, hi) in bands.items():
+        ya, yb = bandpass(sra, xa, (lo, hi)), bandpass(srb, xb, (lo, hi))
+        la = [db(np.sqrt(np.mean(ya[int(i * bar * sra) : int((i + 1) * bar * sra)] ** 2))) for i in range(args.bars)]
+        lb = [db(np.sqrt(np.mean(yb[int((off + i * bar) * srb) : int((off + (i + 1) * bar) * srb)] ** 2))) for i in range(args.bars)]
+        print(f'{name:14s}', ' '.join(f'{v:6.1f}' for v in la), ' | ', ' '.join(f'{b - a:+5.1f}' for a, b in zip(la, lb)))
+
+
+def cmd_roll(args):
+    """Piano roll: notes sounding in each grid step (polyphonic), strongest
+    first, from a constant-Q-like sum of the spectrum around each semitone."""
+    sr, x = load(args.file, 'side' if args.side else 'mid')
+    step = 60 / args.bpm / args.div * 4
+    n = int(2 ** np.ceil(np.log2(sr * max(step, 0.09))))
+    fr = np.fft.rfftfreq(n * 2, 1 / sr)
+    midis = np.arange(args.lo, args.hi + 1)
+    centers = 440 * 2 ** ((midis - 69) / 12)
+    bands = [(fr > c * 2 ** (-0.5 / 12)) & (fr < c * 2 ** (0.5 / 12)) for c in centers]
+    t = args.t0 if args.t0 is not None else args.a
+    rows = []
+    while t < args.b:
+        c = int((t + step / 2) * sr)
+        if c + n // 2 > len(x):
+            break
+        s = x[max(0, c - n // 2) : c + n // 2]
+        s = np.pad(s, (n - len(s), 0))
+        spec = np.abs(np.fft.rfft(s * np.hanning(n), n * 2)) ** 2
+        e = np.array([spec[m].sum() if m.any() else 0 for m in bands])
+        # remove energy explained by harmonics of lower notes
+        e2 = e.copy()
+        for i, m in enumerate(midis):
+            for k, semis in ((2, 12), (3, 19), (4, 24), (5, 28)):
+                j = i + semis
+                if j < len(e2):
+                    e2[j] = max(0, e2[j] - e[i] / k)
+        rows.append((t, db(np.sqrt(e2))))
+        t += step
+    top = max(r.max() for _, r in rows)
+    for t, r in rows:
+        r = r - top
+        idx = [i for i in np.argsort(r)[::-1] if r[i] > -args.floor][: args.max]
+        pos = (t - (args.t0 if args.t0 is not None else args.a)) / step
+        notes = ' '.join(f'{note_name(midis[i])}({r[i]:.0f})' for i in idx)
+        print(f'{t:7.3f}s step {pos:5.0f}  {notes}')
+
+
 def cmd_peaks(args):
     sr, x = load(args.file, 'side' if args.side else 'mid')
     f, p = welch(x[int(args.a * sr) : int(args.b * sr)], sr, nperseg=32768)
@@ -329,6 +430,16 @@ def main():
     s.add_argument('--count', type=int, default=16)
     s = sub.add_parser('compare')
     s.add_argument('orig'); s.add_argument('repro'); s.add_argument('a', type=float); s.add_argument('b', type=float)
+    s = sub.add_parser('align'); s.add_argument('orig'); s.add_argument('repro')
+    s.add_argument('--bars', type=int, default=4); s.add_argument('--bpm', type=float, default=120)
+    s = sub.add_parser('bands'); s.add_argument('orig'); s.add_argument('repro')
+    s.add_argument('--bars', type=int, default=4); s.add_argument('--bpm', type=float, default=120)
+    s.add_argument('--offset', type=float, default=None); s.add_argument('--band', action='append')
+    s = sub.add_parser('roll'); s.add_argument('file'); s.add_argument('a', type=float); s.add_argument('b', type=float); grid(s)
+    s.add_argument('--div', type=int, default=16, help='steps per bar')
+    s.add_argument('--lo', type=int, default=36); s.add_argument('--hi', type=int, default=96)
+    s.add_argument('--floor', type=float, default=18); s.add_argument('--max', type=int, default=6)
+    s.add_argument('--side', action='store_true')
     s = sub.add_parser('peaks'); s.add_argument('file'); s.add_argument('a', type=float); s.add_argument('b', type=float)
     s.add_argument('--side', action='store_true')
     s.add_argument('--fmin', type=float, default=2000); s.add_argument('--fmax', type=float, default=20000)

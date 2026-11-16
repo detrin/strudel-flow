@@ -53,13 +53,26 @@ out.png`, then Read the PNG. Whole-song pictures hide the detail.
    and length in 64ths and the pitch changes inside it.
 6. Timbre of a pitched sound: `sm harmonics song.wav F0 t1 t2 …` (times
    inside held notes) prints `const HARM = […]` for an additive remake.
+7. Several parts at once (melody over chords, a bassline): `sm roll song.wav
+A B --bpm B --t0 T` lists the notes in each 16th (`--div 8` for 8ths,
+   `--lo/--hi` MIDI range per part). A 16th window cannot resolve notes under
+   about 60 Hz: for an 808 find where notes change in the roll, then measure
+   each segment with a long FFT (its strongest peak; check the 2nd and 3rd
+   harmonics).
+8. Drums: onsets per 32nd in bands (kick 40-90 Hz, snare 1.5-4 kHz, hats
+   7-12 kHz, top 12-16 kHz). A hit in every band at once is a snare, not a
+   chord; rolls often sit in the top band only.
 
 Clues seen so far: notes exactly on equal temperament with instant jumps
 are a hard-tuned vocal; harmonic strengths that change from note to note
 mean a voice (fixed formants), the same strengths a synth; a brick-wall
 cut in the spectrum is a filter or sample-rate reduction; tones high up
 spaced by a fixed f0 that are not its multiples are aliasing from a
-bitcrusher (`coarse`, `crush`).
+bitcrusher (`coarse`, `crush`); a high tone whose frequency is a fixed
+multiple of the bass note (it moves with it and pulses at the bass
+frequency) is a high harmonic of the 808 itself, remade as sines at
+`bass * 290, 291, 292`; dense harmonics up to 16 kHz that vanish when one
+part rests mean that part is a bright saw, whatever the mix suggests.
 
 ## 3. Remake it
 
@@ -82,8 +95,14 @@ bitcrusher (`coarse`, `crush`).
 
 Record from the app with the MCP tools: `set_code`, `record_start`,
 `play`, wait (call `get_diagnostics` a few times), `record_stop` with a
-path, `stop`. Recording starts with the first cycle, so the remake begins
-at its own first onset.
+path, `stop`. Playback does not restart at cycle 0, and `play` right after
+`set_code` may still run the old code for a moment (check `evaluated`):
+record at least two loops and find bar 1 with
+`sm align song.wav take.wav --bars N --bpm B` (cross-correlation over one
+loop). `sm bands song.wav take.wav --bars N --bpm B` then prints the level
+per bar in fixed bands (sub, low, mid, snare, hats, air, plus `--band LO,HI`)
+and the take minus the original: fix the part that owns each band.
+`set_node` cannot change a Voice node's sound; use `set_code`.
 
 If `record_stop` says "Nothing was recorded" and `get_diagnostics` shows an
 empty `evaluated`, the tab was reloaded and its audio is locked until a
