@@ -499,9 +499,15 @@ export function parseProgram(source: string, known: Known[] = []): ParseResult {
     (a, b) => (lineStarts.get(a) ?? 0) - (lineStarts.get(b) ?? 0),
   );
 
+  // Comments outside the lines join the prelude, unless they sit inside a
+  // prelude statement (between its chained calls): its text has them.
+  const statements = prelude.map((part) => ({
+    start: part.start,
+    end: part.start + part.text.length,
+  }));
   for (const comment of comments)
     if (
-      !lineRanges.some(
+      ![...lineRanges, ...statements].some(
         (range) => comment.start >= range.start && comment.end <= range.end,
       )
     )
@@ -591,9 +597,22 @@ function line(
 
 /** The code each existing source node writes, for `parseProgram`. */
 export function knownSources(
-  nodes: { id: string; type: string; data: Record<string, unknown> }[],
+  nodes: {
+    id: string;
+    type: string;
+    data: Record<string, unknown>;
+    position?: { x: number; y: number };
+  }[],
 ): Known[] {
-  return nodes.flatMap(({ id, type, data }) => {
+  // In canvas order (top to bottom, then left to right), which is code
+  // order: two sources with the same code (`bassline` in two parts of a
+  // stack) are matched to their own nodes, not swapped.
+  const byPlace = [...nodes].sort(
+    (a, b) =>
+      (a.position?.y ?? 0) - (b.position?.y ?? 0) ||
+      (a.position?.x ?? 0) - (b.position?.x ?? 0),
+  );
+  return byPlace.flatMap(({ id, type, data }) => {
     const definition = nodeDefinitions[type];
     if (!definition || !isSource(definition)) return [];
     const text = definition.generate(data, { id });

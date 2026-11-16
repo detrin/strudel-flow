@@ -64,7 +64,10 @@ export function defineFilter(options: {
       const calls = [`${prefix}f(${values.cutoff})`];
       if (values.resonance !== 1) calls.push(`${prefix}q(${values.resonance})`);
       if (values.env !== 0)
-        calls.push(`${prefix}env(${values.env})`, ...adsrCalls(prefix, values));
+        calls.push(
+          `${prefix}env(${values.env})`,
+          ...adsrCalls(prefix, values, UNSET),
+        );
       return calls.join('.');
     },
   });

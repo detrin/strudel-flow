@@ -21,7 +21,12 @@ const sorted = (value: unknown): unknown =>
  * or null when it cannot be evaluated on its own (it uses a name defined
  * elsewhere in the song, say).
  */
-export function eventsOf(expression: string, cycles = 8): string | null {
+export function eventsOf(
+  expression: string,
+  cycles = 8,
+  /** Rewrites each event's value before comparing (e.g. resolve defaults). */
+  normalize: (value: unknown) => unknown = (value) => value,
+): string | null {
   try {
     const { output } = (
       strudel as unknown as {
@@ -45,7 +50,7 @@ export function eventsOf(expression: string, cycles = 8): string | null {
         JSON.stringify([
           String(hap.whole?.begin),
           String(hap.whole?.end),
-          sorted(hap.value),
+          sorted(normalize(hap.value)),
         ]),
       )
       .sort()

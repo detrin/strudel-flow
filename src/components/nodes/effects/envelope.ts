@@ -74,15 +74,68 @@ export function parseEnvelope(
     number
   > | null;
   if (!values) return null;
+  // The stages the code sets: they stay written (see adsrCalls).
+  const set = ADSR_KEYS.filter((key) => values[key] !== undefined);
   const adsr = effectiveAdsr(
     ADSR_KEYS.map((key) => values[key]) as Partial4,
     unset,
   );
   ADSR_KEYS.forEach((key, index) => (values[key] = adsr[index]));
-  return values;
+  return { ...values, stages: set.join(' ') } as Record<
+    string,
+    number | string
+  >;
 }
 
-export const adsrCalls = (
+/**
+ * The envelope calls to write: the stages the code set (`stages`, kept
+ * from reading it, so no call it had is dropped), plus any stage whose
+ * value differs from what Strudel fills in (`unset` when none is set).
+ * A node made on the canvas has no `stages`: the fewest calls that play
+ * its values. Writing every stage would override stages set earlier in
+ * the line (`.decay(0.25)…attack(0.05)` must not gain `.decay(0.001)`).
+ */
+export function adsrCalls(
   prefix: string,
-  values: Record<(typeof ADSR_KEYS)[number], number>,
-) => ADSR_KEYS.map((key) => `${prefix}${key}(${values[key]})`);
+  values: Record<string, unknown>,
+  unset: Adsr,
+) {
+  const wanted = ADSR_KEYS.map((key) => String(values[key]));
+  const resolved = (stages: number[]) =>
+    effectiveAdsr(
+      ADSR_KEYS.map((key, i) =>
+        stages.includes(i) ? (values[key] as Value) : undefined,
+      ) as Partial4,
+      unset,
+    ).map(String);
+  const kept =
+    typeof values.stages === 'string'
+      ? ADSR_KEYS.flatMap((key, i) =>
+          values.stages === '' ||
+          !String(values.stages).split(' ').includes(key)
+            ? []
+            : [i],
+        )
+      : null;
+  let stages: number[];
+  if (kept) {
+    // Add stages that differ until Strudel resolves to the values.
+    stages = [...kept];
+    for (let round = 0; round < 4; round++) {
+      const now = resolved(stages);
+      const missing = [0, 1, 2, 3].filter(
+        (i) => !stages.includes(i) && now[i] !== wanted[i],
+      );
+      if (!missing.length) break;
+      stages = [...stages, missing[0]].sort();
+    }
+  } else {
+    const subsets = Array.from({ length: 16 }, (_, mask) =>
+      [0, 1, 2, 3].filter((i) => mask & (1 << i)),
+    ).sort((a, b) => a.length - b.length);
+    stages = subsets.find((subset) =>
+      resolved(subset).every((value, i) => value === wanted[i]),
+    ) ?? [0, 1, 2, 3];
+  }
+  return stages.map((i) => `${prefix}${ADSR_KEYS[i]}(${values[ADSR_KEYS[i]]})`);
+}

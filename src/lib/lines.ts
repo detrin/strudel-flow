@@ -4,7 +4,36 @@
  * visuals can use it without an import cycle through the store.
  */
 
+import { parse } from 'acorn';
+
 const LABEL = /^([A-Za-z_$][\w$]*)\s*:(?!:)/;
+
+/**
+ * The top-level statements of some code, as spans (start, end, kind), or
+ * null when it does not parse. The real extent of each statement, wherever
+ * its rows start: `0.4)).gain(0.6)` at column 0 still belongs to its line.
+ */
+export function statementsOf(code: string) {
+  try {
+    const program = parse(code, {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      allowAwaitOutsideFunction: true,
+    });
+    return program.body.map((statement) => ({
+      start: statement.start,
+      end: statement.end,
+      type: statement.type,
+    }));
+  } catch {
+    return null;
+  }
+}
+/** The offset just after the row `offset` is on. */
+const rowEnd = (code: string, offset: number) => {
+  const at = code.indexOf('\n', offset);
+  return at === -1 ? code.length : at;
+};
 
 /**
  * A statement label as Strudel reads it: `_kick` is muted, and any label
@@ -42,7 +71,21 @@ export function regionsOf(code: string) {
   }
   const last = regions.at(-1);
   if (last && last.end === -1) last.end = code.length;
-  return regions;
+  // A statement may run on past a row that starts at column 0; when the
+  // code parses, each line reaches at least to its statement's end.
+  const statements = statementsOf(code);
+  if (statements)
+    regions.forEach((region, index) => {
+      const statement = statements.find(
+        (s) => s.start >= region.start && s.start < region.end,
+      );
+      if (!statement || statement.end <= region.end) return;
+      const end = rowEnd(code, statement.end) + 1;
+      region.end = Math.min(code.length, end);
+      const next = regions[index + 1];
+      if (next && next.start < region.end) next.start = region.end;
+    });
+  return regions.filter((region) => region.start < region.end);
 }
 
 /** Node ids by line label, from the current graph (kept by live.ts). */

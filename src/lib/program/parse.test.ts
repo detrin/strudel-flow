@@ -80,8 +80,9 @@ describe('parseProgram', () => {
         release: '0.01',
       },
     });
+    // Only the stages that differ from what Strudel fills in are written.
     expect(emitLine(line)).toBe(
-      '$: note("c2")\n  .lpf(400).lpenv(1).lpattack(0.001).lpdecay(0.2).lpsustain(0.001).lprelease(0.01)',
+      '$: note("c2")\n  .lpf(400).lpenv(1).lpdecay(0.2)',
     );
     expect(types('$: s("hh").hpf(3000).hpq(4)')).toEqual([
       ['sound-node', 'hpf-node'],
@@ -387,5 +388,15 @@ describe('switching off one part of a stack', () => {
       (hap) => (hap.value as { s: string }).s,
     );
     expect(new Set(played)).toEqual(new Set(['hh']));
+  });
+});
+
+describe('envelopes set twice in one line', () => {
+  it('a later envelope node keeps the stages set earlier', () => {
+    const code =
+      '$: note("a2").decay(0.25).sound("sine").release(1).lpf(800).attack(0.05)';
+    const line = parsed(code).lines[0];
+    const written = emitLine(line).replace(/^\$: /, '');
+    expect(haps(written)).toEqual(haps(code.replace(/^\$: /, '')));
   });
 });

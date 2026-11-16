@@ -12,9 +12,7 @@ test('a filter envelope appears when it gets depth, and is written out', async (
   await highPass.getByRole('slider', { name: 'env' }).focus();
   await page.keyboard.press('ArrowUp');
   await expect(highPass.getByRole('slider')).toHaveCount(7);
-  await expect(editor(page)).toContainText(
-    '.hpf(3000).hpenv(0.1).hpattack(0.005).hpdecay(0.14).hpsustain(0).hprelease(0.1)',
-  );
+  await expect(editor(page)).toContainText('.hpf(3000).hpenv(0.1)');
 });
 
 test('delay code becomes a Delay node and its knobs write code', async ({

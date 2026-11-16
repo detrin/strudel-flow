@@ -11,7 +11,7 @@ import { EnvelopeVisual } from '../visuals/envelope-visual';
 const UNSET: Adsr = [0.001, 0.001, 1, 0.01];
 const parameters = adsrParameters('', [0.1, 0.1, 0.7, 0.2]);
 
-/** Always writes all four values, so the code says exactly what plays. */
+/** Writes the fewest stages that play its values (see adsrCalls). */
 export default defineNode({
   id: 'adsr-node',
   title: 'Envelope',
@@ -21,5 +21,5 @@ export default defineNode({
   parameters,
   visual: EnvelopeVisual,
   parse: (calls) => parseEnvelope(parameters, calls, UNSET),
-  generate: (values) => adsrCalls('', values).join('.'),
+  generate: (values) => adsrCalls('', values, UNSET).join('.'),
 });

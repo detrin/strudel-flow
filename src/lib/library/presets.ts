@@ -1,4 +1,4 @@
-import { regionsOf } from '@/lib/lines';
+import { regionsOf, statementsOf } from '@/lib/lines';
 
 /**
  * Presets are saved lines ("tracks") of a song: the line's code without
@@ -29,6 +29,9 @@ const LAYOUT = /^\s*\/\/\s*@layout\b.*$/;
 export function declarationsOf(code: string) {
   const out: { name?: string; method?: boolean; text: string }[] = [];
   const rows = code.split('\n');
+  const statements = statementsOf(code);
+  const offsets: number[] = [];
+  rows.reduce((at, row) => (offsets.push(at), at + row.length + 1), 0);
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const declared = /^(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/.exec(row);
@@ -40,8 +43,14 @@ export function declarationsOf(code: string) {
     const loads = /^samples\(/.test(row);
     if (!declared && !registered && !fn && !loads) continue;
     let end = i + 1;
-    // Continuation rows: indented, or closing brackets, or chained calls.
-    while (end < rows.length && /^(\s+\S|[.)\]}])/.test(rows[end])) end++;
+    // Continuation rows: to the statement's real end when the code parses
+    // (`let x =` with its value on the next rows), else indented rows,
+    // closing brackets and chained calls.
+    const statement = statements?.find((s) => s.start === offsets[i]);
+    if (statement) {
+      while (end < rows.length && offsets[end] < statement.end) end++;
+    } else
+      while (end < rows.length && /^(\s+\S|[.)\]}])/.test(rows[end])) end++;
     const text = rows.slice(i, end).join('\n');
     if (registered) out.push({ name: registered[1], method: true, text });
     else if (declared || fn) out.push({ name: (declared ?? fn)![1], text });
