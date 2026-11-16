@@ -159,3 +159,17 @@ describe('a line without its arrangement', () => {
     expect(withoutArrangement('note("c3")')).toBe('note("c3")');
   });
 });
+
+describe('declarations used through a spread', () => {
+  it('carries a const used as ...NAME, not one read as a property', () => {
+    const song = `const HARM = [1, 0.5]
+const MEL = "60 62"
+const obj = { harm: 1 }
+vox: stack(...HARM.map((g, i) => note(MEL).gain(g)))
+other: note(obj.HARM)`;
+    const vox = presetFromLine(song, 'vox')!;
+    expect(vox.needs).toEqual(['const HARM = [1, 0.5]', 'const MEL = "60 62"']);
+    const other = presetFromLine(song, 'other')!;
+    expect(other.needs).toEqual(['const obj = { harm: 1 }']);
+  });
+});

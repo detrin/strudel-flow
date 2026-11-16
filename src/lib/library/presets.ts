@@ -60,9 +60,11 @@ export function declarationsOf(code: string) {
   return out;
 }
 
+// A name after one dot is a property (`obj.HARM`), not a use; after three
+// dots it is a spread (`...HARM`), which is.
 const uses = (text: string, name: string, method = false) =>
   new RegExp(
-    `(^|[^\\w$${method ? '' : '.'}])${name.replace(/\$/g, '\\$')}(?![\\w$])`,
+    `(^|[^\\w$${method ? '' : '.'}]|\\.\\.\\.)${name.replace(/\$/g, '\\$')}(?![\\w$])`,
   ).test(text);
 
 /** Plays sounds (samples, synths, instruments): needs the song's packs. */
