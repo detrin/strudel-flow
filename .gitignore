@@ -34,3 +34,5 @@ shots/
 # Python caches (skill scripts)
 __pycache__/
 *.pyc
+.vercel
+.env*.local
