@@ -1,0 +1,15 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index d2ac02b3d9d1aa533f16c6c5a6192f834a9acc76..e590b37bd784e95b0bc653a266ec337be46de756 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -3532,7 +3532,9 @@ class Db {
+       t,
+       // duration of each cycle
+       0.1,
+-      0.1,
++      // Strudelton: 0.4 s of lookahead (was 0.1), so a page busy for a moment
++      // doesn't drop the events whose time passed while it was (a lost kick)
++      0.4,
+       u,
+       o
+     );

@@ -188,6 +188,10 @@ least-movement voicings, roots in octave 2); preview and insert in
 - `lib/engine.ts`: the playback engine, one per tab (Strudel started once,
   live view and meters attached, a queue that plays the newest code and
   keeps the last good one). `use-workflow-runner` only decides what plays.
+- `patches/@strudel__web@1.3.0.patch` (pnpm patch): the scheduler looks
+  0.4 s ahead instead of 0.1, so a page busy for a moment doesn't drop the
+  events whose time passed (lost kicks; `e2e/steady-beat.spec.ts` stalls the
+  page and counts the beats). An upgrade of @strudel/web must carry it over.
 - `lib/strudel-internals.ts`: the only place that touches Strudel's
   undocumented internals (master gain, analysers, sound map, resetting
   the output). Its test pins @strudel/web 1.3.0: upgrading starts there.
