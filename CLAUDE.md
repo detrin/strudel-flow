@@ -192,7 +192,8 @@ least-movement voicings, roots in octave 2); preview and insert in
   undocumented internals (master gain, analysers, sound map, resetting
   the output). Its test pins @strudel/web 1.3.0: upgrading starts there.
   `masterOutput()` is the master through a limiter (20:1 above -3 dBFS,
-  the browser's make-up gain trimmed back out): the engine keeps it in
+  the browser's make-up gain trimmed back out, then a soft clip from
+  -0.9 dBFS, `lib/soft-clip.ts`, for the transients it lets through): the engine keeps it in
   front of the speakers, and the recorder and master meter listen to it.
   Songs still clip on strudel.cc, which has none (`e2e/limiter.spec.ts`).
   `ensureWorklets()` loads Strudel's audio-worklet effects (distort,

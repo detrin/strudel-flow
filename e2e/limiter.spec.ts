@@ -45,7 +45,7 @@ test('a song louder than full scale does not clip', async ({ page }) => {
   await play(page, LOUD);
   // Unlimited, two saws at gain 2.5 peak well above 1.
   const peak = await masterPeak(page);
-  expect(peak).toBeLessThanOrEqual(1.0);
+  expect(peak).toBeLessThan(0.99);
   expect(peak).toBeGreaterThan(0.7);
 });
 

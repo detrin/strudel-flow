@@ -18,6 +18,7 @@ import {
   superdough,
 } from '@strudel/web';
 import * as strudel from '@strudel/web';
+import { softClipCurve } from '@/lib/soft-clip';
 
 // Exported by @strudel/web but missing from its types.
 const { loadWorklets } = strudel as unknown as {
@@ -69,8 +70,8 @@ const MAKEUP_DB = 0.6 * -THRESHOLD * (1 - 1 / RATIO);
 /**
  * What the speakers get: Strudel's master through a limiter, so a song
  * louder than full scale doesn't clip (fast, hard knee, 20:1 above
- * -3 dBFS, which leaves room for the transients it lets through; below
- * that it passes unchanged). Put in on first use and again after Strudel
+ * -3 dBFS, then a soft clip from -0.9 dBFS for the transients it lets
+ * through; below that it passes unchanged). Put in on first use and again after Strudel
  * rebuilds its output; the recorder and the master meter listen here, so
  * they hear what you hear.
  */
@@ -86,10 +87,20 @@ export function masterOutput(): AudioNode | undefined {
       attack: 0.001,
       release: 0.1,
     });
-    trim = new GainNode(gain.context, { gain: 10 ** (-MAKEUP_DB / 20) });
+    const level = new GainNode(gain.context, {
+      gain: 10 ** (-MAKEUP_DB / 20),
+    });
+    // The compressor lets a millisecond of a sharp attack through: the
+    // last stage rounds it under full scale.
+    trim = new GainNode(gain.context);
+    const ceiling = new WaveShaperNode(gain.context, {
+      curve: softClipCurve(),
+    });
     gain.disconnect();
     gain.connect(limiter);
-    limiter.connect(trim);
+    limiter.connect(level);
+    level.connect(ceiling);
+    ceiling.connect(trim);
     trim.connect(gain.context.destination);
     limiters.set(gain, trim);
   }
