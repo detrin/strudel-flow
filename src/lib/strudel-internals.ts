@@ -17,8 +17,32 @@ import {
   soundMap,
   superdough,
 } from '@strudel/web';
+import * as strudel from '@strudel/web';
+
+// Exported by @strudel/web but missing from its types.
+const { loadWorklets } = strudel as unknown as {
+  loadWorklets: () => Promise<void> | undefined;
+};
 
 export const STRUDEL_VERSION = '1.3.0';
+
+let worklets: Promise<void> | undefined;
+/**
+ * Strudel's audio-worklet effects (distort, crush and the like). Strudel
+ * loads them on the first mousedown only, so a song started from the
+ * keyboard or by Claude played those lines silently; the engine waits for
+ * this before it evaluates. Loaded once a tab.
+ */
+export function ensureWorklets(): Promise<void> {
+  worklets ??= Promise.resolve(loadWorklets()).then(
+    () => undefined,
+    (error: unknown) => {
+      worklets = undefined;
+      throw error;
+    },
+  );
+  return worklets;
+}
 
 /** The audio context Strudel plays through. */
 export const audioContext = (): AudioContext => getAudioContext();

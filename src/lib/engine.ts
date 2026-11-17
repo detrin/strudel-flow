@@ -7,7 +7,11 @@
  */
 import '@/lib/strudel-scope';
 import { initStrudel, evaluate, hush, type StrudelSession } from '@strudel/web';
-import { audioContext, masterOutput } from '@/lib/strudel-internals';
+import {
+  audioContext,
+  ensureWorklets,
+  masterOutput,
+} from '@/lib/strudel-internals';
 import { setSchedulerNow } from '@/lib/strudel-clock';
 import { loadSamples } from '@/data/samples';
 import { collectPunchcards, tagPunchcards } from '@/lib/punchcards';
@@ -69,6 +73,7 @@ async function evaluateAudio(ready: Promise<StrudelSession>, pattern: string) {
   // when a sound plays: a song whose first bars are silent (arranged to
   // start later, or muted) would stay frozen at its start. Playing wakes it.
   await audioContext().resume();
+  await ensureWorklets();
   const code = tagAnalysers(tagPunchcards(pattern));
   // While playing, an edit may wait for the next bar (launch quantization).
   const launch = prepareLaunch(session.scheduler);

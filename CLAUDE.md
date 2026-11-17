@@ -195,6 +195,10 @@ least-movement voicings, roots in octave 2); preview and insert in
   the browser's make-up gain trimmed back out): the engine keeps it in
   front of the speakers, and the recorder and master meter listen to it.
   Songs still clip on strudel.cc, which has none (`e2e/limiter.spec.ts`).
+  `ensureWorklets()` loads Strudel's audio-worklet effects (distort,
+  crush) before the engine evaluates: Strudel loads them on the first
+  mousedown only, and without them those lines play silently, logged as a
+  plain console line (`e2e/no-click.spec.ts`).
 
 ## Tests that find bugs
 

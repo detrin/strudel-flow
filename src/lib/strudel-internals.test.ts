@@ -18,6 +18,7 @@ describe("Strudel's internals", () => {
       'analysers',
       'getAudioContext',
       'getSuperdoughAudioController',
+      'loadWorklets',
       'resetGlobalEffects',
       'soundMap',
       'superdough',
