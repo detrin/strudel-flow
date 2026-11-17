@@ -19,6 +19,8 @@ const APP_URLS = process.env.STRUDELTON_URL
 const hubUrl = (app) =>
   `${app.replace(/^http/, 'ws').replace(/\/$/, '')}/__bridge?role=agent`;
 const TIMEOUT_MS = 10_000;
+// A long recording takes the tab a while to encode and send.
+const SLOW = { record_stop: 120_000, import_take: 60_000, tune_take: 60_000 };
 const CONNECT_MS = 1500;
 const NOT_RUNNING =
   `Strudelton is not running at ${APP_URLS.join(' or ')}. ` +
@@ -78,7 +80,7 @@ async function call(method, params = {}) {
     const timer = setTimeout(() => {
       pending.delete(id);
       reject(new Error(`Strudelton did not answer "${method}" in time.`));
-    }, TIMEOUT_MS);
+    }, SLOW[method] ?? TIMEOUT_MS);
     pending.set(id, {
       resolve: (value) => (clearTimeout(timer), resolve(value)),
       reject: (error) => (clearTimeout(timer), reject(error)),
