@@ -247,6 +247,10 @@ rest goes on.
   autoplay rule): `play` then evaluates nothing and `record_stop` says
   "Nothing was recorded". Open the app in Playwright and click "Play
   code"; commands go to that newest tab.
+- Commands go to the tab that connected to the bridge last: after
+  `pnpm stable` restarts, the person's tab reconnects and can become the
+  newest, still running the page it loaded before. Reload the Playwright
+  tab after it, and check which tab answers (e.g. its theme in the reply).
 - Notes ring about 20 ms past their written end (release, room); `gm_*`
   voices can be silent the first time they play (soundfont loading).
 
