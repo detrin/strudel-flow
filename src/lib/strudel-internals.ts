@@ -34,6 +34,44 @@ export function masterGain(): GainNode | undefined {
   return controller.output?.destinationGain ?? undefined;
 }
 
+const limiters = new WeakMap<GainNode, GainNode>();
+const THRESHOLD = -3;
+const RATIO = 20;
+// The browser's compressor adds make-up gain (Web Audio spec: 0.6 times the
+// loss at full scale); the trim after it takes that back out, so what is
+// below the threshold comes out exactly as it went in.
+const MAKEUP_DB = 0.6 * -THRESHOLD * (1 - 1 / RATIO);
+
+/**
+ * What the speakers get: Strudel's master through a limiter, so a song
+ * louder than full scale doesn't clip (fast, hard knee, 20:1 above
+ * -3 dBFS, which leaves room for the transients it lets through; below
+ * that it passes unchanged). Put in on first use and again after Strudel
+ * rebuilds its output; the recorder and the master meter listen here, so
+ * they hear what you hear.
+ */
+export function masterOutput(): AudioNode | undefined {
+  const gain = masterGain();
+  if (!gain) return undefined;
+  let trim = limiters.get(gain);
+  if (!trim) {
+    const limiter = new DynamicsCompressorNode(gain.context, {
+      threshold: THRESHOLD,
+      knee: 0,
+      ratio: RATIO,
+      attack: 0.001,
+      release: 0.1,
+    });
+    trim = new GainNode(gain.context, { gain: 10 ** (-MAKEUP_DB / 20) });
+    gain.disconnect();
+    gain.connect(limiter);
+    limiter.connect(trim);
+    trim.connect(gain.context.destination);
+    limiters.set(gain, trim);
+  }
+  return trim;
+}
+
 /** The analyser Strudel feeds for `.analyze(id)`, once it has played. */
 export const analyserById = (id: string | number) =>
   (analysers as Record<string, AnalyserNode | undefined>)[id];

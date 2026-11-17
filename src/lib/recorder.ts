@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import {
   audioContext as getAudioContext,
-  masterGain,
+  masterOutput,
 } from '@/lib/strudel-internals';
 
 /** 16-bit PCM WAV of the given channels (equal lengths, -1…1). */
@@ -93,11 +93,6 @@ export async function loadRecorderWorklet(context: BaseAudioContext) {
     loaded = undefined;
     throw error;
   }
-}
-
-/** Strudel's master output, once it exists (after the first sound). */
-function masterOutput() {
-  return masterGain();
 }
 
 export async function startRecording() {

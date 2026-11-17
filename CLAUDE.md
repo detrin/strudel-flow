@@ -191,6 +191,10 @@ least-movement voicings, roots in octave 2); preview and insert in
 - `lib/strudel-internals.ts`: the only place that touches Strudel's
   undocumented internals (master gain, analysers, sound map, resetting
   the output). Its test pins @strudel/web 1.3.0: upgrading starts there.
+  `masterOutput()` is the master through a limiter (20:1 above -3 dBFS,
+  the browser's make-up gain trimmed back out): the engine keeps it in
+  front of the speakers, and the recorder and master meter listen to it.
+  Songs still clip on strudel.cc, which has none (`e2e/limiter.spec.ts`).
 
 ## Tests that find bugs
 

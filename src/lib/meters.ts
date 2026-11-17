@@ -2,7 +2,7 @@ import type { Pattern } from '@strudel/web';
 import {
   analyserById,
   audioContext as getAudioContext,
-  masterGain,
+  masterOutput,
 } from '@/lib/strudel-internals';
 import { getSchedulerCps, getSchedulerNow } from '@/lib/strudel-clock';
 import { regionsOf } from '@/lib/lines';
@@ -168,7 +168,7 @@ let master: AnalyserNode | undefined;
 let tapped: AudioNode | undefined;
 /** An analyser on the master output (re-tapped if Strudel rebuilds it). */
 export function masterAnalyser() {
-  const gain = masterGain();
+  const gain = masterOutput();
   if (!gain) return undefined;
   if (gain !== tapped) {
     master ??= getAudioContext().createAnalyser();

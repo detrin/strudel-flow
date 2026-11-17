@@ -7,7 +7,7 @@
  */
 import '@/lib/strudel-scope';
 import { initStrudel, evaluate, hush, type StrudelSession } from '@strudel/web';
-import { audioContext } from '@/lib/strudel-internals';
+import { audioContext, masterOutput } from '@/lib/strudel-internals';
 import { setSchedulerNow } from '@/lib/strudel-clock';
 import { loadSamples } from '@/data/samples';
 import { collectPunchcards, tagPunchcards } from '@/lib/punchcards';
@@ -166,5 +166,8 @@ export function playbackEngine(options: Options): Engine {
     cut: cutSound,
   };
   shared.__strudeltonEngine = engine;
+  // Strudel makes its master with the first sound and rebuilds it after a
+  // cut: keep the limiter in front of the speakers whenever it does.
+  setInterval(() => masterOutput(), 250);
   return engine;
 }
