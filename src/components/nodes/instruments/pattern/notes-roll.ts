@@ -1,5 +1,5 @@
 import { mini, noteToMidi } from '@strudel/web';
-import { rollMini, type RollNote } from '../../shared/roll';
+import { BAR_OPTIONS, rollMini, type RollNote } from '../../shared/roll';
 
 /**
  * The Notes node's piano roll: chromatic rows (every semitone), read from
@@ -76,6 +76,61 @@ export function readNotes(
       length: Math.max(1, Math.round((Math.min(end, bars) - begin) * division)),
     })),
   };
+}
+
+/** Cycles read to find the loop: twice the longest clip the roll has. */
+const LOOK = 2 * Math.max(...BAR_OPTIONS);
+/** A phrase still counts as a loop when this share of its notes changes. */
+const LOOSE = 0.1;
+/** Lengths this close to the best one count as the loop too. */
+const NEAR = 0.02;
+
+/**
+ * How many bars the pattern takes to come round: the shortest clip length
+ * that repeats, exactly or but for a few notes (a long phrase with `<a b>`
+ * variations inside); 1 when nothing repeats within the longest clip.
+ */
+export function loopBars(pattern: string, fast: number): number {
+  let haps: Hap[];
+  try {
+    haps = (
+      mini(pattern) as unknown as {
+        fast: (n: number) => { queryArc: (b: number, e: number) => Hap[] };
+      }
+    )
+      .fast(fast)
+      .queryArc(0, LOOK);
+  } catch {
+    return 1;
+  }
+  const events: { value: string; begin: number; length: number }[] = [];
+  for (const hap of haps) {
+    if (!hap.whole) continue;
+    const begin = valueOf(hap.whole.begin);
+    if (begin < 0 || begin >= LOOK) continue;
+    events.push({
+      value: String(hap.value),
+      begin,
+      length: valueOf(hap.whole.end) - begin,
+    });
+  }
+  if (!events.length) return 1;
+  const id = (e: (typeof events)[number], bars: number) =>
+    `${e.value}:${(e.begin % bars).toFixed(6)}:${e.length.toFixed(6)}`;
+  const changed = BAR_OPTIONS.map((bars) => {
+    const first = new Set(
+      events.filter((e) => e.begin < bars).map((e) => id(e, bars)),
+    );
+    const later = events.filter((e) => e.begin >= bars);
+    const strangers = later.filter((e) => !first.has(id(e, bars))).length;
+    const missing = Math.abs(first.size * (LOOK / bars - 1) - later.length);
+    return (strangers + missing) / Math.max(1, later.length);
+  });
+  const least = Math.min(...changed);
+  if (least > LOOSE) return 1;
+  // Not a longer clip that only repeats the phrase more exactly.
+  const near = Math.max(2 * least, NEAR);
+  return BAR_OPTIONS[changed.findIndex((share) => share <= near)] ?? 1;
 }
 
 /** Mini-notation for drawn notes (`~` when there are none). */

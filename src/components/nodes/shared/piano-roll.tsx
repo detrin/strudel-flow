@@ -4,8 +4,13 @@ import { placeNote, type RollNote } from './roll';
 
 /** Width of one cycle on screen; cells divide it. */
 const BAR_WIDTH = 320;
-/** At most this many cycles are visible; longer clips scroll. */
-const VISIBLE_BARS = 2;
+/** Clips longer than `LONG` bars are drawn smaller, to show more of them. */
+const LONG = 8;
+const LONG_BAR_WIDTH = 80;
+/** The roll is at most this wide (two full-size cycles); longer clips scroll. */
+const VISIBLE_WIDTH = 2 * BAR_WIDTH;
+/** Cells narrower than this get no line of their own, only beats and bars. */
+const MIN_LINED_CELL = 8;
 /** Grab zone at a note's right edge for resizing, in screen pixels. */
 const EDGE = 6;
 
@@ -51,7 +56,7 @@ export function PianoRoll({
   gutter?: string;
 }) {
   const total = division * bars;
-  const cellWidth = BAR_WIDTH / division;
+  const cellWidth = (bars > LONG ? LONG_BAR_WIDTH : BAR_WIDTH) / division;
   const width = total * cellWidth;
   const rows = high - low + 1;
   const rowOf = (pitch: number) => high - pitch;
@@ -165,7 +170,7 @@ export function PianoRoll({
       </div>
       <div
         className="nodrag nowheel overflow-x-auto overflow-y-hidden rounded-sm"
-        style={{ maxWidth: VISIBLE_BARS * BAR_WIDTH }}
+        style={{ maxWidth: VISIBLE_WIDTH }}
       >
         <div
           ref={grid}
@@ -195,20 +200,22 @@ export function PianoRoll({
               />
             );
           })}
-          {Array.from({ length: total }, (_, col) => (
-            <div
-              key={col}
-              className={cn(
-                'absolute inset-y-0 w-px',
-                col % division === 0
-                  ? 'bg-foreground/40'
-                  : col % beat === 0
-                    ? 'bg-foreground/20'
-                    : 'bg-foreground/[0.07]',
-              )}
-              style={{ left: col * cellWidth }}
-            />
-          ))}
+          {Array.from({ length: total }, (_, col) =>
+            cellWidth < MIN_LINED_CELL && col % beat !== 0 ? null : (
+              <div
+                key={col}
+                className={cn(
+                  'absolute inset-y-0 w-px',
+                  col % division === 0
+                    ? 'bg-foreground/40'
+                    : col % beat === 0
+                      ? 'bg-foreground/20'
+                      : 'bg-foreground/[0.07]',
+                )}
+                style={{ left: col * cellWidth }}
+              />
+            ),
+          )}
           {notes.map((note, index) =>
             note.start >= total ||
             note.pitch < low ||

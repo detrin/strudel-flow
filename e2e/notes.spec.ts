@@ -43,3 +43,24 @@ test('drawing notes writes them as code, chords included', async ({ page }) => {
   await page.mouse.click(x, y);
   await expect(editor(page)).toContainText('note("[c3,e3] ~@7 f#3 ~@7")');
 });
+
+test('a long phrase shows whole, drawn smaller and scrolling', async ({
+  page,
+}) => {
+  const bars = Array.from({ length: 32 }, (_, i) => `[c3 e${2 + (i % 5)}]`);
+  await typeCode(page, `lead: note("<${bars.join(' ')}>")`);
+  const notes = nodeOfType(page, 'notes-node');
+  await expect(notes.getByLabel('Bars')).toHaveValue('32');
+  await expect(notes.locator('[data-note]')).toHaveCount(64);
+  // 32 bars at a quarter of the usual width, in a view two bars wide.
+  const roll = notes.getByRole('grid');
+  const size = await roll.evaluate((element) => ({
+    width: (element as HTMLElement).offsetWidth,
+    view: (element.parentElement as HTMLElement).clientWidth,
+  }));
+  expect(size.width).toBe(32 * 80);
+  expect(size.view).toBeLessThanOrEqual(640);
+  // A shorter view of it can still be picked.
+  await notes.getByLabel('Bars').selectOption('2');
+  await expect(notes.locator('[data-note]')).toHaveCount(4);
+});

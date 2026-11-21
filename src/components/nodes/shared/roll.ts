@@ -7,7 +7,7 @@
 export type RollNote = { pitch: number; start: number; length: number };
 
 export const DIVISIONS = [4, 8, 12, 16, 24, 32] as const;
-export const BAR_OPTIONS = [1, 2, 4, 8] as const;
+export const BAR_OPTIONS = [1, 2, 4, 8, 16, 32, 64] as const;
 
 const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
 

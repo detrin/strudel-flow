@@ -329,6 +329,13 @@ describe('Pad from code', () => {
       parsed('$: n("<0 2>").scale("C:major")').lines[0].sink,
     );
     expect(slow.data).toMatchObject({ bars: 2 });
+    const phrase = Array.from({ length: 32 }, (_, i) => `[0 ${i % 5}]`);
+    const [long] = flatten(
+      parsed(`$: n("<${phrase.join(' ')}>").scale("C:major")`).lines[0].sink,
+    );
+    expect(long.type).toBe('pad-node');
+    expect(long.data).toMatchObject({ bars: 32 });
+    expect((long.data.notes as unknown[]).length).toBe(64);
   });
 
   it('leaves what a Pad cannot show to Notes and Pitch', () => {

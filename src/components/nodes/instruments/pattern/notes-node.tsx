@@ -10,7 +10,13 @@ import {
   rescaleNotes,
   type RollNote,
 } from '../../shared/roll';
-import { isBlackKey, midiName, readNotes, writeNotes } from './notes-roll';
+import {
+  isBlackKey,
+  loopBars,
+  midiName,
+  readNotes,
+  writeNotes,
+} from './notes-roll';
 import { cn } from '@/lib/utils';
 
 export type NotesView = {
@@ -42,7 +48,12 @@ export function NotesNode({
 }: CustomControlsProps<NotesValues>) {
   const { pattern, fn } = values;
   const fast = isPatternValue(values.fast) ? null : Number(values.fast);
-  const bars = values.bars ?? 1;
+  // Unless the person picked a length, the roll shows the whole loop.
+  const loop = useMemo(
+    () => (fn === 'note' && fast !== null ? loopBars(pattern, fast) : 1),
+    [fn, pattern, fast],
+  );
+  const bars = values.bars ?? loop;
   const read = useMemo(
     () =>
       fn === 'note' && fast !== null ? readNotes(pattern, fast, bars) : null,

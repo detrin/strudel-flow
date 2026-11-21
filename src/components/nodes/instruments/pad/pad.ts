@@ -127,7 +127,8 @@ const LOOK = 2 * Math.max(...BAR_OPTIONS);
 
 /**
  * A Pad from code: `n("0 [2,4] ~ -1").scale("A:minor")`, when its notes are
- * whole scale degrees on a grid the Pad has, looping within 8 bars (the Pad's longest clip). Null
+ * whole scale degrees on a grid the Pad has, looping within the Pad's longest
+ * clip. Null
  * otherwise (the line stays a Notes node). The code is kept as written.
  */
 export function readPad(base: Call, next: Call | undefined): PadData | null {
@@ -170,7 +171,7 @@ export function readPad(base: Call, next: Call | undefined): PadData | null {
     DIVISIONS.find((d) => d % unit === 0);
   if (!division) return null;
 
-  // The shortest loop that the whole 8 bars repeat.
+  // The shortest loop that everything read repeats.
   const id = (e: (typeof events)[number], bars: number) =>
     `${e.pitch}:${(e.begin % bars).toFixed(6)}:${(e.end - e.begin).toFixed(6)}`;
   const bars = BAR_OPTIONS.find((b) => {
